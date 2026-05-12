@@ -46,7 +46,7 @@ def create_atwood_dic(labels):
     return atwood_idx
 
 
-def sim_normalise_2d(data, labels, atwood, marge=0):
+def data_normalise_2d(data, labels, marge=0, square=False):
     """
     Normalise et recadre des simulations 2D pour un nombre d'Atwood donné.
 
@@ -66,34 +66,35 @@ def sim_normalise_2d(data, labels, atwood, marge=0):
             - sim_norm (ndarray): simulations normalisées
             - t (ndarray): temps associé aux simulations
     """
-    try:
-        a = create_atwood_dic(labels)
-        idxs = a[atwood]
-    except Exception:
-        print("Aucun Atwood correspondant dans les données!")
-        return
 
-    t = labels[idxs, 1]
-    L = labels[idxs, 2]
+    t = labels[:, 1]
+    L = labels[:, 2]
     L_norm = (L - L.min()) / (L.max() - L.min())
 
-    sim = data[idxs, :, :]
-    sim_norm = np.zeros_like(sim)
+    sim = data[:, :, :]
 
-    for i in range(sim.shape[0]):
-        simi = sim[i, :, :]
+    if square:
+        # Choisis la taille carrée cible (par exemple, la plus grande dimension)
+        target_size = max(data.shape[1], data.shape[2])
+        sim_norm = np.zeros((data.shape[0], target_size, target_size))
+    else:
+        sim_norm = np.zeros_like(data)
+
+    for i in range(data.shape[0]):
+        simi = data[i, :, :]
 
         cropped = mask2d(
             simi,
-            sim.shape[1] * 2,
-            int(sim.shape[2] * L_norm[i] + marge * sim.shape[2]),
+            data.shape[1] * 2,
+            int(data.shape[2] * L_norm[i] + marge * data.shape[2]),
             True
         )
 
-        sim_norm[i] = resize2d(
-            cropped,
-            simi.shape[1],
-            simi.shape[0]
-        )
+        if square:
+            # Redimensionne en carré
+            sim_norm[i] = resize2d(cropped, target_size, target_size)
+        else:
+            sim_norm[i] = resize2d(cropped, simi.shape[1], simi.shape[0])
 
-    return sim_norm, t
+
+    return sim_norm
