@@ -1,0 +1,18 @@
+__pycache__/*
+*/__pycache__/*
+.venv/*
+.vscode/*
+data/*
+datasets/*
+models/*
+exemples/*
+
+# Latex Files
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.pdf
+*.gz
+
+cea/__pycache__/output.cpython-39.pyc

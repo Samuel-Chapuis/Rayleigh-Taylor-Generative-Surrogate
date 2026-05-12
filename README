@@ -1,0 +1,13 @@
+# Objectif
+Concevoir un modele de diffusion qui utilise des wavelets dans le but de faire de la simulation de l'instabilité de Rayleigh-Taylor.
+
+## Choix des librairies
+### 1. Modele de diffusion 
+On se fixe **pytorch** comme librairie de devellopement pour ce faire.
+### 2. Wavelets
+Plusieurs options possible,
+- Tool box de gabriel peyre : code explicite proche des mathématique théoriques
+- PyWavelet : Approche machine tournantn en C donc rapide sur CPU, bien a priori pour du pré traitement
+- pytorch_wavelets : Compatible avec pytorch, nécessaire s'il faut rentrer les wavelets dans un futur réseau de neuronnes
+### 3. Physique
+/!\ Pas encore d'information a ce sujet /!\
