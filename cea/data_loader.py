@@ -1,7 +1,10 @@
 import h5py
 import numpy as np
 from collections import defaultdict
+
+from cea.general import *
 from cea.signal2D import *
+from cea.physic import *
 
 
 def load_RTCEA(file):
@@ -21,6 +24,10 @@ def load_RTCEA(file):
     extr_label = d["labels"]
 
     data = np.array(extr_data)
+    for t in range(data.shape[0]):
+        data[t] = reverse(data[t])
+
+
     labels = np.array(extr_label)
 
     return data, labels
@@ -98,3 +105,28 @@ def data_normalise_2d(data, labels, marge=0, square=False):
 
 
     return sim_norm
+
+
+def data_preprocessing(sim, resize=-1):
+    """
+    Recadre les simulations 2D pour celles dont la zone de mélange est completement visible.
+
+    Args:
+        sim (ndarray): simulations 2D à traiter
+        resize (int, optional): taille vers laquelle redimensionner les simulations. Defaults to -1 pas de redimensionnement.
+    Returns:
+        ndarray: simulations recadrées
+    """    
+    processed = []
+    for i in range(sim.shape[0]):
+        normed = normalize2d(sim[i,:,:])
+        cropped = mask2d(normed, sim.shape[1]//2, sim.shape[1]//2, crop=True)
+
+        borne_inf, borne_sup = taille_zone_melange(cropped, epsilon=0.1, marge=5)
+        if borne_inf > 2 and borne_sup < sim.shape[2]-2:
+            if resize > 0:
+                cropped = resize2d(cropped, resize, resize)
+            processed.append(cropped)
+
+    return np.array(processed)
+

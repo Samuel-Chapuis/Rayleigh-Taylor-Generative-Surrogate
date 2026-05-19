@@ -3,6 +3,25 @@ import pywt
 import cv2
 
 
+def normalize2d(matrix):
+    """
+    Normalise une matrice 2D en la mettant à l'échelle entre 0 et 1.
+
+    Args:
+        matrix (ndarray): Matrice 2D d'entrée.
+
+    Returns:
+        ndarray: Matrice normalisée.
+    """
+    min_val = np.min(matrix)
+    max_val = np.max(matrix)
+
+    if max_val - min_val == 0:
+        return np.zeros_like(matrix)
+
+    return (matrix - min_val) / (max_val - min_val)
+
+
 def mask2d(matrix, sizex, sizey=None, crop=False):
     """
     Applique un masque carré centré sur une matrice 2D.

@@ -72,7 +72,7 @@ def plot_sim_2d(sim, time):
     for i in range(9):
         nb = i * sim.shape[0] // 9
         imageplot(
-            reverse(sim[nb, :, :]),
+            sim[nb, :, :], #reverse(sim[nb, :, :])
             f"t={time[nb]:.2f}",
             [3, 3, i + 1],
             cmap='RdYlBu_r',
