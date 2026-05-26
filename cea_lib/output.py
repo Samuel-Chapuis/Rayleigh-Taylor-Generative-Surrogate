@@ -4,7 +4,7 @@ import matplotlib.gridspec as gridspec
 import pylab as pyl
 import pywt
 import numpy as np
-from cea.general import *
+from cea_lib.general import *
 
 
 def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top"):
@@ -53,7 +53,7 @@ def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_positio
             )
 
 
-def plot_sim_2d(sim, time):
+def plot_sim_2d(sim, time, titre=None, save=False):
     """
     Affiche une série de simulations 2D à différents instants.
 
@@ -63,6 +63,8 @@ def plot_sim_2d(sim, time):
     Args:
         sim (ndarray): simulations de forme (n, h, w)
         time (ndarray): vecteur des temps associés
+        titre (str, optional): titre de la figure
+        save (bool, optional): enregistrer la figure si True
 
     Returns:
         None
@@ -79,6 +81,12 @@ def plot_sim_2d(sim, time):
             colorbar=True,
             title_position="left"
         )
+    
+    plt.suptitle(titre, fontsize=16)
+    plt.tight_layout()
+    if save:
+        plt.savefig(f"img/simulation/{titre.replace(' ', '_')}.png", dpi=300)
+    plt.show()
 
 
 def plot_acp_modes(base, title="ACP modes", k=6):
@@ -121,7 +129,7 @@ def plot_acp_modes(base, title="ACP modes", k=6):
     plt.show()
 
 
-def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre=""):
+def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=False):
     """
     Affiche la décomposition en ondelettes 2D avec layout personnalisé.
 
@@ -136,6 +144,7 @@ def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre=""):
         wavelet (str, optional): type d'ondelette
         level (int, optional): niveau de décomposition
         titre (str, optional): titre global de la figure
+        save (bool, optional): enregistrer la figure si True
 
     Returns:
         None
@@ -187,6 +196,9 @@ def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre=""):
         ax_hh.imshow(details[2], cmap="gray")
         ax_hh.set_title(f"HH L{l} | E={energy(details[2]):.2e}")
         ax_hh.axis("off")
+
+    if save:
+        plt.savefig(f"img/{titre.replace(' ', '_')}.png", dpi=300)
 
     plt.tight_layout()
     plt.show()

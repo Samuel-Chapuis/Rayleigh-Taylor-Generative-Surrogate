@@ -5,7 +5,9 @@ __pycache__/*
 data/*
 datasets/*
 models/*
-exemples/*
+exemples/nt_toolbox/*
+doc/*
+img/*
 
 # Latex Files
 *.aux
