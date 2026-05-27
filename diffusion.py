@@ -29,14 +29,14 @@ class Config:
 
     # Parametres généraux
     seed: int = 0
-    store_path_dataset: str = "data/MNIST"
+    store_path_dataset: str = "data/RT28"
     
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
     no_train: bool = False
     batch_size: int = 128
     n_epochs: int = 20
     lr: float = 0.001
-    store_path: str = "outputs/model/ddpm_mnist.pt"
+    store_path: str = "outputs/model/ddpm_rt28.pt"
 
     # Hyperparametres
     kernel_size: int = 3

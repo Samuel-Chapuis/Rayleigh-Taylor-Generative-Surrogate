@@ -8,6 +8,7 @@ models/*
 exemples/nt_toolbox/*
 doc/*
 img/*
+outputs/*
 
 # Latex Files
 *.aux
