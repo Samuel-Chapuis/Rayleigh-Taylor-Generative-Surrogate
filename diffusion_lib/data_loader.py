@@ -33,7 +33,12 @@ class ProcessedDataset(Dataset):
                 "Run data_mining.py to generate it."
             )
 
-        self.images, self.labels = torch.load(processed_path)
+        loaded = torch.load(processed_path)
+        if isinstance(loaded, (tuple, list)) and len(loaded) == 2:
+            self.images, self.labels = loaded
+        else:
+            self.images = loaded
+            self.labels = torch.zeros(self.images.shape[0], dtype=torch.int64)
 
         if self.images.ndim == 3:
             self.images = self.images.unsqueeze(1)

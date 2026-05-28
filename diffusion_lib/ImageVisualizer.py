@@ -81,9 +81,9 @@ class ImageVisualizer:
                     idx += 1
 
         fig.suptitle(title, fontsize=20)
-        self._save_figure(fig, f"{title.replace(' ', '_')}.png")
         plt.close(fig)
-
+        self._save_figure(fig, f"{title.replace(' ', '_')}.png")
+        
 
     def show_first_batch(self, loader):
         """

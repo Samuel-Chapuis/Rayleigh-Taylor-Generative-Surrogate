@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 
-def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt"):
+def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None):
     """
     Entraîne un modèle DDPM sur un jeu de données.
 
@@ -19,6 +19,10 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
             afficher des échantillons générés en fin d'époque.
         store_path (str, optional): Chemin de sauvegarde du meilleur modèle.
 
+    Args:
+        logger (Logger | None, optional): Logger optionnel pour écrire le déroulé
+            de l'expérience et les métriques d'époque.
+
     Returns:
         list[torch.Tensor]: Historique des pertes calculées à chaque itération.
     """
@@ -26,6 +30,9 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     best_loss = float("inf")
     loss_list = []
     n_steps = ddpm.n_steps
+
+    if logger:
+        logger.info(f"Training started for {n_epochs} epochs")
 
     for epoch in tqdm(range(n_epochs), desc=f"Training progress", colour="#00ff00"):
         epoch_loss = 0.0
@@ -65,6 +72,15 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
             torch.save(ddpm.state_dict(), store_path)
             log_string += " --> Best model ever (stored)"
 
+        if logger:
+            logger.log_epoch(epoch + 1, {"loss": epoch_loss, "best_loss": best_loss, "stored": best_loss == epoch_loss})
+
         print(log_string)
+
+        if logger:
+            logger.info(log_string)
+
+    if logger:
+        logger.log_experiment_end("Training finished")
     
     return loss_list

@@ -5,11 +5,15 @@ import torch
 from cea_lib.data_loader import *
 
 
+DATASET_MODE = "RTCEA"  # "RTCEA" or "MNIST"
+
 DATA = "data/RTCEA_bimode.hdf5"
 SIZE = 28
 
 # Output root folder for a MNIST-compatible dataset
 OUTPUT_ROOT = "data/RT28"
+MNIST_ROOT = "data/MNIST"
+MNIST_OUTPUT_ROOT = "data/MNIST"
 TRAIN_SPLIT = 0.9
 SEED = 0
 ALLOW_OVERWRITE = True
@@ -19,6 +23,23 @@ LABEL_MODE = "constant"  # "constant" or "column_bins"
 LABEL_CONSTANT = 0
 LABEL_COLUMN = 0
 LABEL_BINS = 10
+
+
+def read_idx(path: str) -> np.ndarray:
+    with open(path, "rb") as f:
+        magic = int.from_bytes(f.read(4), "big")
+        ndim = magic & 0xFF
+        shape = [int.from_bytes(f.read(4), "big") for _ in range(ndim)]
+        data = np.frombuffer(f.read(), dtype=np.uint8)
+    return data.reshape(shape)
+
+
+def load_mnist(root: str):
+    train_images = read_idx(os.path.join(root, "train-images.idx3-ubyte"))
+    train_labels = read_idx(os.path.join(root, "train-labels.idx1-ubyte"))
+    test_images = read_idx(os.path.join(root, "t10k-images.idx3-ubyte"))
+    test_labels = read_idx(os.path.join(root, "t10k-labels.idx1-ubyte"))
+    return train_images, train_labels, test_images, test_labels
 
 
 def to_uint8_images(data: np.ndarray) -> np.ndarray:
@@ -51,9 +72,7 @@ def build_labels(labels: np.ndarray, n: int) -> np.ndarray:
 
 def save_mnist_processed(root: str,
                          train_images: np.ndarray,
-                         train_labels: np.ndarray,
-                         test_images: np.ndarray,
-                         test_labels: np.ndarray) -> None:
+                         test_images: np.ndarray) -> None:
     processed_dir = os.path.join(root, "processed")
     os.makedirs(processed_dir, exist_ok=True)
 
@@ -66,46 +85,42 @@ def save_mnist_processed(root: str,
             "Set ALLOW_OVERWRITE=True to replace them."
         )
 
-    torch.save(
-        (torch.from_numpy(train_images), torch.from_numpy(train_labels)),
-        train_path
-    )
-    torch.save(
-        (torch.from_numpy(test_images), torch.from_numpy(test_labels)),
-        test_path
-    )
+    # Save image-only tensors to keep diffusion training unconditional.
+    torch.save(torch.from_numpy(train_images), train_path)
+    torch.save(torch.from_numpy(test_images), test_path)
 
 
 if __name__ == "__main__":
-    o_data, o_labels = load_RTCEA(DATA)
-    data, labels = data_preprocessing(o_data, o_labels, resize=SIZE)
-    print(data.shape, labels.shape)
+    if DATASET_MODE == "MNIST":
+        train_images, _, test_images, _ = load_mnist(MNIST_ROOT)
+        output_root = MNIST_OUTPUT_ROOT
+    else:
+        o_data, o_labels = load_RTCEA(DATA)
+        data, labels = data_preprocessing(o_data, o_labels, resize=SIZE)
+        print(data.shape, labels.shape)
 
-    images = to_uint8_images(data)
-    targets = build_labels(labels, images.shape[0])
+        images = to_uint8_images(data)
+        _ = build_labels(labels, images.shape[0])
 
-    rng = np.random.default_rng(SEED)
-    indices = np.arange(images.shape[0])
-    rng.shuffle(indices)
+        rng = np.random.default_rng(SEED)
+        indices = np.arange(images.shape[0])
+        rng.shuffle(indices)
 
-    train_count = int(images.shape[0] * TRAIN_SPLIT)
-    train_idx = indices[:train_count]
-    test_idx = indices[train_count:]
+        train_count = int(images.shape[0] * TRAIN_SPLIT)
+        train_idx = indices[:train_count]
+        test_idx = indices[train_count:]
 
-    train_images = images[train_idx]
-    train_labels = targets[train_idx]
-    test_images = images[test_idx]
-    test_labels = targets[test_idx]
+        train_images = images[train_idx]
+        test_images = images[test_idx]
+        output_root = OUTPUT_ROOT
 
     save_mnist_processed(
-        OUTPUT_ROOT,
+        output_root,
         train_images,
-        train_labels,
-        test_images,
-        test_labels
+        test_images
     )
 
     print(
-        f"Saved MNIST-compatible dataset to {OUTPUT_ROOT} "
+        f"Saved MNIST-compatible dataset to {output_root} "
         f"(train={train_images.shape[0]}, test={test_images.shape[0]})."
     )

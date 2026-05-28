@@ -15,6 +15,7 @@ from torchvision.datasets.mnist import MNIST, FashionMNIST
 
 
 from diffusion_lib.ImageVisualizer import ImageVisualizer
+from diffusion_lib.Logger import Logger
 from diffusion_lib.data_loader import data_loader
 from diffusion_lib.utils import *
 from diffusion_lib.DDPM import *
@@ -29,13 +30,15 @@ class Config:
 
     # Parametres généraux
     seed: int = 0
-    store_path_dataset: str = "data/RT28"
+    store_path_dataset: str = "data/MNIST"
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
     no_train: bool = False
     batch_size: int = 128
-    n_epochs: int = 2
+    n_epochs: int = 1
     lr: float = 0.001
-    store_path: str = "outputs/model/ddpm_rt28.pt"
+    store_path: str = "outputs/model/ddpm_mnist.pt"
+    log_path: str = "outputs/logs/ddpm_mnist.log"
+    csv_path: str = "outputs/logs/ddpm_mnist.csv"
 
     # Hyperparametres
     kernel_size: int = 3
@@ -59,7 +62,22 @@ class Config:
 ''' Setup '''
 # Preparation de l'expérience
 config = Config()
+logger = Logger(config.log_path, config.csv_path)
+logger.log_experiment_start({
+    "seed": config.seed,
+    "store_path_dataset": config.store_path_dataset,
+    "batch_size": config.batch_size,
+    "n_epochs": config.n_epochs,
+    "lr": config.lr,
+    "store_path": config.store_path,
+    "time_emb_dim": config.time_emb_dim,
+    "n_steps": config.n_steps,
+    "device": config.device,
+})
+
+
 loader = data_loader(config)
+
 
 # On affiche le premier batch de donnée pour vérifier que tout est en ordre
 config.viz.show_first_batch(loader)
@@ -107,7 +125,7 @@ config.viz.show_images(generate, "before training")
 optimizer = Adam(ddpm.parameters(), lr=config.lr)
 
 # Entraînement du modèle
-# loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path)
+# loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path, logger=logger)
 
 # Chargement du meilleur modèle sauvegardé
 best_model = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device)
