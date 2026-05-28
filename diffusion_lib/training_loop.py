@@ -4,6 +4,24 @@ import torch.nn as nn
 
 
 def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt"):
+    """
+    Entraîne un modèle DDPM sur un jeu de données.
+
+    Args:
+        ddpm (DDPM): Modèle de diffusion à entraîner.
+        loader (torch.utils.data.DataLoader): Chargeur fournissant les lots
+            d'images d'entraînement.
+        n_epochs (int): Nombre d'époques d'entraînement.
+        optim (torch.optim.Optimizer): Optimiseur utilisé pour la mise à jour
+            des paramètres.
+        device (torch.device): Dispositif de calcul utilisé pendant l'entraînement.
+        display (ImageVisualizer | None, optional): Visualiseur optionnel pour
+            afficher des échantillons générés en fin d'époque.
+        store_path (str, optional): Chemin de sauvegarde du meilleur modèle.
+
+    Returns:
+        list[torch.Tensor]: Historique des pertes calculées à chaque itération.
+    """
     mse = nn.MSELoss()
     best_loss = float("inf")
     loss_list = []

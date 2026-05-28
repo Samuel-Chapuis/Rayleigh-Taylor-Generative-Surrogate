@@ -7,7 +7,8 @@ from pathlib import Path
 
 class ImageVisualizer:
     """
-    Utilitaire de visualisation pour afficher des lots d'images et suivre la diffusion directe et inverse.
+    Utilitaire de visualisation pour afficher des lots d'images et suivre la
+    diffusion directe et inverse.
     """    
 
     def __init__(self, figsize=(8, 8), cmap="gray", output_dir=None):
@@ -24,6 +25,13 @@ class ImageVisualizer:
         self.output_dir = output_dir
 
     def _save_figure(self, fig, filename):
+        """
+        Sauvegarde une figure si un répertoire de sortie a été configuré.
+
+        Args:
+            fig (matplotlib.figure.Figure): Figure à sauvegarder.
+            filename (str): Nom du fichier de sortie.
+        """
         if not self.output_dir:
             return
 
@@ -32,26 +40,29 @@ class ImageVisualizer:
         fig.savefig(output_dir / filename, bbox_inches="tight", dpi=300)
 
     def _to_numpy(self, images):
-        """Convertit un tenseur PyTorch en tableau NumPy si nécessaire.
+        """
+        Convertit un tenseur PyTorch en tableau NumPy si nécessaire.
 
         Args:
             images: Tenseur PyTorch ou tableau déjà compatible NumPy.
 
         Returns:
             Les données sous forme de tableau NumPy, ou l'entrée d'origine si elle l'est déjà.
-        """        
+        """
         if isinstance(images, torch.Tensor):
             return images.detach().cpu().numpy()
         return images
 
 
     def show_images(self, images, title=""):
-        """Affiche un lot d'images dans une grille.
+        """
+        Affiche un lot d'images dans une grille.
 
         Args:
-            images: Lot d'images au format tenseur ou NumPy, attendu sous la forme ``(N, C, H, W)``.
+            images: Lot d'images au format tenseur ou NumPy, attendu sous la
+                forme ``(N, C, H, W)``.
             title (str, optional): Titre affiché en haut de la figure.
-        """        
+        """
         images = self._to_numpy(images)
 
         fig = plt.figure(figsize=self.figsize)
@@ -75,24 +86,27 @@ class ImageVisualizer:
 
 
     def show_first_batch(self, loader):
-        """Affiche le premier lot produit par un DataLoader.
+        """
+        Affiche le premier lot produit par un DataLoader.
 
         Args:
-            loader: Itérateur PyTorch fournissant des lots sous la forme ``(images, labels, ...)``.
-        """        
+            loader: Itérateur PyTorch fournissant des lots sous la forme
+                ``(images, labels, ...)``.
+        """
         for batch in loader:
             self.show_images(batch[0], "Images in the first batch")
             break
 
 
     def show_forward(self, ddpm, loader, device):
-        """Affiche des images bruitées à plusieurs niveaux du processus direct.
+        """
+        Affiche des images bruitées à plusieurs niveaux du processus direct.
 
         Args:
             ddpm: Modèle DDPM fournissant le processus de diffusion directe.
             loader: DataLoader contenant des images propres.
             device: Périphérique sur lequel exécuter les calculs.
-        """        
+        """
 
 
         percentages = [0, 0.25, 0.5, 0.75, 1.0]
@@ -168,13 +182,14 @@ class ImageVisualizer:
 
 
     def show_backward(self, ddpm, device, n_samples=8):
-        """Affiche l'évolution de la génération pendant le processus inverse.
+        """
+        Affiche l'évolution de la génération pendant le processus inverse.
 
         Args:
             ddpm: Modèle DDPM utilisé pour la génération.
             device: Périphérique sur lequel générer les images.
             n_samples (int, optional): Nombre d'images affichées par ligne.
-        """        
+        """
         percentages = [1.0, 0.75, 0.5, 0.25, 0]
         labels = ["t = 100%\n(bruit)", "t = 75%", "t = 50%", "t = 25%", "t = 0\n(généré)"]
 

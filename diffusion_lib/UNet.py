@@ -5,7 +5,31 @@ import torch.nn as nn
 from diffusion_lib.embeding import sinusoidal_embedding
 
 class Block(nn.Module):
+    """
+    Bloc convolutionnel utilisé dans le U-Net.
+
+    Le bloc applique éventuellement une normalisation par couche, puis deux
+    convolutions successives séparées par une activation.
+    """
+
     def __init__(self, shape, in_c, out_c, kernel_size=3, stride=1, padding=1, activation=None, normalize=True):
+        """
+        Initialise un bloc convolutionnel.
+
+        Args:
+            shape (tuple[int, int, int]): Forme attendue pour la normalisation
+                par couche sous la forme ``(C, H, W)``.
+            in_c (int): Nombre de canaux en entrée.
+            out_c (int): Nombre de canaux en sortie.
+            kernel_size (int, optional): Taille du noyau de convolution. Par défaut 3.
+            stride (int, optional): Pas de la convolution. Par défaut 1.
+            padding (int, optional): Remplissage appliqué aux convolutions.
+                Par défaut 1.
+            activation (torch.nn.Module | None, optional): Fonction d'activation
+                à utiliser. Si `None`, `SiLU` est employée.
+            normalize (bool, optional): Indique si la normalisation par couche est
+                activée. Par défaut True.
+        """
         super(Block, self).__init__()
         self.ln = nn.LayerNorm(shape)
         self.conv1 = nn.Conv2d(in_c, out_c, kernel_size, stride, padding)
@@ -14,6 +38,15 @@ class Block(nn.Module):
         self.normalize = normalize
 
     def forward(self, x):
+        """
+        Propulse les données à travers le bloc convolutionnel.
+
+        Args:
+            x (torch.Tensor): Tenseur d'entrée.
+
+        Returns:
+            torch.Tensor: Tenseur transformé par le bloc.
+        """
         out = self.ln(x) if self.normalize else x
         out = self.conv1(out)
         out = self.activation(out)
@@ -22,7 +55,23 @@ class Block(nn.Module):
         return out
 
 class UNet(nn.Module):
+    """
+    Architecture U-Net conditionnée par le temps.
+
+    Le réseau reçoit une image bruitée et un pas de diffusion, puis prédit le
+    bruit associé à cette image.
+    """
+
     def __init__(self, n_steps=1000, time_emb_dim=100):
+        """
+        Initialise le U-Net.
+
+        Args:
+            n_steps (int, optional): Nombre total de pas de diffusion utilisés pour
+                construire l'embedding temporel. Par défaut 1000.
+            time_emb_dim (int, optional): Dimension de l'embedding temporel.
+                Par défaut 100.
+        """
         super(UNet, self).__init__()
 
         # Sinusoidal embedding
@@ -100,7 +149,16 @@ class UNet(nn.Module):
         self.conv_out = nn.Conv2d(10, 1, 3, 1, 1)
 
     def forward(self, x, t):
-        # x is (N, 2, 28, 28) (image with positional embedding stacked on channel dimension)
+        """
+        Prédit le bruit associé à une image bruitée.
+
+        Args:
+            x (torch.Tensor): Images d'entrée de forme ``(N, C, H, W)``.
+            t (torch.Tensor): Pas de temps pour chaque image du lot.
+
+        Returns:
+            torch.Tensor: Carte de bruit prédite.
+        """
         t = self.time_embed(t)
         n = len(x)
         out1 = self.b1(x + self.te1(t).reshape(n, -1, 1, 1))  # (N, 10, 28, 28)
@@ -123,6 +181,16 @@ class UNet(nn.Module):
         return out
 
     def _make_te(self, dim_in, dim_out):
+        """
+        Construit un petit réseau pour projeter l'embedding temporel.
+
+        Args:
+            dim_in (int): Dimension d'entrée.
+            dim_out (int): Dimension de sortie.
+
+        Returns:
+            torch.nn.Sequential: Bloc de projection de l'embedding temporel.
+        """
         return nn.Sequential(
             nn.Linear(dim_in, dim_out),
             nn.SiLU(),

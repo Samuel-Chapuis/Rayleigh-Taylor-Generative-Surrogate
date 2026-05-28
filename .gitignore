@@ -9,6 +9,7 @@ exemples/nt_toolbox/*
 doc/*
 img/*
 outputs/*
+wheelhouse/*
 
 # Latex Files
 *.aux

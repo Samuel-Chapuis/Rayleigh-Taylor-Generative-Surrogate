@@ -3,24 +3,29 @@ import torch.nn as nn
 
 class DDPM(nn.Module): 
     """
-    DDPM est une classe qui implémente un modèle de diffusion probabiliste pour la génération d'images. 
-    Il ne s'agit pas d'un réseau de neurones complet, mais plutôt d'une structure qui gère les étapes de diffusion et de débruitage.
+    Modèle de diffusion probabiliste pour la génération d'images.
 
-    Args:
-        nn (Module): classe de base pour les modules de réseau de neurones dans PyTorch.
+    Cette classe encapsule le processus direct de diffusion, le processus inverse
+    appris par le réseau de neurones, ainsi que l'échantillonnage d'images à partir
+    d'un bruit gaussien.
     """    
 
     def __init__(self, network, n_steps=200, min_beta=10 ** -4, max_beta=0.02, device=None, image_chw=(1, 28, 28)):
         """
-        Classe d'implémentation d'un modèle de diffusion probabiliste (DDPM).
+        Initialise un modèle DDPM.
 
         Args:
-            network (_type_): _description_
-            n_steps (int, optional): _description_. Defaults to 200.
-            min_beta (_type_, optional): _description_. Defaults to 10**-4.
-            max_beta (float, optional): _description_. Defaults to 0.02.
-            device (_type_, optional): _description_. Defaults to None.
-            image_chw (tuple, optional): _description_. Defaults to (1, 28, 28).
+            network (torch.nn.Module): Réseau chargé de prédire le bruit à partir
+                d'une image bruitée et d'un pas de temps.
+            n_steps (int, optional): Nombre total d'étapes de diffusion. Par défaut 200.
+            min_beta (float, optional): Valeur minimale du calendrier de bruit.
+                Par défaut 10**-4.
+            max_beta (float, optional): Valeur maximale du calendrier de bruit.
+                Par défaut 0.02.
+            device (torch.device | None, optional): Dispositif de calcul à utiliser.
+                Par défaut None.
+            image_chw (tuple[int, int, int], optional): Format des images sous la forme
+                (canaux, hauteur, largeur). Par défaut (1, 28, 28).
         """        
         super(DDPM, self).__init__()
         self.n_steps = n_steps              # Nombre total d'étapes de diffusion (plus il est grand, plus la diffusion est fine)
@@ -42,12 +47,18 @@ class DDPM(nn.Module):
 
     def forward(self, x0, t, eta=None):
         """
-        Forward process (diffusion):
-        On ajoute du bruit à une image propre x0 jusqu'à un temps t donné.
+        Applique le processus direct de diffusion.
 
-        x0 : image originale
-        t : timestep (peut être un batch de valeurs)
-        eta : bruit (si None, généré aléatoirement)
+        Cette méthode ajoute du bruit à une image propre `x0` jusqu'au pas `t`.
+
+        Args:
+            x0 (torch.Tensor): Images propres de forme ``(N, C, H, W)``.
+            t (torch.Tensor): Pas de temps pour chaque élément du lot.
+            eta (torch.Tensor | None, optional): Bruit à injecter. Si `None`, un
+                bruit gaussien est généré automatiquement.
+
+        Returns:
+            torch.Tensor: Images bruitées de même forme que `x0`.
         """
 
         n, c, h, w = x0.shape           # Dimensions du batch
@@ -68,27 +79,31 @@ class DDPM(nn.Module):
 
     def backward(self, x, t):
         """
-        Reverse process (débruitage):
-        Le réseau essaie de prédire le bruit présent dans l'image x au temps t.
+        Applique le processus inverse appris par le réseau.
 
-        x : image bruitée
-        t : timestep
+        Args:
+            x (torch.Tensor): Images bruitées.
+            t (torch.Tensor): Pas de temps associé à chaque image.
 
-        Retour :
-        estimation du bruit
+        Returns:
+            torch.Tensor: Estimation du bruit prédit par le réseau.
         """
         return self.network(x, t)
 
     def sample(self, n_samples=16, device=None, c=None, h=None, w=None):
         """
-        Génère des images en partant d'un bruit gaussien et en appliquant le processus inverse.
+        Génère des images en partant d'un bruit gaussien.
 
         Args:
-            n_samples (int, optional): Nombre d'images à générer. Defaults to 16.
-            device (_type_, optional): Périphérique de calcul. Defaults to None.
-            c (int, optional): Nombre de canaux des images générées. Defaults to self.image_chw[0].
-            h (int, optional): Hauteur des images générées. Defaults to self.image_chw[1].
-            w (int, optional): Largeur des images générées. Defaults to self.image_chw[2].
+            n_samples (int, optional): Nombre d'images à générer. Par défaut 16.
+            device (torch.device | None, optional): Dispositif de calcul à utiliser.
+                Par défaut None.
+            c (int | None, optional): Nombre de canaux des images générées.
+                Par défaut la première valeur de `image_chw`.
+            h (int | None, optional): Hauteur des images générées. Par défaut la
+                deuxième valeur de `image_chw`.
+            w (int | None, optional): Largeur des images générées. Par défaut la
+                troisième valeur de `image_chw`.
 
         Returns:
             torch.Tensor: Lot d'images générées.
