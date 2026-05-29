@@ -7,7 +7,10 @@ from cea_lib.data_loader import *
 
 DATASET_MODE = "RTCEA"  # "RTCEA" or "MNIST"
 
-DATA = "data/RTCEA_bimode.hdf5"
+DATA = ["data/RTCEA_bimode.hdf5",
+        "data/RTCEA_monomode_1.hdf5",
+        "data/RTCEA_monomode.hdf5"
+        ]
 SIZE = 28
 
 # Output root folder for a MNIST-compatible dataset
@@ -95,7 +98,17 @@ if __name__ == "__main__":
         train_images, _, test_images, _ = load_mnist(MNIST_ROOT)
         output_root = MNIST_OUTPUT_ROOT
     else:
-        o_data, o_labels = load_RTCEA(DATA)
+        if isinstance(DATA, (list, tuple)):
+            data_list = []
+            label_list = []
+            for path in DATA:
+                d, l = load_RTCEA(path)
+                data_list.append(d)
+                label_list.append(l)
+            o_data = np.concatenate(data_list, axis=0)
+            o_labels = np.concatenate(label_list, axis=0)
+        else:
+            o_data, o_labels = load_RTCEA(DATA)
         data, labels = data_preprocessing(o_data, o_labels, resize=SIZE)
         print(data.shape, labels.shape)
 
