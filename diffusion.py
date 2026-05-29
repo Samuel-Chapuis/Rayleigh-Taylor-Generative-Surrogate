@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import random
 import numpy as np
 from tqdm.auto import tqdm
+import os
 
 import torch
 import torch.nn as nn
@@ -37,6 +38,7 @@ class Config:
     n_epochs: int = 1
     lr: float = 0.001
     store_path: str = "outputs/model/ddpm_mnist.pt"
+    input_path: str = ""
     log_path: str = "outputs/logs/ddpm_mnist.log"
     csv_path: str = "outputs/logs/ddpm_mnist.csv"
 
@@ -115,6 +117,10 @@ model_graph.visual_graph
 # Visualisation du processus de diffusion directe avant entraînement
 n_steps, min_beta, max_beta = config.n_steps, 10 ** -4, 0.02  # Originally used by the authors
 ddpm = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device)
+if config.input_path:
+    if not os.path.exists(config.input_path):
+        raise FileNotFoundError(f"Checkpoint introuvable: {config.input_path}")
+    ddpm.load_state_dict(torch.load(config.input_path, map_location=config.device))
 config.viz.show_forward(ddpm, loader, config.device)
 
 # Visualisation du processus de diffusion inverse avant entraînement
