@@ -24,7 +24,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
             de l'expérience et les métriques d'époque.
 
     Returns:
-        list[torch.Tensor]: Historique des pertes calculées à chaque itération.
+        list[float]: Historique des pertes calculées à chaque itération.
     """
     mse = nn.MSELoss()
     best_loss = float("inf")
@@ -53,12 +53,13 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
 
             # Optimizing the MSE between the noise plugged and the predicted noise
             loss = mse(eta_theta, eta)
-            loss_list.append(loss)
-            optim.zero_grad()
+            loss_value = loss.item()
+            loss_list.append(loss_value)
+            optim.zero_grad(set_to_none=True)
             loss.backward()
             optim.step()
 
-            epoch_loss += loss.item() * len(x0) / len(loader.dataset)
+            epoch_loss += loss_value * len(x0) / len(loader.dataset)
 
         # Display images generated at this epoch
         if display:

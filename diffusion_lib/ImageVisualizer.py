@@ -121,12 +121,14 @@ class ImageVisualizer:
             # Images originales
             blocks.append(imgs[:n_cols])
             # Images bruitées
-            for percent in percentages[1:]:
-                noisy = ddpm(
-                    imgs.to(device),
-                    [int(percent * ddpm.n_steps) - 1 for _ in range(len(imgs))]
-                )
-                blocks.append(noisy[:n_cols].cpu())
+            with torch.no_grad():
+                imgs_device = imgs.to(device)
+                for percent in percentages[1:]:
+                    noisy = ddpm(
+                        imgs_device,
+                        [int(percent * ddpm.n_steps) - 1 for _ in range(len(imgs))]
+                    )
+                    blocks.append(noisy[:n_cols].detach().cpu())
 
             # --- Figure ---
             n_rows = len(percentages)

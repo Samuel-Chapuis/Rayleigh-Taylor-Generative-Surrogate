@@ -118,6 +118,8 @@ model_graph = draw_graph(
 model_graph.visual_graph
 model_graph.visual_graph.render(filename='outputs/img/architecture3', format='png', cleanup=True)
 
+print(sum(p.numel() for p in unet.parameters() if p.requires_grad))
+
 # %%
 
 ''' Entraînement '''
@@ -137,7 +139,7 @@ config.viz.show_images(generate, "before training")
 optimizer = Adam(ddpm.parameters(), lr=config.lr)
 
 # Entraînement du modèle
-loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path, logger=logger)
+# loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path, logger=logger)
 
 # Chargement du meilleur modèle sauvegardé
 best_model = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=config.min_beta, max_beta=config.max_beta, device=config.device, image_chw=config.image_chw)
