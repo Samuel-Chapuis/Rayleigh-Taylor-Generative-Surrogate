@@ -13,8 +13,14 @@ x = ((x - x.min((1,2), keepdims=True)) /
      np.maximum(np.ptp(x, axis=(1,2), keepdims=True), 1e-8) * 255).astype(np.uint8)
 
 p = np.random.permutation(len(x))
-n = int(0.9 * len(x))
+n_train = int(0.8 * len(x))
+n_val   = int(0.1 * len(x))
+
+train = x[p[:n_train]]
+val   = x[p[n_train:n_train+n_val]]
+test  = x[p[n_train+n_val:]]
 
 os.makedirs("data/RT28/processed", exist_ok=True)
-torch.save(torch.from_numpy(x[p[:n]]),  "data/RT28/processed/training.pt")
-torch.save(torch.from_numpy(x[p[n:]]), "data/RT28/processed/test.pt")
+torch.save(torch.from_numpy(train), "data/RT28/processed/training.pt")
+torch.save(torch.from_numpy(val),   "data/RT28/processed/validation.pt")
+torch.save(torch.from_numpy(test),  "data/RT28/processed/test.pt")
