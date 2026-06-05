@@ -6,6 +6,7 @@ data/*
 datasets/*
 models/*
 exemples/nt_toolbox/*
+exemples/datasets/
 doc/*
 img/*
 outputs/*

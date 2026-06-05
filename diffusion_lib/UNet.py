@@ -80,6 +80,7 @@ class UNet(nn.Module):
         self.time_embed.requires_grad_(False)
 
         # First half
+        # Application de l'embedding temporel après chaque bloc pour conditionner le réseau par le temps à chaque niveau de la hiérarchie. On projette l'embedding temporel à la bonne dimension avant de l'ajouter à la sortie du bloc précédent.
         self.te1 = self._make_te(time_emb_dim, 1)
         self.b1 = nn.Sequential(
             Block((1, 28, 28), 1, 10),

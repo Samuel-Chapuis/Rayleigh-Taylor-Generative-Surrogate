@@ -36,8 +36,8 @@ class Config:
     no_train: bool = False
     batch_size: int = 128
     n_epochs: int = 1
-    lr: float = 0.001
-    store_path: str = "outputs/model/ddpm_mnist.pt"
+    lr: float = 0.001 # learning rate
+    store_path: str = "analyse_reslutat/res/RT28-100-Ok.pt"
     input_path: str = ""
     log_path: str = "outputs/logs/ddpm_mnist.log"
     csv_path: str = "outputs/logs/ddpm_mnist.csv"
@@ -46,11 +46,15 @@ class Config:
     kernel_size: int = 3
     stride: int = 1
     padding: int = 1
-    out_channels: int = 10
+    out_channels: int = 10 # je crois qu'elle est jamais appellée au final
+
+    min_beta: float = 10 ** -4
+    max_beta: float = 0.02
 
     # Parametres du DDPM
     time_emb_dim: int = 100 # dimension de l'embedding temporel
     n_steps: int = 1000 # discretisation du processus de diffusion (nombre de bruitages successifs)
+    image_chw: tuple[int, int, int] = (1, 28, 28) # format des images (channels, height, width)
     
     def __post_init__(self):
         random.seed(self.seed)
@@ -95,6 +99,7 @@ model_graph = draw_graph(
     device='meta'               # pas de mémoire allouée
 )
 model_graph.visual_graph
+model_graph.visual_graph.render(filename='outputs/img/block_architecture', format='png', cleanup=True)
 
 # Visualisation du U-Net complet
 unet = UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim)
@@ -107,16 +112,17 @@ model_graph = draw_graph(
     device='meta',
     expand_nested=True,   # déroule les sous-modules (MyBlock, etc.)
     show_shapes=True,     # affiche les dimensions des tenseurs
-    depth=3               # profondeur du graphe (ajuste selon le détail voulu)
+    depth=3              # profondeur du graphe (ajuste selon le détail voulu)
 )
-model_graph.resize_graph(0.2)
+# model_graph.resize_graph(0.2)
 model_graph.visual_graph
+model_graph.visual_graph.render(filename='outputs/img/architecture3', format='png', cleanup=True)
+
 # %%
 
 ''' Entraînement '''
 # Visualisation du processus de diffusion directe avant entraînement
-n_steps, min_beta, max_beta = config.n_steps, 10 ** -4, 0.02  # Originally used by the authors
-ddpm = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device)
+ddpm = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=config.min_beta, max_beta=config.max_beta, device=config.device, image_chw=config.image_chw)
 if config.input_path:
     if not os.path.exists(config.input_path):
         raise FileNotFoundError(f"Checkpoint introuvable: {config.input_path}")
@@ -131,10 +137,10 @@ config.viz.show_images(generate, "before training")
 optimizer = Adam(ddpm.parameters(), lr=config.lr)
 
 # Entraînement du modèle
-# loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path, logger=logger)
+loss = training_loop(ddpm, loader, config.n_epochs, optimizer, config.device, store_path=config.store_path, logger=logger)
 
 # Chargement du meilleur modèle sauvegardé
-best_model = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device)
+best_model = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=config.min_beta, max_beta=config.max_beta, device=config.device, image_chw=config.image_chw)
 best_model.load_state_dict(torch.load(config.store_path, map_location=config.device))
 best_model.eval()
 
