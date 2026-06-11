@@ -134,4 +134,3 @@ def data_preprocessing(data, labels, resize=-1):
             processed_label.append(labels[i])
             
     return np.array(processed), np.array(processed_label)
-

@@ -20,5 +20,6 @@ wheelhouse/*
 *.log
 *.pdf
 *.gz
+install-tl-20260611/
 
 cea/__pycache__/output.cpython-39.pyc

@@ -4,6 +4,7 @@ import matplotlib.gridspec as gridspec
 import pylab as pyl
 import pywt
 import numpy as np
+import math
 from cea_lib.general import *
 
 
@@ -87,6 +88,66 @@ def plot_sim_2d(sim, time, titre=None, save=False):
     if save:
         plt.savefig(f"img/simulation/{titre.replace(' ', '_')}.png", dpi=300)
     plt.show()
+    
+    
+def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False):
+    """
+    Affiche dans une image 2000x2000 le nombre nb de simulations 2D également réparties entre l'indice i_start et i_end avec un pas de i_freq.
+
+    Args:
+        sim (ndarray): simulations de forme (n, h, w)
+        time (ndarray): vecteur des temps associés
+        i_start (int): indice de départ
+        i_end (int): indice de fin
+        nb (int): nombre de simulations à afficher
+        titre (str, optional): titre de la figure
+        save (bool, optional): enregistrer la figure si True
+
+    Returns:
+        None
+    """
+    h, w = sim.shape[1], sim.shape[2]
+    image_ratio = w / h
+
+    best_rows, best_cols = 1, nb
+    best_score = float("inf")
+    for cols in range(1, nb + 1):
+        rows = math.ceil(nb / cols)
+        grid_ratio = (cols * image_ratio) / rows
+        empty_slots = rows * cols - nb
+        score = abs(np.log(grid_ratio)) + 0.05 * empty_slots
+        if score < best_score:
+            best_rows, best_cols = rows, cols
+            best_score = score
+
+    fig_ratio = (best_cols * image_ratio) / best_rows
+    fig_size = 20
+    if fig_ratio >= 1:
+        figsize = (fig_size, fig_size / fig_ratio)
+    else:
+        figsize = (fig_size * fig_ratio, fig_size)
+
+    plt.figure(figsize=figsize)
+
+    indices = np.linspace(i_start, i_end, nb, dtype=int)
+
+    for i, idx in enumerate(indices):
+        imageplot(
+            sim[idx, :, :], #reverse(sim[idx, :, :])
+            f"t={time[idx]:.2f}",
+            [best_rows, best_cols, i + 1],
+            cmap='RdYlBu_r',
+            colorbar=True,
+            title_position="left"
+        )
+    
+    plt.suptitle(titre, fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.97], w_pad=1.0, h_pad=1.0)
+    if save:
+        plt.savefig(f"img/simulation/{titre.replace(' ', '_')}.png", dpi=300)
+    plt.show()
+
+
 
 
 def plot_acp_modes(base, title="ACP modes", k=6):
@@ -127,6 +188,9 @@ def plot_acp_modes(base, title="ACP modes", k=6):
     plt.suptitle(title)
     plt.tight_layout()
     plt.show()
+
+
+
 
 
 def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=False):
