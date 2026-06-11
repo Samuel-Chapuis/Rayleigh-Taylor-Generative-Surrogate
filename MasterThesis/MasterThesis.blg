@@ -1,0 +1,54 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: MasterThesis.aux
+A level-1 auxiliary file: chapters/acknowledgements.aux
+A level-1 auxiliary file: chapters/abstract.aux
+A level-1 auxiliary file: chapters/introduction.aux
+A level-1 auxiliary file: chapters/ch1_physical_framework.aux
+A level-1 auxiliary file: chapters/ch2_dim_reduction.aux
+A level-1 auxiliary file: chapters/ch3_diffusion_model.aux
+A level-1 auxiliary file: chapters/ch4_wavelet_diffusion.aux
+A level-1 auxiliary file: chapters/conclusion.aux
+The style file: plainnat.bst
+Database file #1: references.bib
+You've used 2 entries,
+            2773 wiz_defined-function locations,
+            613 strings with 5304 characters,
+and the built_in function-call counts, 693 in all, are:
+= -- 58
+> -- 20
+< -- 2
++ -- 8
+- -- 6
+* -- 41
+:= -- 115
+add.period$ -- 6
+call.type$ -- 2
+change.case$ -- 7
+chr.to.int$ -- 2
+cite$ -- 4
+duplicate$ -- 40
+empty$ -- 70
+format.name$ -- 8
+if$ -- 139
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 3
+newline$ -- 18
+num.names$ -- 8
+pop$ -- 19
+preamble$ -- 1
+purify$ -- 6
+quote$ -- 0
+skip$ -- 26
+stack$ -- 0
+substring$ -- 23
+swap$ -- 2
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 17
+warning$ -- 0
+while$ -- 8
+width$ -- 0
+write$ -- 32

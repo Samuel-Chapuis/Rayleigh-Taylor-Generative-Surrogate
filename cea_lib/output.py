@@ -1,3 +1,5 @@
+from importlib.resources import path
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.gridspec as gridspec
@@ -8,7 +10,7 @@ import math
 from cea_lib.general import *
 
 
-def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top"):
+def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top", save=False, path="../outputs/img/imageplot.png"):
     """
     Affiche une image avec options de subplot, colormap et titre.
 
@@ -52,9 +54,12 @@ def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_positio
                 va='center',
                 ha='right'
             )
+        
+    if save:
+        plt.savefig(path, dpi=300)
 
 
-def plot_sim_2d(sim, time, titre=None, save=False):
+def plot_sim_2d(sim, time, titre=None, save=False, path="../outputs/img/simulation_2D.png"):
     """
     Affiche une série de simulations 2D à différents instants.
 
@@ -86,11 +91,11 @@ def plot_sim_2d(sim, time, titre=None, save=False):
     plt.suptitle(titre, fontsize=16)
     plt.tight_layout()
     if save:
-        plt.savefig(f"img/simulation/{titre.replace(' ', '_')}.png", dpi=300)
+        plt.savefig(path, dpi=300)
     plt.show()
     
     
-def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False):
+def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False, path="../outputs/img/simulation_2D.png"):
     """
     Affiche dans une image 2000x2000 le nombre nb de simulations 2D également réparties entre l'indice i_start et i_end avec un pas de i_freq.
 
@@ -144,7 +149,7 @@ def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False):
     plt.suptitle(titre, fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.97], w_pad=1.0, h_pad=1.0)
     if save:
-        plt.savefig(f"img/simulation/{titre.replace(' ', '_')}.png", dpi=300)
+        plt.savefig(path, dpi=300)
     plt.show()
 
 
@@ -262,7 +267,7 @@ def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=Fal
         ax_hh.axis("off")
 
     if save:
-        plt.savefig(f"img/{titre.replace(' ', '_')}.png", dpi=300)
+        plt.savefig(path, dpi=300)
 
     plt.tight_layout()
     plt.show()
