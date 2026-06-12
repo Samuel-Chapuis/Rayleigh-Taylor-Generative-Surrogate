@@ -12,6 +12,9 @@ img/*
 outputs/*
 wheelhouse/*
 
+analyse_reslutat/out/
+analyse_reslutat/res/
+
 # Latex Files
 *.aux
 *.fdb_latexmk
