@@ -12,20 +12,27 @@ class ProcessedDataset(Dataset):
     d'images et d'étiquettes, puis normalisées dans l'intervalle ``[-1, 1]``.
     """
 
-    def __init__(self, root: str, train: bool = True):
+    def __init__(self, root: str, train: bool | None = None, split: str | None = None):
         """
         Charge le jeu de données prétraité.
 
         Args:
             root (str): Répertoire racine du jeu de données.
-            train (bool, optional): Si True, charge la partition d'entraînement;
-                sinon la partition de test. Par défaut True.
+            train (bool | None, optional): Ancienne API. Si True, charge
+                ``training``; si False, charge ``test``.
+            split (str | None, optional): Partition explicite à charger parmi
+                ``training``, ``validation`` ou ``test``. Si fourni, remplace
+                ``train``.
 
         Raises:
             FileNotFoundError: Si le fichier ``training.pt`` ou ``test.pt`` est
                 introuvable.
         """
-        split = "training" if train else "test"
+        if split is None:
+            split = "training" if train is not False else "test"
+        if split not in {"training", "validation", "test"}:
+            raise ValueError("split doit etre 'training', 'validation' ou 'test'.")
+
         processed_path = Path(root) / "processed" / f"{split}.pt"
         if not processed_path.exists():
             raise FileNotFoundError(
@@ -68,9 +75,9 @@ class ProcessedDataset(Dataset):
         return img, label
 
 
-def data_loader(config):
+def data_loader(config, split: str = "training", shuffle: bool | None = None):
     """
-    Construit le DataLoader d'entraînement.
+    Construit un DataLoader pour une partition prétraitée.
 
     Args:
         config: Objet de configuration contenant au moins ``store_path_dataset``
@@ -79,6 +86,9 @@ def data_loader(config):
     Returns:
         torch.utils.data.DataLoader: Chargeur de données prêt pour l'entraînement.
     """
-    dataset = ProcessedDataset(config.store_path_dataset, train=True)
-    loader = DataLoader(dataset, config.batch_size, shuffle=True)
+    if shuffle is None:
+        shuffle = split == "training"
+
+    dataset = ProcessedDataset(config.store_path_dataset, split=split)
+    loader = DataLoader(dataset, config.batch_size, shuffle=shuffle)
     return loader
