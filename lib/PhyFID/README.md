@@ -7,9 +7,6 @@ La bibliothèque propose deux métriques :
 
 - **PhyFID** : les caractéristiques sont produites par un autoencodeur entraîné
   sur les images du domaine étudié ;
-- **FID Inception** : les caractéristiques viennent de l'InceptionV3 pré-entraîné
-  utilisé par la FID classique. Cette mesure sert surtout de référence externe
-  pour les images RT, qui ne sont pas des images naturelles.
 
 Un score faible indique que les deux distributions sont proches. Le score doit
 être comparé uniquement entre expériences utilisant le même encodeur, le même
@@ -82,24 +79,6 @@ score = compare_datasets(
 ```
 
 Ici, les statistiques des deux datasets sont recalculées à chaque appel.
-
-### 4. Calculer la FID Inception standard
-
-```python
-from PhyFID import calculate_inception_fid
-
-score = calculate_inception_fid(
-    validation_dataset[:1000],
-    generated_dataset[:1000],
-    batch_size=25,
-    device="cuda",
-    dims=2048,
-)
-```
-
-Les images monochromes sont automatiquement répétées sur trois canaux. Pour
-comparer plusieurs modèles, conserver `dims=2048`, le même nombre d'images et
-le même prétraitement.
 
 ## API par module
 
