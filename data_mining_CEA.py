@@ -1,7 +1,7 @@
 import os, numpy as np, torch
-from cea_lib.data_loader import *
-from cea_lib.data_augmentation import *
-from cea_lib.dataset_analysis import plot_dataset_overview
+from lib.cea_lib.data_loader import *
+from lib.cea_lib.data_augmentation import *
+from lib.cea_lib.dataset_analysis import plot_dataset_overview
 
 
 FILES = ["data/RTCEA_bimode.hdf5",

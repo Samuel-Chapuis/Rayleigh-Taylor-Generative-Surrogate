@@ -1,5 +1,5 @@
 from PhyFID.utils import*
-from diffusion_lib.Logger import Logger
+from lib.diffusion_lib.Logger import Logger
 
 
 DATA_ROOT = "data/RT28"  # ou data/MNIST

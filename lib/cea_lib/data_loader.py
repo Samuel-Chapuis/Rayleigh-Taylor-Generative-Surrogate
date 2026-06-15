@@ -2,9 +2,9 @@ import h5py
 import numpy as np
 from collections import defaultdict
 
-from cea_lib.general import *
-from cea_lib.signal2D import *
-from cea_lib.physic import *
+from lib.cea_lib.general import *
+from lib.cea_lib.signal2D import *
+from lib.cea_lib.physic import *
 
 
 def load_RTCEA(file):

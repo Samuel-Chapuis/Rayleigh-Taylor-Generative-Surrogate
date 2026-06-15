@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 
-from diffusion_lib.embeding import sinusoidal_embedding
+from lib.diffusion_lib.embeding import sinusoidal_embedding
 
 class Block(nn.Module):
     """

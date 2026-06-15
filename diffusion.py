@@ -15,14 +15,14 @@ from torchvision.transforms import Compose, ToTensor, Lambda
 from torchvision.datasets.mnist import MNIST, FashionMNIST
 
 
-from diffusion_lib.ImageVisualizer import ImageVisualizer
-from diffusion_lib.Logger import Logger
-from diffusion_lib.data_loader import data_loader
-from diffusion_lib.utils import *
-from diffusion_lib.DDPM import *
-from diffusion_lib.UNet import *
-from diffusion_lib.embeding import *
-from diffusion_lib.training_loop import *
+from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.diffusion_lib.Logger import Logger
+from lib.diffusion_lib.data_loader import data_loader
+from lib.diffusion_lib.utils import *
+from lib.diffusion_lib.DDPM import *
+from lib.diffusion_lib.UNet import *
+from lib.diffusion_lib.embeding import *
+from lib.diffusion_lib.training_loop import *
 # %%
 
 @dataclass(frozen=True)

@@ -7,7 +7,7 @@ import pylab as pyl
 import pywt
 import numpy as np
 import math
-from cea_lib.general import *
+from lib.cea_lib.general import *
 
 
 def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top", save=False, path="../outputs/img/imageplot.png"):
