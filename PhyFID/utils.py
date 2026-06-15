@@ -19,6 +19,7 @@ def build_phyfid_reference(
     batch_size=128,
     max_train_size=1024,
     max_val_size=100,
+    logger=None,
 ):
     """
     Prepare la reference PhyFID.
@@ -44,6 +45,7 @@ def build_phyfid_reference(
         epochs=train_epochs,
         batch_size=batch_size,
         device=phyfid_device,
+        logger=logger,
     )
 
     print("Sauvegarde de l'encodeur...")

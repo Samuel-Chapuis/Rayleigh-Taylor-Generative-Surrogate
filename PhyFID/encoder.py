@@ -70,9 +70,14 @@ def train_encoder(
     batch_size=128,
     lr=1e-3,
     device=None,
+    logger=None,
 ):
     """
     Entraine l'encodeur sur un dataset par reconstruction auto-supervisee.
+
+    Args:
+        logger: Logger optionnel compatible avec ``diffusion_lib.Logger``.
+            Si fourni, la loss de reconstruction est ecrite dans le .csv et le .log.
     """
     device = get_device(device)
     images = prepare_images(images)
@@ -82,6 +87,9 @@ def train_encoder(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loader = DataLoader(TensorDataset(images), batch_size=batch_size, shuffle=True)
     history = []
+
+    if logger:
+        logger.info(f"PhyFID encoder training started for {epochs} epochs")
 
     model.train()
     for epoch in range(epochs):
@@ -103,7 +111,15 @@ def train_encoder(
 
         mean_loss = total_loss / max(n_images, 1)
         history.append(mean_loss)
-        print(f"Epoch {epoch + 1:03d}/{epochs} - reconstruction_loss={mean_loss:.6f}")
+        log_string = f"Epoch {epoch + 1:03d}/{epochs} - reconstruction_loss={mean_loss:.6f}"
+        print(log_string)
+
+        if logger:
+            logger.log_epoch(epoch + 1, {"reconstruction_loss": mean_loss})
+            logger.info(log_string)
+
+    if logger:
+        logger.log_experiment_end("PhyFID encoder training finished")
 
     model.eval()
     return model, history
