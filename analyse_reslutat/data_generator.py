@@ -59,6 +59,7 @@ def load_pt_results(ddpm, device, n_samples=8):
 
     with torch.no_grad():
         for idx, t in enumerate(list(range(ddpm.n_steps))[::-1]):
+            print(f"Generation step {idx + 1}/{ddpm.n_steps} (t={t})")
             time_tensor = (torch.ones(n_samples, 1) * t).to(device).long()
             eta_theta = ddpm.backward(x, time_tensor)
             alpha_t, alpha_t_bar = ddpm.alphas[t], ddpm.alpha_bars[t]
