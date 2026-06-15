@@ -1,4 +1,4 @@
-from PhyFID.utils import*
+from lib.PhyFID.utils import*
 from lib.diffusion_lib.Logger import Logger
 
 

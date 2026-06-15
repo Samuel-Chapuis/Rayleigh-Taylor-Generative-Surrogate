@@ -1,18 +1,18 @@
-from PhyFID.encoder import (
+from lib.PhyFID.encoder import (
     PhysicalFeatureAutoencoder,
     encode_dataset,
     load_encoder,
     save_encoder,
     train_encoder,
 )
-from PhyFID.metrics import (
+from lib.PhyFID.metrics import (
     compare_datasets,
     compare_to_reference,
     frechet_distance,
     load_reference_statistics,
     save_reference_statistics,
 )
-from PhyFID.preprocessing import prepare_images
+from lib.PhyFID.preprocessing import prepare_images
 
 __all__ = [
     "PhysicalFeatureAutoencoder",

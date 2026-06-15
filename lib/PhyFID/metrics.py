@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from scipy import linalg
 
-from PhyFID.encoder import encode_dataset, load_encoder
+from lib.PhyFID.encoder import encode_dataset, load_encoder
 
 
 def feature_statistics(features):

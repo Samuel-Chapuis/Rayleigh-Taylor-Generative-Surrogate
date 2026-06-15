@@ -1,6 +1,6 @@
 import os
 import torch
-from PhyFID import*
+from lib.PhyFID import*
 
 def load_pt_dataset(path):
     if not os.path.exists(path):

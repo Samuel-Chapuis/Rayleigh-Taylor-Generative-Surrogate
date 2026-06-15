@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
-from PhyFID.preprocessing import prepare_images
+from lib.PhyFID.preprocessing import prepare_images
 
 
 class PhysicalFeatureAutoencoder(nn.Module):
