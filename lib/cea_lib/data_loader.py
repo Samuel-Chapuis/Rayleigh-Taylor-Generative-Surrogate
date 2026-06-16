@@ -53,7 +53,7 @@ def create_atwood_dic(labels):
     return atwood_idx
 
 
-def data_normalise_2d(data, labels, marge=0, square=False):
+def DEPRECATED_data_normalise_2d(data, labels, marge=0, square=False):
     """
     Normalise et recadre des simulations 2D pour un nombre d'Atwood donné.
 

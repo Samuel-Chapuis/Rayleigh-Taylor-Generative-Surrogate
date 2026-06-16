@@ -1,25 +1,53 @@
 import numpy as np
 import pywt
 import cv2
+try:
+    import torch
+except ImportError:
+    torch = None
 
 
-def normalize2d(matrix):
+def normalize2d(matrix, value_min=0, value_max=1):
     """
-    Normalise une matrice 2D en la mettant à l'échelle entre 0 et 1.
+    Normalise une matrice 2D ou un dataset d'images 2D.
+
+    Pour un dataset de forme (N, H, W) ou (N, C, H, W), chaque image est
+    normalisee independamment sur ses deux dernieres dimensions.
 
     Args:
-        matrix (ndarray): Matrice 2D d'entrée.
+        matrix (ndarray | torch.Tensor): Matrice 2D ou dataset d'entree.
+        value_min (float): Valeur minimale de l'échelle.
+        value_max (float): Valeur maximale de l'échelle.
+
 
     Returns:
-        ndarray: Matrice normalisée.
+        ndarray | torch.Tensor: Donnees normalisees, avec le meme type de conteneur.
     """
-    min_val = np.min(matrix)
-    max_val = np.max(matrix)
+    if torch is not None and torch.is_tensor(matrix):
+        data = matrix if matrix.is_floating_point() else matrix.float()
+        reduce_dims = tuple(range(data.ndim)) if data.ndim <= 2 else (-2, -1)
 
-    if max_val - min_val == 0:
-        return np.zeros_like(matrix)
+        min_val = data.amin(dim=reduce_dims, keepdim=True)
+        max_val = data.amax(dim=reduce_dims, keepdim=True)
+        scale = max_val - min_val
+        safe_scale = torch.where(scale == 0, torch.ones_like(scale), scale)
 
-    return (matrix - min_val) / (max_val - min_val)
+        normalized = (data - min_val) / safe_scale * (value_max - value_min) + value_min
+        return torch.where(scale == 0, torch.zeros_like(data), normalized)
+
+    data = np.asarray(matrix)
+    reduce_dims = None if data.ndim <= 2 else (-2, -1)
+
+    min_val = np.min(data, axis=reduce_dims, keepdims=True)
+    max_val = np.max(data, axis=reduce_dims, keepdims=True)
+    scale = max_val - min_val
+    safe_scale = np.where(scale == 0, 1, scale)
+
+    if np.all(scale == 0):
+        return np.zeros_like(data)
+
+    normalized = (data - min_val) / safe_scale * (value_max - value_min) + value_min
+    return np.where(scale == 0, np.zeros_like(data), normalized)
 
 
 def mask2d(matrix, sizex, sizey=None, crop=False):
@@ -258,5 +286,3 @@ def fourier_non_lineaire_2d(x, n):
     f_f.flat[idx[-n:]] = f.flat[idx[-n:]]
 
     return np.real(np.fft.ifft2(f_f))
-
-
