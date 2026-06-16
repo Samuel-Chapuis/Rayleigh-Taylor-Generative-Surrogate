@@ -17,6 +17,7 @@ wheelhouse/*
 
 analyse_reslutat/out/
 analyse_reslutat/res/
+doc/presentation/model/
 
 lib/Phy
 
@@ -27,6 +28,11 @@ lib/Phy
 *.log
 *.pdf
 *.gz
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
 install-tl-20260611/
 
 cea/__pycache__/output.cpython-39.pyc

@@ -1,0 +1,129 @@
+\documentclass[t,10pt,aspectratio=169]{beamer}
+
+\usetheme{CEA23}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\title{Modèle de diffusion pour l'instabilité de Rayleigh--Taylor}
+\subtitle{Vers une génération multi-échelle de champs issus de simulations directes}
+\date[23/06/2026]{23 juin 2026}
+\author[S. Chapuis]{Samuel \textsc{Chapuis}}
+
+\titlepagelogo{\includegraphics[height=24mm]{graphics/ORIGINAL/LOGO_CEA.png}}
+\setvalue{\diffusion}{}
+% \seminar[Projet RT-Diffusion]{Présentation du projet RT-Diffusion}
+
+\CEAmerci{Merci de votre attention}
+\CEAcenter{CEA Bruyères-le-Châtel}
+\addr{BSI / Turbulences}
+\CEAemail{}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{Du calcul haute fidélité au modèle génératif}
+  \framesubtitle{Produire rapidement de nouveaux champs physiques plausibles}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.43\textwidth}
+      \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{figures/RTCEA_simulation_2D.png}
+
+      \vspace{0.4ex}
+      {\tiny Évolution d'un champ de densité issu d'une simulation directe.}
+
+    \end{column}
+
+    \begin{column}{0.54\textwidth}
+      \begin{block}{Approche du projet}
+        \small
+        Apprendre la distribution des champs 2D pour générer de nouveaux échantillons à coût réduit.
+
+        \vspace{0.4ex}
+        {\scriptsize\color{CEAblue}\textbf{Hypothèse :} les ondelettes préservent mieux les structures localisées avec peu de données.}
+      \end{block}
+
+      \vspace{0.1ex}
+      \centering
+      \begin{tikzpicture}[
+          node distance=1.7mm,
+          box/.style={draw=CEAblue,fill=CEAblue!8,rounded corners=1.5pt,
+            align=center,minimum height=6mm,text width=3.4cm,font=\scriptsize},
+          arrow/.style={-{Latex[length=1.5mm]},thick,draw=CEAred}
+        ]
+        \node[box] (dns) {Simulations\\Rayleigh--Taylor};
+        \node[box,below=of dns] (repr) {Prétraitement puis\\Fourier / ondelettes};
+        \node[box,below=of repr] (ddpm) {Modèle de diffusion\\DDPM\textsuperscript{1}};
+        \node[box,below=of ddpm] (eval) {Évaluation visuelle,\\statistique et physique};
+        \draw[arrow] (dns) -- (repr);
+        \draw[arrow] (repr) -- (ddpm);
+        \draw[arrow] (ddpm) -- (eval);
+      \end{tikzpicture}
+
+    \end{column}
+  \end{columns}
+  \begin{textblock*}{0.88\paperwidth}(0.075\paperwidth,0.89\paperheight)
+    {\tiny\color{CEAgrey}\textsuperscript{1}\textbf{ACP} : Analyse en composantes principales.\quad
+    \textsuperscript{1}\textbf{DDPM} : Denoising Diffusion Probabilistic Model.}
+  \end{textblock*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Premiers résultats et prochaines étapes}
+  \framesubtitle{Une chaîne fonctionnelle, une validation physique à consolider}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.30\textwidth}
+      \centering
+      \textbf{Données de référence}
+
+      \vspace{0.6ex}
+      \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{figures/original.png}
+    \end{column}
+
+    \begin{column}{0.30\textwidth}
+      \centering
+      \textbf{Champs générés}
+
+      \vspace{0.6ex}
+      \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{figures/generated.png}
+    \end{column}
+
+    \begin{column}{0.36\textwidth}
+      \begin{exampleblock}{Réduction de dimension}
+        \scriptsize
+        \begin{itemize}
+          \item ondelettes non linéaires : \textbf{8\,\%} des coefficients ;
+          \item Fourier non linéaire : \textbf{12\,\%} ;
+          \item ACP\textsuperscript{1} à titre indicatif : \textbf{0.04\,\%}.
+        \end{itemize}
+      \end{exampleblock}
+
+      \begin{alertblock}{Bilan de la baseline}
+        \scriptsize
+        Le DDPM reproduit plusieurs morphologies en \(28\times28\), mais PhyFID/FID\textsuperscript{2} ne suffisent pas à valider la physique.
+
+        \vspace{0.5ex}
+        \textbf{Suite :} diffusion en ondelettes et ajout de metriques physiquement informées.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \begin{textblock*}{0.88\paperwidth}(0.075\paperwidth,0.89\paperheight)
+    {\tiny\color{CEAgrey}\textsuperscript{1}\textbf{ACP} : Analyse en composantes principales.\quad 
+    \textsuperscript{2}\textbf{FID} : Fréchet Inception Distance, mesure de similarité entre deux jeux d'images.}
+  \end{textblock*}
+\end{frame}
+
+\begin{frame}[plain]
+  \usebeamertemplate*{last page}
+\end{frame}
+
+\end{document}
