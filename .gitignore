@@ -15,7 +15,7 @@ img/*
 outputs/*
 wheelhouse/*
 
-analyse_reslutat/out/
+analyse_reslutat/
 analyse_reslutat/res/
 doc/presentation/model/
 
