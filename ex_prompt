@@ -11,3 +11,9 @@ J'ai donc pour le FID essayer 2 implementations, dans le package [PhyFID](/home/
 Les 2 implementations se trouvent dans [VisualisationPT.ipynb](/home/chapuissamuel/Documents/code/RT-Diffusion/analyse_reslutat/VisualisationPT.ipynb), or il est claire qu'il y a une erreur car les resultat indique que MNSIT serait plus proche en FID de mon jeux de validation que mon image génerée par mon modele de diffusion ce qui est visuellement tout a fait incohérent.
 
 Serait-il possible d'auditer le code pour chercher si des erreurs évidentes ont été incorporé par mégarde (Dans le code lui meme comme par exemple un flip verticale de l'images par rapport au jeux de validation). Ou alors des implementations qui ne font pas de sens ( ex. taille de l'image plus petite que le minimum possible pour un FID )
+
+
+
+Bonjour, 
+Il me semble que Ma directrice de master ne vous a pas mis en copie de sa demande de rendez vous car elle l'a fusionné pour plusieurs éleves,
+Elle 
