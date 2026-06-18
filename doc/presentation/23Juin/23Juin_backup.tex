@@ -25,11 +25,13 @@
 
 \begin{document}
 
-\begin{frame}[plain]
+\begin{frame}
   \titlepage
 \end{frame}
 
-\begin{frame}
+% ============================================== %
+
+\begin{frame}[plain]
   \frametitle{Du calcul haute fidélité au modèle génératif}
   \framesubtitle{Produire rapidement de nouveaux champs physiques plausibles}
 
@@ -76,9 +78,65 @@
   \end{textblock*}
 \end{frame}
 
+% ============================================== %
+
+\begin{frame}[plain]
+  \frametitle{Pourquoi les ondelettes ?}
+  % \framesubtitle{Raconter les structures multi-échelles avec peu de coefficients}
+  \vspace{-3ex}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.40\textwidth}
+      \centering
+
+      \vspace{0.4ex}
+      \includegraphics[width=0.9\linewidth,keepaspectratio]{figures/2DExemple_Reconstruction.png}
+
+      \vspace{0.4ex}
+      \includegraphics[width=0.9\linewidth,keepaspectratio]{figures/2DExemple_Masque.png}
+
+    \end{column}
+
+    \begin{column}{0.56\textwidth}
+      % \begin{block}{Structures RT}
+      %   \scriptsize
+      %   \begin{itemize}
+      %     \item Discontinuités : interfaces et fronts de densité.
+      %     % \item Grandes structures : bulles et doigts de Rayleigh--Taylor.
+      %     % \item Petites structures : filaments et instabilités secondaires.
+      %     \item Multi-échelles : les structures sont hiérarchiques et imbriquées.
+      %   \end{itemize}
+      % \end{block}
+
+      % \vspace{0.5ex}
+      \begin{block}{Représentation parcimonieuse}
+        \scriptsize
+        Les ondelettes gardent les coefficients là où le champ porte l'information.\\
+        \vspace{5px}
+        {\scriptsize\color{CEAblue}\textbf{Note :} Image d'illustration est de forme volontairement specifique pour visualiser les structures multi-échelles.}
+      \end{block}
+
+      \begin{block}{Ondelettes pour la diffusion}
+      \end{block}
+
+      \vspace{-2ex}
+      \begin{center}
+        \includegraphics[width=\linewidth,height=0.6\textheight,keepaspectratio]{figures/WaveletDiffusion.png}
+      \end{center}
+      
+    \end{column}
+  \end{columns}
+  \begin{textblock*}{0.35\paperwidth}(0.62\paperwidth,0.925\paperheight)
+    {\hfill\usebeamerfont{footline}\color{CEAlightgrey}23/06/2026\hspace{20pt}%
+    \textbf{\color{CEAred}\insertframenumber{} / \inserttotalframenumber}}
+  \end{textblock*}
+\end{frame}
+
+% ============================================== %
+
 \begin{frame}
-  \frametitle{Premiers résultats et prochaines étapes}
-  \framesubtitle{Une chaîne fonctionnelle, une validation physique à consolider}
+  \frametitle{Premiers résultats : baseline DDPM}
+  \framesubtitle{Des champs plausibles, à valider par des métriques physiques}
 
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.30\textwidth}
@@ -98,27 +156,33 @@
     \end{column}
 
     \begin{column}{0.36\textwidth}
-      \begin{exampleblock}{Réduction de dimension}
+      \begin{block}{Validation statistique}
         \scriptsize
         \begin{itemize}
-          \item ondelettes non linéaires : \textbf{8\,\%} des coefficients ;
-          \item Fourier non linéaire : \textbf{12\,\%} ;
-          \item ACP\textsuperscript{1} à titre indicatif : \textbf{0.04\,\%}.
+          \item PhyFID\textsuperscript{1} : \textbf{0.189} pour les champs générés ;
+          \item ordre de grandeur proche du témoin validation/train : \textbf{0.11} ;
+          \item bruit et MNIST restent très éloignés : \textbf{18.0} et \textbf{15.3}.
         \end{itemize}
-      \end{exampleblock}
+      \end{block}
 
-      \begin{alertblock}{Bilan de la baseline}
+      \vspace{-1ex}
+      \begin{alertblock}{Lecture physique}
         \scriptsize
-        Le DDPM reproduit plusieurs morphologies en \(28\times28\), mais PhyFID/FID\textsuperscript{2} ne suffisent pas à valider la physique.
+        Les profils moyens par ligne sont bien reproduits :
+        \(d_\mu=\textbf{0.0017}\), \(d_\sigma=\textbf{0.0021}\)
+        à comparer à respectivemetn \(>0.07\) et \(>0.02\) pour MNIST/bruit.
 
         \vspace{0.5ex}
-        \textbf{Suite :} diffusion en ondelettes et ajout de metriques physiquement informées.
+        Le spectre des fluctuations est également bien reproduit :
+        \(d_E=\textbf{0.1608}\), à comparer à \(>4\) pour MNIST/bruit.
+
+        \vspace{0.5ex}
+        \textbf{Suite :} diffusion en ondelettes et métriques physiquement informées.
       \end{alertblock}
     \end{column}
   \end{columns}
   \begin{textblock*}{0.88\paperwidth}(0.075\paperwidth,0.89\paperheight)
-    {\tiny\color{CEAgrey}\textsuperscript{1}\textbf{ACP} : Analyse en composantes principales.\quad 
-    \textsuperscript{2}\textbf{FID} : Fréchet Inception Distance, mesure de similarité entre deux jeux d'images.}
+    {\tiny\color{CEAgrey}\textsuperscript{1}\textbf{PhyFID} : FID calculé dans un espace de features appris sur les simulations Rayleigh--Taylor.}
   \end{textblock*}
 \end{frame}
 
