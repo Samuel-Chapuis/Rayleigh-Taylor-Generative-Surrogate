@@ -163,6 +163,14 @@ def encode_dataset(images, encoder, *, batch_size=128, device=None):
     """
     device = get_device(device)
     images = prepare_images(images)
+    expected_shape = getattr(encoder, "image_shape", None)
+    if expected_shape is not None and tuple(images.shape[1:]) != tuple(expected_shape):
+        raise ValueError(
+            "Les images a encoder ne correspondent pas a la resolution de l'encodeur: "
+            f"images={tuple(images.shape[1:])}, encodeur={tuple(expected_shape)}. "
+            "Re-entraine une reference PhyFID pour cette resolution ou redimensionne les images."
+        )
+
     loader = DataLoader(TensorDataset(images), batch_size=batch_size, shuffle=False)
     features = []
 

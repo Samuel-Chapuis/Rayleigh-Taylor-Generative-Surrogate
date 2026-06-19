@@ -31,7 +31,7 @@ class Config:
 
     # Parametres généraux
     seed: int = 0
-    store_path_dataset: str = "data/RT28"
+    store_path_dataset: str = "data/RT64"
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
     batch_size: int = 128
     do_train: bool = False
@@ -85,11 +85,23 @@ experiment_config = {
     "device": config.device,
 }
 logger.log_experiment_start(experiment_config)
-logger.save_config(experiment_config, config.config_path)
 
 
 loader = data_loader(config)
 val_loader = data_loader(config, split="validation", shuffle=False)
+
+
+first_batch = next(iter(loader))[0]
+actual_image_chw = tuple(first_batch.shape[1:])
+if actual_image_chw != config.image_chw:
+    raise ValueError(
+        "Incoherence entre le dataset et le modele: "
+        f"dataset={actual_image_chw}, config.image_chw={config.image_chw}. "
+        "Corrige store_path_dataset ou image_chw dans Config."
+    )
+
+
+logger.save_config(experiment_config, config.config_path)
 
 
 # On affiche le premier batch de donnée pour vérifier que tout est en ordre
