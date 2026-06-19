@@ -18,6 +18,7 @@ wheelhouse/*
 analyse_reslutat/
 analyse_reslutat/res/
 doc/presentation/model/
+generated/
 
 lib/Phy
 

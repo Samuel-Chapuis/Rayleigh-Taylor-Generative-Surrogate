@@ -1,6 +1,9 @@
 import numpy as np
 import pywt
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 try:
     import torch
 except ImportError:
@@ -89,18 +92,50 @@ def mask2d(matrix, sizex, sizey=None, crop=False):
 
 def resize2d(matrix, x2, y2, interpolation="linear"):
     """
-    Redimensionne une image/matrice 2D.
+    Redimensionne une image/matrice 2D ou un batch d'images 2D.
 
     Args:
-        matrix (ndarray): image d'entrée
+        matrix (ndarray | torch.Tensor): image d'entree. Les formes supportees
+            sont (H, W), (N, H, W) et (N, C, H, W).
         x2 (int): largeur cible
         y2 (int): hauteur cible
         interpolation (str): méthode d'interpolation
             ("nearest", "linear", "cubic", "area")
 
     Returns:
-        ndarray: image redimensionnée
+        ndarray | torch.Tensor: image redimensionnee, avec le meme type de
+        conteneur que l'entree.
     """
+    if torch is not None and torch.is_tensor(matrix):
+        import torch.nn.functional as F
+
+        mode_dict = {
+            "nearest": "nearest",
+            "linear": "bilinear",
+            "cubic": "bicubic",
+            "area": "area",
+        }
+        mode = mode_dict.get(interpolation, "bilinear")
+        data = matrix if matrix.is_floating_point() else matrix.float()
+        align_corners = False if mode in {"bilinear", "bicubic"} else None
+
+        if data.ndim == 2:
+            resized = F.interpolate(data[None, None], size=(y2, x2), mode=mode, align_corners=align_corners)
+            return resized[0, 0]
+
+        if data.ndim == 3:
+            resized = F.interpolate(data[:, None], size=(y2, x2), mode=mode, align_corners=align_corners)
+            return resized[:, 0]
+
+        if data.ndim == 4:
+            resized = F.interpolate(data, size=(y2, x2), mode=mode, align_corners=align_corners)
+            return resized
+
+        raise ValueError(f"resize2d attend une forme (H, W), (N, H, W) ou (N, C, H, W), recu {tuple(matrix.shape)}")
+
+    if cv2 is None:
+        raise ImportError("OpenCV est requis pour redimensionner des tableaux NumPy avec resize2d.")
+
     interp_dict = {
         "nearest": cv2.INTER_NEAREST,
         "linear": cv2.INTER_LINEAR,
@@ -110,7 +145,20 @@ def resize2d(matrix, x2, y2, interpolation="linear"):
 
     interp = interp_dict.get(interpolation, cv2.INTER_LINEAR)
 
-    return cv2.resize(matrix, (x2, y2), interpolation=interp)
+    data = np.asarray(matrix)
+    if data.ndim == 2:
+        return cv2.resize(data, (x2, y2), interpolation=interp)
+
+    if data.ndim == 3:
+        return np.stack([cv2.resize(image, (x2, y2), interpolation=interp) for image in data])
+
+    if data.ndim == 4:
+        return np.stack([
+            np.stack([cv2.resize(channel, (x2, y2), interpolation=interp) for channel in image])
+            for image in data
+        ])
+
+    raise ValueError(f"resize2d attend une forme (H, W), (N, H, W) ou (N, C, H, W), recu {data.shape}")
 
 
 def doACP_2d(X):

@@ -33,16 +33,15 @@ class Config:
     seed: int = 0
     store_path_dataset: str = "data/RT28"
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
-    no_train: bool = False
     batch_size: int = 128
     do_train: bool = False
     n_epochs: int = 1000
     lr: float = 0.001
-    store_path: str = "outputs/model/RT28-t50.pt"
+    store_path: str = "outputs/model/RT64.pt"
     input_path: str = ""
-    log_path: str = "outputs/logs/RT28-t50.log"
-    csv_path: str = "outputs/logs/RT28-t50csv"
-    config_path: str = "outputs/model/RT28-t50_config.json"
+    log_path: str = "outputs/logs/RT64.log"
+    csv_path: str = "outputs/logs/RT64.csv"
+    config_path: str = "outputs/model/RT64_config.json"
 
     # Hyperparametres
     kernel_size: int = 3
@@ -55,7 +54,7 @@ class Config:
     n_steps: int = 1000 # discretisation du processus de diffusion (nombre de bruitages successifs)
     min_beta: float = 10 ** -4
     max_beta: float = 0.02
-    image_chw: tuple[int, int, int] = (1, 28, 28) # format des images (channels, height, width)
+    image_chw: tuple[int, int, int] = (1, 64, 64) # format des images (channels, height, width)
     
     def __post_init__(self):
         random.seed(self.seed)

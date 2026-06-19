@@ -17,10 +17,10 @@ from lib.diffusion_lib.UNet import UNet
 
 
 DATA_SIZE = 16
-CONFIG_PATH = PROJECT_ROOT / "analyse_reslutat" / "res" / "RT28_config.json"
-GENERATED_DIR = PROJECT_ROOT / "analyse_reslutat" / "generated"
-GENERATED_DATASET_PATH = GENERATED_DIR / "test_generated_dataset.pt"
-NOISE_DATASET_PATH = GENERATED_DIR / "test_noise_dataset.pt"
+CONFIG_PATH = PROJECT_ROOT / "outputs" / "model" / "RT64_config.json"
+GENERATED_DIR = PROJECT_ROOT / "outputs" / "generated"
+GENERATED_DATASET_PATH = GENERATED_DIR / "64generated_dataset.pt"
+NOISE_DATASET_PATH = GENERATED_DIR / "64noise_dataset.pt"
 
 
 def load_generation_config(config_path=CONFIG_PATH):
