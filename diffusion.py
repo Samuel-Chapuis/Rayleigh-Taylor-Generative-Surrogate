@@ -55,6 +55,9 @@ class Config:
     min_beta: float = 10 ** -4
     max_beta: float = 0.02
     image_chw: tuple[int, int, int] = (1, 64, 64) # format des images (channels, height, width)
+    unet_depth: int = 3 # nombre de niveaux de descente/remontee du U-Net
+    unet_blocks_per_level: int = 3 # nombre de blocs convolutionnels par niveau
+    unet_base_channels: int = 10 # nombre de canaux du premier niveau du U-Net
     
     def __post_init__(self):
         random.seed(self.seed)
@@ -82,6 +85,9 @@ experiment_config = {
     "min_beta": config.min_beta,
     "max_beta": config.max_beta,
     "image_chw": config.image_chw,
+    "unet_depth": config.unet_depth,
+    "unet_blocks_per_level": config.unet_blocks_per_level,
+    "unet_base_channels": config.unet_base_channels,
     "device": config.device,
 }
 logger.log_experiment_start(experiment_config)
@@ -144,6 +150,9 @@ ddpm = DDPM(
         time_emb_dim=config.time_emb_dim,
         size=config.image_chw[1],
         in_channels=config.image_chw[0],
+        depth=config.unet_depth,
+        blocks_per_level=config.unet_blocks_per_level,
+        base_channels=config.unet_base_channels,
     ),
     n_steps=config.n_steps,
     min_beta=config.min_beta,
@@ -184,6 +193,9 @@ best_model = DDPM(
         time_emb_dim=config.time_emb_dim,
         size=config.image_chw[1],
         in_channels=config.image_chw[0],
+        depth=config.unet_depth,
+        blocks_per_level=config.unet_blocks_per_level,
+        base_channels=config.unet_base_channels,
     ),
     n_steps=config.n_steps,
     min_beta=config.min_beta,

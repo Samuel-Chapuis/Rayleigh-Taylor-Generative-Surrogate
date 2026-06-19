@@ -50,6 +50,9 @@ def build_ddpm_from_config(config, device):
         time_emb_dim=config["time_emb_dim"],
         size=image_chw[1],
         in_channels=image_chw[0],
+        depth=config.get("unet_depth", 3),
+        blocks_per_level=config.get("unet_blocks_per_level", 3),
+        base_channels=config.get("unet_base_channels", 10),
     )
     return DDPM(
         network,
