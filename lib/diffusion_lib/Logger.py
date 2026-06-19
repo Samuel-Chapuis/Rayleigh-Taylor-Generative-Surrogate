@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import logging
 from pathlib import Path
 from typing import Any, Mapping
@@ -43,6 +44,14 @@ class Logger:
 		self.info("Experiment started")
 		for key, value in parameters.items():
 			self.info(f"{key}: {value}")
+
+	def save_config(self, parameters: Mapping[str, Any], config_path: str | Path) -> None:
+		config_path = Path(config_path)
+		config_path.parent.mkdir(parents=True, exist_ok=True)
+		with config_path.open("w", encoding="utf-8") as config_file:
+			json.dump(self._json_ready(parameters), config_file, indent=2)
+			config_file.write("\n")
+		self.info(f"Config saved to {config_path}")
 
 	def log_epoch(self, epoch: int, metrics: Mapping[str, Any]) -> None:
 		row = {"epoch": epoch, **metrics}
@@ -87,3 +96,14 @@ class Logger:
 
 		self._csv_header_written = True
 		self._csv_fieldnames = fieldnames
+
+	def _json_ready(self, value: Any) -> Any:
+		if isinstance(value, Mapping):
+			return {str(key): self._json_ready(item) for key, item in value.items()}
+		if isinstance(value, (list, tuple)):
+			return [self._json_ready(item) for item in value]
+		if isinstance(value, Path):
+			return str(value)
+		if isinstance(value, (str, int, float, bool)) or value is None:
+			return value
+		return str(value)

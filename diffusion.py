@@ -35,12 +35,14 @@ class Config:
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
     no_train: bool = False
     batch_size: int = 128
+    do_train: bool = False
     n_epochs: int = 1000
     lr: float = 0.001
     store_path: str = "outputs/model/RT28-t50.pt"
     input_path: str = ""
     log_path: str = "outputs/logs/RT28-t50.log"
     csv_path: str = "outputs/logs/RT28-t50csv"
+    config_path: str = "outputs/model/RT28-t50_config.json"
 
     # Hyperparametres
     kernel_size: int = 3
@@ -51,6 +53,8 @@ class Config:
     # Parametres du DDPM
     time_emb_dim: int = 100 # dimension de l'embedding temporel
     n_steps: int = 1000 # discretisation du processus de diffusion (nombre de bruitages successifs)
+    min_beta: float = 10 ** -4
+    max_beta: float = 0.02
     image_chw: tuple[int, int, int] = (1, 28, 28) # format des images (channels, height, width)
     
     def __post_init__(self):
@@ -66,17 +70,23 @@ class Config:
 # Preparation de l'expérience
 config = Config()
 logger = Logger(config.log_path, config.csv_path)
-logger.log_experiment_start({
+experiment_config = {
     "seed": config.seed,
     "store_path_dataset": config.store_path_dataset,
     "batch_size": config.batch_size,
     "n_epochs": config.n_epochs,
     "lr": config.lr,
     "store_path": config.store_path,
+    "input_path": config.input_path,
     "time_emb_dim": config.time_emb_dim,
     "n_steps": config.n_steps,
+    "min_beta": config.min_beta,
+    "max_beta": config.max_beta,
+    "image_chw": config.image_chw,
     "device": config.device,
-})
+}
+logger.log_experiment_start(experiment_config)
+logger.save_config(experiment_config, config.config_path)
 
 
 loader = data_loader(config)
@@ -117,8 +127,19 @@ config.viz.show_first_batch(loader)
 
 ''' Entraînement '''
 # Visualisation du processus de diffusion directe avant entraînement
-n_steps, min_beta, max_beta = config.n_steps, 10 ** -4, 0.02  # Originally used by the authors
-ddpm = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device, image_chw=config.image_chw)
+ddpm = DDPM(
+    UNet(
+        n_steps=config.n_steps,
+        time_emb_dim=config.time_emb_dim,
+        size=config.image_chw[1],
+        in_channels=config.image_chw[0],
+    ),
+    n_steps=config.n_steps,
+    min_beta=config.min_beta,
+    max_beta=config.max_beta,
+    device=config.device,
+    image_chw=config.image_chw,
+)
 if config.input_path:
     if not os.path.exists(config.input_path):
         raise FileNotFoundError(f"Checkpoint introuvable: {config.input_path}")
@@ -146,7 +167,19 @@ if config.do_train:
     )
 
 # Chargement du meilleur modèle sauvegardé
-best_model = DDPM(UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim), n_steps=config.n_steps, min_beta=min_beta, max_beta=max_beta, device=config.device, image_chw=config.image_chw)
+best_model = DDPM(
+    UNet(
+        n_steps=config.n_steps,
+        time_emb_dim=config.time_emb_dim,
+        size=config.image_chw[1],
+        in_channels=config.image_chw[0],
+    ),
+    n_steps=config.n_steps,
+    min_beta=config.min_beta,
+    max_beta=config.max_beta,
+    device=config.device,
+    image_chw=config.image_chw,
+)
 best_model.load_state_dict(torch.load(config.store_path, map_location=config.device))
 best_model.eval()
 
