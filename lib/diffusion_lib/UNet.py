@@ -69,6 +69,7 @@ class UNet(nn.Module):
         time_emb_dim=100,
         size=28,
         in_channels=1,
+        out_channels=None,
         depth=3,
         blocks_per_level=3,
         base_channels=10,
@@ -84,8 +85,10 @@ class UNet(nn.Module):
                 Par défaut 100.
             size (int, optional): Taille des images carrées en entrée et sortie.
                 Par défaut 28.
-            in_channels (int, optional): Nombre de canaux en entrée et sortie.
+            in_channels (int, optional): Nombre de canaux en entrée.
                 Par défaut 1.
+            out_channels (int | None, optional): Nombre de canaux prédits en
+                sortie. Si ``None``, reprend ``in_channels``. Par défaut None.
             depth (int, optional): Nombre de niveaux de descente/remontée du U-Net,
                 donc aussi nombre de pooling par convolution stride 2. Par défaut 3.
             blocks_per_level (int, optional): Nombre de blocs convolutionnels à
@@ -97,15 +100,20 @@ class UNet(nn.Module):
                 ``[1, 2, 4, ...]``. Par défaut None.
         """
         super(UNet, self).__init__()
+        if out_channels is None:
+            out_channels = in_channels
         if depth < 1:
             raise ValueError("UNet nécessite depth >= 1.")
         if blocks_per_level < 1:
             raise ValueError("UNet nécessite blocks_per_level >= 1.")
         if base_channels < 1:
             raise ValueError("UNet nécessite base_channels >= 1.")
+        if out_channels < 1:
+            raise ValueError("UNet nécessite out_channels >= 1.")
 
         self.size = size
         self.in_channels = in_channels
+        self.out_channels = out_channels
         self.depth = depth
         self.blocks_per_level = blocks_per_level
         self.base_channels = base_channels
@@ -123,10 +131,11 @@ class UNet(nn.Module):
             depth == 3
             and blocks_per_level == 3
             and base_channels == 10
+            and out_channels == in_channels
             and tuple(channel_multipliers) == (1, 2, 4)
         )
         if self.legacy_default:
-            self._init_legacy_default(n_steps, time_emb_dim, size, in_channels)
+            self._init_legacy_default(n_steps, time_emb_dim, size, in_channels, out_channels)
             return
 
         spatial_sizes = [size]
@@ -151,19 +160,19 @@ class UNet(nn.Module):
         self.downs = nn.ModuleList()
 
         current_channels = in_channels
-        for level, out_channels in enumerate(self.channels):
+        for level, level_channels in enumerate(self.channels):
             level_size = spatial_sizes[level]
             self.encoder_time.append(self._make_te(time_emb_dim, current_channels))
             self.encoder_blocks.append(
                 self._make_block_stack(
                     level_size,
                     current_channels,
-                    out_channels,
+                    level_channels,
                     blocks_per_level,
                 )
             )
-            self.downs.append(nn.Conv2d(out_channels, out_channels, 4, 2, 1))
-            current_channels = out_channels
+            self.downs.append(nn.Conv2d(level_channels, level_channels, 4, 2, 1))
+            current_channels = level_channels
 
         self.mid_time = self._make_te(time_emb_dim, current_channels)
         self.mid_block = self._make_block_stack(
@@ -194,9 +203,9 @@ class UNet(nn.Module):
             )
             current_channels = decoder_out_channels
 
-        self.conv_out = nn.Conv2d(current_channels, in_channels, 3, 1, 1)
+        self.conv_out = nn.Conv2d(current_channels, self.out_channels, 3, 1, 1)
 
-    def _init_legacy_default(self, n_steps, time_emb_dim, size, in_channels):
+    def _init_legacy_default(self, n_steps, time_emb_dim, size, in_channels, out_channels):
         if size < 12:
             raise ValueError("UNet nécessite size >= 12 avec cette architecture.")
 
@@ -278,7 +287,7 @@ class UNet(nn.Module):
             Block((10, size_1, size_1), 10, 10, normalize=False)
         )
 
-        self.conv_out = nn.Conv2d(10, in_channels, 3, 1, 1)
+        self.conv_out = nn.Conv2d(10, out_channels, 3, 1, 1)
 
     def forward(self, x, t):
         """
