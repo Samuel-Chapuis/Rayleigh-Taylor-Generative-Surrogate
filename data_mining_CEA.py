@@ -7,8 +7,8 @@ from lib.cea_lib.dataset_analysis import plot_dataset_overview
 FILES = ["data/RTCEA_bimode.hdf5",
          "data/RTCEA_monomode_1.hdf5",
          "data/RTCEA_monomode.hdf5"]
-SIZE = 28
-DO_PERMUTATION = False
+SIZE = 64
+DO_PERMUTATION = True
 
 
 x, y = zip(*(load_RTCEA(f) for f in FILES))
