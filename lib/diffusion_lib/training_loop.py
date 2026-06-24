@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
@@ -35,6 +37,7 @@ def evaluate_loss(ddpm, loader, device):
         ddpm.train()
 
     return total_loss
+
 
 
 def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None, val_loader=None):
@@ -119,3 +122,86 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
         logger.log_experiment_end("Training finished")
     
     return loss_list
+
+
+
+def split_wave_batch(batch, device, prior_channels=1):
+    coeffs = batch[0].to(device)
+    prior = coeffs[:, :prior_channels]
+    details = coeffs[:, prior_channels:]
+    return prior, details
+
+def wave_noise_prediction_loss(ddpm, batch, mse, device):
+    prior, details = split_wave_batch(batch, device, prior_channels=ddpm.prior_channels)
+    n = len(details)
+    eta = torch.randn_like(details)
+    t = torch.randint(0, ddpm.n_steps, (n,), device=device)
+    noisy_details = ddpm(details, t, eta)
+    eta_theta = ddpm.backward(noisy_details, t.reshape(n, -1), prior)
+    return mse(eta_theta, eta)
+
+def wave_evaluate_loss(ddpm, loader, device):
+    mse = nn.MSELoss()
+    was_training = ddpm.training
+    ddpm.eval()
+    total_loss = 0.0
+
+    with torch.no_grad():
+        for batch in loader:
+            loss = wave_noise_prediction_loss(ddpm, batch, mse, device)
+            total_loss += loss.item() * len(batch[0]) / len(loader.dataset)
+
+    if was_training:
+        ddpm.train()
+    return total_loss
+
+def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger=None, val_loader=None):
+    mse = nn.MSELoss()
+    best_loss = float("inf")
+    loss_list = []
+    store_path = Path(store_path)
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if logger:
+        logger.info(f"Wavelet conditional training started for {n_epochs} epochs")
+
+    for epoch in tqdm(range(n_epochs), desc="Wavelet DDPM training", colour="#00ff00"):
+        epoch_loss = 0.0
+        for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}", colour="#005500"):
+            ddpm.train()
+            loss = wave_noise_prediction_loss(ddpm, batch, mse, device)
+            loss_value = loss.item()
+            loss_list.append(loss_value)
+
+            optim.zero_grad(set_to_none=True)
+            loss.backward()
+            optim.step()
+
+            epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
+
+        val_loss = wave_evaluate_loss(ddpm, val_loader, device) if val_loader is not None else None
+        selection_loss = val_loss if val_loss is not None else epoch_loss
+
+        log_string = f"Train loss at epoch {epoch + 1}: {epoch_loss:.4f}"
+        if val_loss is not None:
+            log_string += f" | Val loss: {val_loss:.4f}"
+
+        stored = best_loss > selection_loss
+        if stored:
+            best_loss = selection_loss
+            torch.save(ddpm.state_dict(), store_path)
+            log_string += " --> Best model ever (stored)"
+
+        print(log_string)
+        if logger:
+            metrics = {"train_loss": epoch_loss, "best_loss": best_loss, "stored": stored}
+            if val_loss is not None:
+                metrics["val_loss"] = val_loss
+            logger.log_epoch(epoch + 1, metrics)
+            logger.info(log_string)
+
+    if logger:
+        logger.log_experiment_end("Wavelet conditional training finished")
+
+    return loss_list
+

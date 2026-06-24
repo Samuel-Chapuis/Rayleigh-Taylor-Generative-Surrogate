@@ -95,7 +95,7 @@ def plot_sim_2d(sim, time, titre=None, save=False, path="../outputs/img/simulati
     plt.show()
     
     
-def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False, path="../outputs/img/simulation_2D.png"):
+def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, cmap='RdYlBu_r', save=False, path="../outputs/img/simulation_2D.png"):
     """
     Affiche dans une image 2000x2000 le nombre nb de simulations 2D également réparties entre l'indice i_start et i_end avec un pas de i_freq.
 
@@ -141,7 +141,7 @@ def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, save=False, p
             sim[idx, :, :], #reverse(sim[idx, :, :])
             f"t={time[idx]:.2f}",
             [best_rows, best_cols, i + 1],
-            cmap='RdYlBu_r',
+            cmap=cmap,
             colorbar=True,
             title_position="left"
         )
@@ -198,7 +198,7 @@ def plot_acp_modes(base, title="ACP modes", k=6):
 
 
 
-def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=False):
+def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=False, cmap='RdYlBu_r', path="../outputs/img/wavelet_decomposition.png"):
     """
     Affiche la décomposition en ondelettes 2D avec layout personnalisé.
 
@@ -234,12 +234,12 @@ def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=Fal
 
     # ---------------- LEVEL 0 ---------------- #
     ax0 = fig.add_subplot(gs[0, 0])
-    ax0.imshow(x, cmap="gray")
+    ax0.imshow(x, cmap=cmap)
     ax0.set_title("Original")
     ax0.axis("off")
 
     ax1 = fig.add_subplot(gs[0, 1])
-    ax1.imshow(coeffs[0], cmap="gray")
+    ax1.imshow(coeffs[0], cmap=cmap)
     ax1.set_title(f"LL | E={energy(coeffs[0]):.2e}")
     ax1.axis("off")
 
@@ -252,17 +252,17 @@ def plot_wavelet_custom_layout_2d(x, wavelet="sym6", level=3, titre="", save=Fal
         details = coeffs[l]
 
         ax_lh = fig.add_subplot(gs[l, 0])
-        ax_lh.imshow(details[0], cmap="gray")
+        ax_lh.imshow(details[0], cmap=cmap)
         ax_lh.set_title(f"LH L{l} | E={energy(details[0]):.2e}")
         ax_lh.axis("off")
 
         ax_hl = fig.add_subplot(gs[l, 1])
-        ax_hl.imshow(details[1], cmap="gray")
+        ax_hl.imshow(details[1], cmap=cmap)
         ax_hl.set_title(f"HL L{l} | E={energy(details[1]):.2e}")
         ax_hl.axis("off")
 
         ax_hh = fig.add_subplot(gs[l, 2])
-        ax_hh.imshow(details[2], cmap="gray")
+        ax_hh.imshow(details[2], cmap=cmap)
         ax_hh.set_title(f"HH L{l} | E={energy(details[2]):.2e}")
         ax_hh.axis("off")
 
