@@ -2,6 +2,157 @@
 
 \section{Introduction to score-based diffusion}
 
+\subsection{From individual simulations to a probability distribution}
+
+The objective of a generative surrogate is different from that of a deterministic
+regression model. A deterministic model associates a single output with a given
+input, whereas a generative model aims to describe the variability of all
+admissible outputs. This distinction is essential for Rayleigh--Taylor
+instability (RTI) simulations: small differences in the initial perturbations or
+in the physical parameters may lead to significantly different interface
+geometries and turbulent structures. Consequently, one reference field cannot
+represent the full range of possible realizations.
+
+Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or
+equivalently a vector containing the coefficients of one of the reduced
+representations introduced in Chapter~2. The DNS dataset
+
+\begin{equation}
+    \mathcal{D}=\left\{\mathbf{x}_0^{(i)}\right\}_{i=1}^{N}
+\end{equation}
+
+is regarded as a finite collection of samples drawn from an unknown data
+distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective of this
+report is therefore not to reconstruct one particular DNS realization, but to
+learn the \emph{shape of the probability distribution} of the simulated RTI
+fields. In other words, the model should assign high probability to physically
+plausible density fields and low probability to configurations that are not
+representative of the reference simulations.
+
+The learned model, denoted by $p_{\theta}(\mathbf{x}_0)$, should approximate the
+unknown distribution according to
+
+\begin{equation}
+    p_{\theta}(\mathbf{x}_0)\approx
+    p_{\mathrm{data}}(\mathbf{x}_0).
+\end{equation}
+
+Once trained, it must be possible to draw new samples
+$\widetilde{\mathbf{x}}_0\sim p_{\theta}$ that are not copies of the training
+fields, while preserving their relevant statistical and physical properties.
+For RTI, these properties include the morphology of bubbles and spikes, the
+location and thickness of the mixing layer, the distribution of density values,
+and the organization of structures across spatial scales. Thus, the quality of
+the surrogate cannot be assessed from the visual fidelity of a single generated
+field alone; it must also be evaluated by comparing ensembles of generated and
+reference simulations.
+
+Directly estimating $p_{\mathrm{data}}$ is difficult because each field belongs
+to a high-dimensional space and the available number of DNS realizations is
+limited. Diffusion models address this problem indirectly. Rather than imposing
+a simple parametric form on the data distribution, they progressively transform
+it into a tractable Gaussian distribution and learn how to reverse this
+transformation.
+
+\subsection{Forward diffusion process}
+
+The forward process is a fixed Markov chain that gradually corrupts a data
+sample by adding Gaussian noise. Starting from
+$\mathbf{x}_0\sim p_{\mathrm{data}}$, it is defined as
+
+\begin{equation}
+    q(\mathbf{x}_{1:T}\mid\mathbf{x}_0)
+    =
+    \prod_{t=1}^{T}
+    q(\mathbf{x}_t\mid\mathbf{x}_{t-1}),
+\end{equation}
+
+with transition kernel
+
+\begin{equation}
+    q(\mathbf{x}_t\mid\mathbf{x}_{t-1})
+    =
+    \mathcal{N}\!\left(
+        \mathbf{x}_t;
+        \sqrt{1-\beta_t}\,\mathbf{x}_{t-1},
+        \beta_t\mathbf{I}
+    \right),
+\end{equation}
+
+where $\beta_t\in(0,1)$ controls the amount of noise introduced at step $t$.
+Defining $\alpha_t=1-\beta_t$ and
+$\overline{\alpha}_t=\prod_{s=1}^{t}\alpha_s$, any noisy state can be sampled
+directly from the original field:
+
+\begin{equation}
+    \mathbf{x}_t
+    =
+    \sqrt{\overline{\alpha}_t}\,\mathbf{x}_0
+    +
+    \sqrt{1-\overline{\alpha}_t}\,\boldsymbol{\epsilon},
+    \qquad
+    \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+
+The first term progressively suppresses the information contained in the RTI
+field, while the second replaces it with Gaussian noise. For a sufficiently
+long and appropriately chosen noise schedule,
+$q(\mathbf{x}_T)$ approaches the standard normal distribution
+$\mathcal{N}(\mathbf{0},\mathbf{I})$. This mechanism is illustrated in the
+one-dimensional notebook by a bimodal distribution: its two modes progressively
+merge until the samples become approximately Gaussian. The same principle
+applies to RTI fields, although their probability distribution lies in a much
+higher-dimensional space and cannot be represented by a simple histogram.
+
+\subsection{Learning the reverse process through the score}
+
+Generation consists in reversing the corruption process. Starting from a
+Gaussian sample $\mathbf{x}_T$, a neural network successively removes noise in
+order to produce a sample $\mathbf{x}_0$. The reverse transitions are modeled
+by
+
+\begin{equation}
+    p_{\theta}(\mathbf{x}_{0:T})
+    =
+    p(\mathbf{x}_T)
+    \prod_{t=1}^{T}
+    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t).
+\end{equation}
+
+In the score-based formulation, the network learns the score of the noisy
+distribution,
+
+\begin{equation}
+    \mathbf{s}_{\theta}(\mathbf{x}_t,t)
+    \approx
+    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t),
+\end{equation}
+
+which points toward regions of higher probability density at each noise level.
+In practice, an equivalent and commonly used parameterization trains a network
+$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
+sample. A simplified training objective is
+
+\begin{equation}
+    \mathcal{L}_{\mathrm{simple}}(\theta)
+    =
+    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+        \right\|_2^2
+    \right].
+\end{equation}
+
+Because the model is trained over all noise levels, it learns a sequence of
+local denoising directions rather than an explicit analytical expression for
+the complex RTI distribution. Repeated application of these directions
+transports samples from the Gaussian prior toward the regions occupied by the
+DNS data. The resulting ensemble of generated fields provides an approximation
+of the distribution sought in this work.
+
 \section{Adaptation to RTI dataset}
 
 \section{Model architecture}

@@ -1,9 +1,28 @@
-\begin{thebibliography}{2}
+\begin{thebibliography}{5}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Kull(1991)]{KULL1991197}
+H.J. Kull.
+\newblock Theory of the rayleigh-taylor instability.
+\newblock \emph{Physics Reports}, 206\penalty0 (5):\penalty0 197--325, 1991.
+\newblock ISSN 0370-1573.
+\newblock \doi{https://doi.org/10.1016/0370-1573(91)90153-D}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
+
+\bibitem[Mallat(2009)]{Mallat2009}
+Stéphane Mallat.
+\newblock \emph{A Wavelet Tour of Signal Processing: The Sparse Way}.
+\newblock Academic Press, 3 edition, 2009.
+\newblock ISBN 9780123743701.
+
+\bibitem[Meyer(1992)]{Meyer1992}
+Yves Meyer.
+\newblock \emph{Wavelets and Operators}.
+\newblock Cambridge University Press, 1992.
 
 \bibitem[Pope(2000)]{pope2000turbulent}
 Stephen~B. Pope.
