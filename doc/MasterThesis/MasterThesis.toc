@@ -25,14 +25,18 @@
 \contentsline {chapter}{\numberline {3}Diffusion Models for RTI Fields}{22}{}%
 \contentsline {section}{\numberline {3.1}Introduction to score-based diffusion}{22}{}%
 \contentsline {subsection}{\numberline {3.1.1}From individual simulations to a probability distribution}{22}{}%
-\contentsline {subsection}{\numberline {3.1.2}Forward diffusion process}{23}{}%
-\contentsline {subsection}{\numberline {3.1.3}Learning the reverse process through the score}{23}{}%
-\contentsline {section}{\numberline {3.2}Adaptation to RTI dataset}{24}{}%
-\contentsline {section}{\numberline {3.3}Model architecture}{24}{}%
-\contentsline {section}{\numberline {3.4}Training pipeline}{24}{}%
-\contentsline {section}{\numberline {3.5}Baseline results}{24}{}%
-\contentsline {chapter}{\numberline {4}Wavelet-based Diffusion Model}{25}{}%
-\contentsline {section}{\numberline {4.1}Motivation}{25}{}%
-\contentsline {section}{\numberline {4.2}Wavelet diffusion pipeline}{25}{}%
-\contentsline {section}{\numberline {4.3}Results}{25}{}%
-\contentsline {section}{\numberline {4.4}Comparison with baseline diffusion}{25}{}%
+\contentsline {subsection}{\numberline {3.1.2}One-dimensional illustrative example}{23}{}%
+\contentsline {subsection}{\numberline {3.1.3}Forward diffusion process}{23}{}%
+\contentsline {subsection}{\numberline {3.1.4}Learning the reverse process through the score}{24}{}%
+\contentsline {section}{\numberline {3.2}Adaptation to RTI dataset}{25}{}%
+\contentsline {subsection}{\numberline {3.2.1}Data size}{25}{}%
+\contentsline {subsection}{\numberline {3.2.2}Data augmentation}{25}{}%
+\contentsline {subsection}{\numberline {3.2.3}Data ratio}{26}{}%
+\contentsline {section}{\numberline {3.3}Model architecture}{28}{}%
+\contentsline {section}{\numberline {3.4}Training pipeline}{28}{}%
+\contentsline {section}{\numberline {3.5}Baseline results}{28}{}%
+\contentsline {chapter}{\numberline {4}Wavelet-based Diffusion Model}{29}{}%
+\contentsline {section}{\numberline {4.1}Motivation}{29}{}%
+\contentsline {section}{\numberline {4.2}Wavelet diffusion pipeline}{29}{}%
+\contentsline {section}{\numberline {4.3}Results}{29}{}%
+\contentsline {section}{\numberline {4.4}Comparison with baseline diffusion}{29}{}%
