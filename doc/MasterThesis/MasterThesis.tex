@@ -20,6 +20,7 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
+\usepackage{geometry}
 
 \renewcommand{\familydefault}{\sfdefault}
 
@@ -39,6 +40,7 @@
 %% -----------------------------
 \pagestyle{fancy}
 \fancyhf{}
+\setlength{\headheight}{27pt}
 
 \fancyhead[L]{
     \includegraphics[height=0.8cm]{graphics/LOGO_CEA.png}
@@ -79,6 +81,7 @@
 
 \begin{titlepage}
 \thispagestyle{empty}
+\begingroup
 \color{white}
 
 %% Logos de couverture
@@ -126,13 +129,13 @@ Samuel Chapuis
 \vspace{0.5cm}
 
 {\large
-Nacéra Seghouani, Benoit-Josphe Gréa, Cécile Haberstich
+Nacéra Seghouani, Benoit-Joseph Gréa, Cécile Haberstich
 }
 
 \vspace{1cm}
 
 {\large
-CEA Bruyères-le-Châtel -- Materiaux en conditions extrême
+CEA Bruyères-le-Châtel -- Matériaux en conditions extrêmes
 }
 
 \vfill
@@ -141,6 +144,7 @@ CEA Bruyères-le-Châtel -- Materiaux en conditions extrême
 Year 2025 -- 2026
 }
 
+\endgroup
 \end{titlepage}
 
 \ClearShipoutPictureBG
@@ -164,7 +168,8 @@ Year 2025 -- 2026
 \include{chapters/ch1_physical_framework}
 \include{chapters/ch2_dim_reduction}
 \include{chapters/ch3_diffusion_model}
-\include{chapters/ch4_wavelet_diffusion}
+\include{chapters/ch4_metrics}
+\include{chapters/ch5_wavelet_diffusion}
 \include{chapters/conclusion}
 
 

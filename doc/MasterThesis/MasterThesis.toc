@@ -32,11 +32,24 @@
 \contentsline {subsection}{\numberline {3.2.1}Data size}{25}{}%
 \contentsline {subsection}{\numberline {3.2.2}Data augmentation}{25}{}%
 \contentsline {subsection}{\numberline {3.2.3}Data ratio}{26}{}%
-\contentsline {section}{\numberline {3.3}Model architecture}{28}{}%
-\contentsline {section}{\numberline {3.4}Training pipeline}{28}{}%
-\contentsline {section}{\numberline {3.5}Baseline results}{28}{}%
-\contentsline {chapter}{\numberline {4}Wavelet-based Diffusion Model}{29}{}%
-\contentsline {section}{\numberline {4.1}Motivation}{29}{}%
-\contentsline {section}{\numberline {4.2}Wavelet diffusion pipeline}{29}{}%
-\contentsline {section}{\numberline {4.3}Results}{29}{}%
-\contentsline {section}{\numberline {4.4}Comparison with baseline diffusion}{29}{}%
+\contentsline {section}{\numberline {3.3}Pipeline}{28}{}%
+\contentsline {subsection}{\numberline {3.3.1}Overview}{28}{}%
+\contentsline {subsection}{\numberline {3.3.2}Model architecture}{30}{}%
+\contentsline {subsection}{\numberline {3.3.3}Model training}{31}{}%
+\contentsline {subsection}{\numberline {3.3.4}Baseline qualitative results}{32}{}%
+\contentsline {chapter}{\numberline {4}Evaluation Metrics for RTI Field Generation}{34}{}%
+\contentsline {section}{\numberline {4.1}Motivation}{34}{}%
+\contentsline {section}{\numberline {4.2}Feature-space metrics}{34}{}%
+\contentsline {subsection}{\numberline {4.2.1}Fr\'echet distance in a learned feature space}{34}{}%
+\contentsline {subsection}{\numberline {4.2.2}Classical FID and PhyFID}{35}{}%
+\contentsline {section}{\numberline {4.3}Physical metrics}{35}{}%
+\contentsline {subsection}{\numberline {4.3.1}Line-wise density statistics}{35}{}%
+\contentsline {subsection}{\numberline {4.3.2}Fluctuation 'energy' spectrum}{37}{}%
+\contentsline {section}{\numberline {4.4}Baseline results}{37}{}%
+\contentsline {subsection}{\numberline {4.4.1}PhyFID and FID comparison}{37}{}%
+\contentsline {subsection}{\numberline {4.4.2}Line profile and spectral indicators}{38}{}%
+\contentsline {chapter}{\numberline {5}Wavelet-based Diffusion Model}{39}{}%
+\contentsline {section}{\numberline {5.1}Motivation}{39}{}%
+\contentsline {section}{\numberline {5.2}Wavelet diffusion pipeline}{39}{}%
+\contentsline {section}{\numberline {5.3}Results}{39}{}%
+\contentsline {section}{\numberline {5.4}Comparison with baseline diffusion}{39}{}%

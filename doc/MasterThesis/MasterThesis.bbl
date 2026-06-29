@@ -11,8 +11,7 @@ H.J. Kull.
 \newblock \emph{Physics Reports}, 206\penalty0 (5):\penalty0 197--325, 1991.
 \newblock ISSN 0370-1573.
 \newblock \doi{https://doi.org/10.1016/0370-1573(91)90153-D}.
-\newblock URL
-  \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
 
 \bibitem[Mallat(2009)]{Mallat2009}
 Stéphane Mallat.
@@ -32,8 +31,7 @@ Stephen~B. Pope.
 
 \bibitem[Zhou(2017)]{zhou2017rti1}
 Ye~Zhou.
-\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow,
-  turbulence, and mixing. i.
+\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow, turbulence, and mixing. i.
 \newblock \emph{Physics Reports}, 720-722:\penalty0 1--136, 2017.
 
 \end{thebibliography}

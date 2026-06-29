@@ -1,29 +1,20 @@
-This is BibTeX, Version 0.99d
+This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: MasterThesis.aux
-Reallocating 'name_of_file' (item size: 1) to 30 items.
 A level-1 auxiliary file: chapters/acknowledgements.aux
-Reallocating 'name_of_file' (item size: 1) to 22 items.
 A level-1 auxiliary file: chapters/abstract.aux
-Reallocating 'name_of_file' (item size: 1) to 26 items.
 A level-1 auxiliary file: chapters/introduction.aux
-Reallocating 'name_of_file' (item size: 1) to 36 items.
 A level-1 auxiliary file: chapters/ch1_physical_framework.aux
-Reallocating 'name_of_file' (item size: 1) to 31 items.
 A level-1 auxiliary file: chapters/ch2_dim_reduction.aux
-Reallocating 'name_of_file' (item size: 1) to 33 items.
 A level-1 auxiliary file: chapters/ch3_diffusion_model.aux
-Reallocating 'name_of_file' (item size: 1) to 35 items.
-A level-1 auxiliary file: chapters/ch4_wavelet_diffusion.aux
-Reallocating 'name_of_file' (item size: 1) to 24 items.
+A level-1 auxiliary file: chapters/ch4_metrics.aux
+A level-1 auxiliary file: chapters/ch5_wavelet_diffusion.aux
 A level-1 auxiliary file: chapters/conclusion.aux
-Reallocating 'name_of_file' (item size: 1) to 9 items.
 The style file: plainnat.bst
-Reallocating 'name_of_file' (item size: 1) to 11 items.
 Database file #1: references.bib
 You've used 5 entries,
             2773 wiz_defined-function locations,
-            636 strings with 5682 characters,
+            637 strings with 5706 characters,
 and the built_in function-call counts, 1720 in all, are:
 = -- 151
 > -- 50
