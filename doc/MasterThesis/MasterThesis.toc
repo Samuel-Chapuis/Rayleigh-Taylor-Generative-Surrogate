@@ -54,3 +54,4 @@
 \contentsline {subsection}{\numberline {5.2.1}Wavelet representation of RTI fields}{40}{}%
 \contentsline {subsection}{\numberline {5.2.2}Conditional diffusion on wavelet coefficients}{40}{}%
 \contentsline {section}{\numberline {5.3}Results and comparison with baseline diffusion}{41}{}%
+\contentsline {chapter}{Conclusion}{43}{}%
