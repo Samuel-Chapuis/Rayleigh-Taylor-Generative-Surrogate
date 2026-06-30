@@ -11,17 +11,14 @@
 \contentsline {subsection}{\numberline {1.2.3}Dataset Characteristics and Limitations}{12}{}%
 \contentsline {chapter}{\numberline {2}Dimensionality Reduction and Multi-scale Representations}{14}{}%
 \contentsline {section}{\numberline {2.1}Motivation}{14}{}%
-\contentsline {section}{\numberline {2.2}Fourier Representation}{15}{}%
+\contentsline {section}{\numberline {2.2}Fourier Transform}{15}{}%
 \contentsline {subsection}{\numberline {2.2.1}Spectral Decomposition}{15}{}%
-\contentsline {subsection}{\numberline {2.2.2}Advantages for Turbulence Analysis}{15}{}%
+\contentsline {subsection}{\numberline {2.2.2}Advantages for Turbulence Analysis}{16}{}%
 \contentsline {subsection}{\numberline {2.2.3}Limitations for Localized Structures}{16}{}%
 \contentsline {section}{\numberline {2.3}Wavelet Transform}{17}{}%
-\contentsline {subsection}{\numberline {2.3.1}Multi-resolution Analysis}{17}{}%
-\contentsline {subsection}{\numberline {2.3.2}Discrete Wavelet Transform}{19}{}%
-\contentsline {subsection}{\numberline {2.3.3}Compression and Sparsity}{20}{}%
-\contentsline {section}{\numberline {2.4}Comparaison and Application to RTI Fields}{20}{}%
-\contentsline {subsection}{\numberline {2.4.1}Comparaison Criteria}{20}{}%
-\contentsline {subsection}{\numberline {2.4.2}Application to machine learning}{21}{}%
+\contentsline {subsection}{\numberline {2.3.1}Continuous Wavelet Transform}{17}{}%
+\contentsline {subsection}{\numberline {2.3.2}From Continuous to Discrete Wavelets}{18}{}%
+\contentsline {subsection}{\numberline {2.3.3}Fast Discrete Wavelet Transform in Two Dimensions}{18}{}%
 \contentsline {chapter}{\numberline {3}Diffusion Models for RTI Fields}{22}{}%
 \contentsline {section}{\numberline {3.1}Introduction to score-based diffusion}{22}{}%
 \contentsline {subsection}{\numberline {3.1.1}From individual simulations to a probability distribution}{22}{}%
