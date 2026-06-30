@@ -50,6 +50,7 @@
 \contentsline {subsection}{\numberline {4.4.2}Line profile and spectral indicators}{38}{}%
 \contentsline {chapter}{\numberline {5}Wavelet-based Diffusion Model}{39}{}%
 \contentsline {section}{\numberline {5.1}Motivation}{39}{}%
-\contentsline {section}{\numberline {5.2}Wavelet diffusion pipeline}{39}{}%
-\contentsline {section}{\numberline {5.3}Results}{39}{}%
-\contentsline {section}{\numberline {5.4}Comparison with baseline diffusion}{39}{}%
+\contentsline {section}{\numberline {5.2}Wavelet-based generative framework}{40}{}%
+\contentsline {subsection}{\numberline {5.2.1}Wavelet representation of RTI fields}{40}{}%
+\contentsline {subsection}{\numberline {5.2.2}Conditional diffusion on wavelet coefficients}{40}{}%
+\contentsline {section}{\numberline {5.3}Results and comparison with baseline diffusion}{41}{}%
