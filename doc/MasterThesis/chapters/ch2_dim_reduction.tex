@@ -224,168 +224,38 @@ These sub-bands provide a natural separation of structures according to both sca
 \label{fig:dwt2d_example}
 \end{figure}
 
-An important property of this decomposition is that most of the signal energy is generally concentrated within the approximation coefficients, whereas many detail coefficients exhibit relatively small amplitudes. This sparsity property is one of the main reasons why wavelet representations are widely used for compression and multi-scale modeling. In the present work, the $LL$ coefficients are interpreted as a low-resolution representation of the density field and are used as conditioning information for a diffusion model trained to reconstruct the missing detail coefficients. The complete field can then be recovered through the inverse wavelet transform.
+% An important property of this decomposition is that most of the signal energy is generally concentrated within the approximation coefficients, whereas many detail coefficients exhibit relatively small amplitudes. This sparsity property is one of the main reasons why wavelet representations are widely used for compression and multi-scale modeling. In the present work, the $LL$ coefficients are interpreted as a low-resolution representation of the density field and are used as conditioning information for a diffusion model trained to reconstruct the missing detail coefficients. The complete field can then be recovered through the inverse wavelet transform.
 
+\subsection{Compression and Sparsity}
 
-% \subsection{Compression and sparsity properties}
+One important property of wavelet representations is their ability to produce sparse decompositions for signals containing localized structures or coherent patterns. A large portion of the signal energy can often be concentrated into a relatively small number of significant coefficients.
 
+This property has been extensively exploited in image compression applications such as JPEG2000, where wavelet decompositions provide efficient representations of natural images while preserving localized features.
 
+In the context of RTI simulations, wavelet sparsity may help reduce the effective dimensionality of the dataset while preserving physically important structures such as interfaces, vortices, and localized mixing regions.
 
+Furthermore, the hierarchical organization of wavelet coefficients appears particularly compatible with the multi-scale nature of turbulence and may therefore provide advantageous representations for generative modeling.
 
+\section{Comparaison and Application to RTI Fields}
 
-% \subsection{Multi-resolution Analysis}
+\subsection{Comparaison Criteria}
+In the context of this work, the main criteria for comparing Fourier and wavelet representations are the number of coefficients required to accurately reconstruct the signal, the ability to capture localized structures and sharp gradients, the effectiveness of separating structures across different scales, and the generalization capabilities to unseen data or different flow regimes. Figure \ref{fig:representation_comparison} illustrates the reconstruction of a two-dimensional Rayleigh--Taylor density field using Fourier, wavelet, and PCA representations with the same number of coefficients. The comparison highlights the differences in capturing sharp gradients and gibbs-like oscillations.
+It is also important to note that the PCA is used here as a reference for comparison, but it is not a practical solution for generative modeling since it requires access to the entire training dataset and does not provide extrapolation capabilities for unseen samples.
 
-% Wavelet transforms provide a representation framework capable of simultaneously capturing spatial localization and scale-dependent information. Unlike Fourier modes, wavelets are localized both in physical and frequency spaces.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/ch2/verification_zone_melange.png}
+\caption{Comparison of different representations for a two-dimensional Rayleigh--Taylor density field}
+\label{fig:representation_comparison}
+\end{figure}
 
-% @book{Mallat2009,
-% The mathematical foundation of wavelet analysis is the \textit{Multi-resolution Analysis} (MRA), introduced by Mallat in ~\citep[p.~22]{Mallat2009} and Meyer through ~\citep[p.~22]{Meyer1992}. An MRA is constructed from a scaling function $\phi$, also called the father wavelet, which spans a hierarchy of nested approximation spaces
+For more quantitative comparisons, the reconstruction error is computed as the L2 norm between the original field and its reconstruction. Figure \ref{fig:representation_comparison} shows the evolution of the reconstruction error as a function of the number of coefficients for Fourier, wavelet, and PCA representations. The results indicate that wavelet representations generally provide better reconstruction after a certain number of coefficients having a very steep decrease of the error.
 
-% \[
-% V_{0}\subset V_{1}\subset \cdots \subset V_{j}\subset V_{j+1}\subset L^2(\mathbb{R}).
-% \]
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/ch2/dataset2D_Comparaison_des_Erreurs.png}
+\caption{Comparison of different representations for a two-dimensional Rayleigh--Taylor density field}
+\label{fig:representation_comparison}
+\end{figure}
 
-% The scaling function generates the approximation basis
-
-% \[
-% \phi_{j,n}(x) = 2^{-j/2} \phi\!\left(\frac{x-2^j n}{2^j}\right)
-% \]
-
-% while the wavelet function $\psi$, called the mother wavelet, spans the complementary detail spaces
-
-% \[
-% W_j \quad\text{such that}\quad V_{j+1}=V_j\oplus W_j
-% \]
-
-% through the basis functions
-
-% \[
-% \psi_{j,n}(x) = 2^{-j/2} \psi\!\left(\frac{x-2^j n}{2^j}\right)
-% \]
-
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.60\textwidth]{figures/ch2/wave.png}
-% \caption{Exemples of wavelet generating functions: Haar, Daubechies, Symlets, Coiflets}
-% \label{fig:wavelets}
-% \end{figure}
-
-% For completeness, the continuous wavelet transform is defined as
-
-% \begin{align}
-% W(a,b) = \frac{1}{\sqrt{|a|}} \int f(x) \psi \left( \frac{x-b}{a} \right) dx
-% \end{align}
-
-% where $a$ is the scale parameter and $b$ the translation parameter.
-
-% The discrete wavelet transform corresponds to projecting the signal onto the scaling and wavelet bases. The approximation coefficients are
-
-% \[
-% a_{J,n} = \langle f,\phi_{J,n}\rangle
-% \]
-
-% whereas the detail coefficients are
-
-% \[
-% d_{j,n} = d_{j,n}
-% \]
-
-% The exact linear reconstruction at resolution level $J$ is therefore
-
-% \begin{align}
-% f(x) = \sum_n a_{J,n}\phi_{J,n}(x) + \sum_{j\le J} \sum_n d_{j,n}\psi_{j,n}(x)
-% \end{align}
-
-% A major advantage of wavelets is that most coefficients become negligible for smooth or structured signals. A sparse approximation is therefore obtained by retaining only the coefficients whose magnitude exceeds a prescribed threshold,
-
-% \begin{align}
-% f_M(x) = \sum_n a_{J,n}\phi_{J,n}(x) + \sum_{(j,n)\in\Lambda_M} d_{j,n}\psi_{j,n}(x)
-% \end{align}
-
-% with
-
-% \[ 
-% \Lambda_M = \left\{(j,n) \; ; \; |d_{j,n}| \ge M \right\}
-% \]
-
-% This nonlinear thresholding preserves the dominant coherent structures while discarding weak fluctuations, yielding a compact representation of the original field.
-
-% \begin{figure}[H]
-%     \centering
-
-%     \begin{minipage}{0.8\textwidth}
-%         \centering
-%         \includegraphics[width=\linewidth]{figures/ch2/sig.png}
-
-%         \vspace{0.3em}
-
-%         \includegraphics[width=\linewidth]{figures/ch2/wavelets.png}
-%     \end{minipage}
-
-%     \caption{Illustration of a Wavelet decomposition with 45 wavelet modes of a one-dimensional density field}
-%     \label{fig:wavelet_decomposition}
-% \end{figure}
-
-% Wavelet decompositions therefore naturally provide hierarchical multi-scale representations in which coarse structures and fine details are separated across different resolution levels.
-
-
-
-
-
-% \subsection{Discrete Wavelet Transform}
-
-% In practical applications, discrete wavelet transforms (DWT) are generally preferred because of their computational efficiency. The discrete transform recursively decomposes the signal into approximation and detail coefficients corresponding to different frequency bands.
-
-% For two-dimensional fields, the decomposition separates horizontal, vertical, and diagonal structures at multiple scales.
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.50\textwidth]{figures/ch2/wavelet_decomposition.png}
-% \caption{Theory of multi-resolution decomposition obtained using a two-dimensional discrete wavelet transform}
-% \label{fig:wavelet_2d}
-% \end{figure}
-
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.50\textwidth]{figures/ch2/2DExemple_Masque.png}
-% \caption{Illustration of a two-dimensional wavelet decomposition of a Rayleigh--Taylor density field with 6 resolution levels}
-% \label{fig:rt_wavelet_2d}
-% \end{figure}
-
-
-% This hierarchical structure is particularly attractive for RTI datasets because turbulent flows naturally contain structures distributed across a wide range of scales.
-
-% \subsection{Compression and Sparsity}
-
-% One important property of wavelet representations is their ability to produce sparse decompositions for signals containing localized structures or coherent patterns. A large portion of the signal energy can often be concentrated into a relatively small number of significant coefficients.
-
-% This property has been extensively exploited in image compression applications such as JPEG2000, where wavelet decompositions provide efficient representations of natural images while preserving localized features.
-
-% In the context of RTI simulations, wavelet sparsity may help reduce the effective dimensionality of the dataset while preserving physically important structures such as interfaces, vortices, and localized mixing regions.
-
-% Furthermore, the hierarchical organization of wavelet coefficients appears particularly compatible with the multi-scale nature of turbulence and may therefore provide advantageous representations for generative modeling.
-
-% \section{Comparaison and Application to RTI Fields}
-
-% \subsection{Comparaison Criteria}
-% In the context of this work, the main criteria for comparing Fourier and wavelet representations are:
-% \begin{itemize}
-%     \item \textbf{Compression efficiency:} How many coefficients are required to accurately reconstruct the signal
-%     \item \textbf{Localization properties:} How well the representation captures localized structures and sharp gradients
-%     \item \textbf{Multi-scale representation:} How effectively the representation separates structures across different scales
-%     \item \textbf{Extrapolation capabilities:} How well the representation generalizes to unseen data or different flow regimes
-% \end{itemize}
-
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.9\textwidth]{figures/ch2/verification_zone_melange.png}
-% \caption{Comparison of different representations for a two-dimensional Rayleigh--Taylor density field}
-% \label{fig:representation_comparison}
-% \end{figure}
-
-% With the same number of coefficients, wavelet representations generally provide better reconstruction of localized structures and sharp gradients compared to Fourier representations. It is for sure less performing than PCA, but it is more robust and less sensitive to the training dataset. The multi-scale nature of wavelet decompositions also allows for a more natural separation of structures across different scales, which is particularly relevant for turbulent RTI flows.
-
-% \subsection{Application to machine learning}
-% In the context of generative modeling, the choice of representation can significantly impact the performance and stability of the learning process. Wavelet representations may provide more compact and informative features for training diffusion models,
-% potentially improving the quality of generated samples and reducing the risk of overfitting. The hierarchical structure of wavelet coefficients may also facilitate the learning of scale-dependent patterns and enhance the model's ability to capture the multi-scale nature of RTI flows.
+With the same number of coefficients, wavelet representations generally provide better reconstruction of localized structures and sharp gradients compared to Fourier representations. It is for sure less performing than PCA, but it is more robust and independent of the training dataset. The multi-scale nature of wavelet decompositions also allows for a more natural separation of structures across different scales, which is particularly relevant for turbulent RTI flows.

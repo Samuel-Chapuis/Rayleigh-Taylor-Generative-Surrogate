@@ -4,31 +4,20 @@
 
 \subsection{From individual simulations to a probability distribution}
 
-The objective of a generative surrogate is different from that of a deterministic
-regression model. A deterministic model associates a single output with a given
-input, whereas a generative model aims to describe the variability of all
-admissible outputs. This distinction is essential for Rayleigh--Taylor
-instability (RTI) simulations: small differences in the initial perturbations or
-in the physical parameters may lead to significantly different interface
-geometries and turbulent structures. Consequently, one reference field cannot
-represent the full range of possible realizations.
+Machine learning approaches can broadly be divided into supervised and unsupervised methods. In supervised learning, the objective is to learn a mapping between an input and a target output provided through labeled examples. Typical applications include regression and classification tasks, where each sample is associated with a known quantity of interest.
 
-Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or
-equivalently a vector containing the coefficients of one of the reduced
-representations introduced in Chapter~2. The DNS dataset
+The objective of the present work is fundamentally different. Given a collection of Direct Numerical Simulations (DNS) of Rayleigh--Taylor instability (RTI), no unique target field is associated with a given realization. Instead, the goal is to learn the statistical structure of the dataset itself and to generate new physically plausible density fields. This places the problem within the framework of unsupervised generative modeling, where the objective is to approximate the probability distribution from which the observed simulations are drawn.
+
+Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or equivalently a vector containing the coefficients of one of the reduced representations introduced in Chapter~2.
 
 \begin{equation}
     \mathcal{D}=\left\{\mathbf{x}_0^{(i)}\right\}_{i=1}^{N}
 \end{equation}
 
 is regarded as a finite collection of samples drawn from an unknown data
-distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective of this
-report is therefore not to reconstruct one particular DNS realization, but to
-learn the \emph{shape of the probability distribution} of the simulated RTI
-fields. In other words, the model should assign high probability to physically
-plausible density fields and low probability to configurations that are not
-representative of the reference simulations.
-
+distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective is therefore not to reconstruct one particular DNS realization, but to
+learn the \emph{the probability distribution} of the simulated RTI
+fields. In other words, the model should map the space of admissible density fields to a probability measure that captures the properties of the dataset.
 The learned model, denoted by $p_{\theta}(\mathbf{x}_0)$, should approximate the
 unknown distribution according to
 
@@ -44,21 +33,18 @@ For RTI, these properties include the morphology of bubbles and spikes, the
 location and thickness of the mixing layer, the distribution of density values,
 and the organization of structures across spatial scales. Thus, the quality of
 the surrogate cannot be assessed from the visual fidelity of a single generated
-field alone; it must also be evaluated by comparing ensembles of generated and
-reference simulations.
+field alone; it must also be evaluated by statistical comparison of reference density fields and generated samples.
 
-Directly estimating $p_{\mathrm{data}}$ is difficult because each field belongs
-to a high-dimensional space and the available number of DNS realizations is
-limited. Diffusion models address this problem indirectly. Rather than imposing
-a simple parametric form on the data distribution, they progressively transform
-it into a tractable Gaussian distribution and learn how to reverse this
-transformation.
+Directly estimating $p_{\mathrm{data}}$ is challenging because it belongs
+to a high-dimensional space and the available number of DNS realizations is limited.
+Diffusion model current this difficulty by defining a foward process that gradually transforms the complex dataset into a simple Gaussian distribution. The model then learns to reverse this process, to recover samples from the original distribution.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{One-dimensional illustrative example}
 
 Before considering RTI fields, it is useful to look at the same mechanism in
-one dimension, where the whole probability distribution can be plotted. The
-notebook \emph{1D-Simplest-Diffusion-Models} uses a toy dataset sampled from a
+one dimension, where the whole probability distribution can be plotted. Let's use a toy dataset sampled from a
 mixture of two Gaussian distributions,
 
 \begin{equation}
@@ -66,7 +52,7 @@ mixture of two Gaussian distributions,
     =
     \sum_{k=1}^{2}
     \pi_k\,
-    \mathcal{N}(x_0;\mu_k,\sigma_k^2),
+    \mathcal{N}(\mu_k,\sigma_k^2),
 \end{equation}
 
 with modes centered around $\mu_1=-4$ and $\mu_2=4$. This distribution is
@@ -84,89 +70,122 @@ probability, as illustrated in Figure~\ref{fig:diffusion_1d_dataset}.
     \label{fig:diffusion_1d_dataset}
 \end{figure}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{Forward diffusion process}
 
-The forward process is a fixed Markov chain that gradually corrupts a data
-sample by adding Gaussian noise. Starting from
-$\mathbf{x}_0\sim p_{\mathrm{data}}$, it is defined as
+Following the unified framework introduced by \citep{Song2021SDE}, diffusion models can be interpreted as stochastic processes that progressively transform the data distribution into a simple tractable distribution. Let
 
 \begin{equation}
-    q(\mathbf{x}_{1:T}\mid\mathbf{x}_0)
-    =
-    \prod_{t=1}^{T}
-    q(\mathbf{x}_t\mid\mathbf{x}_{t-1}),
+\mathbf{x}_0 \sim p_{\mathrm{data}}
 \end{equation}
 
-with transition kernel
+
+denote a sample drawn from the unknown distribution of RTI density fields. The forward diffusion process is defined as a continuous-time stochastic differential equation (SDE)
 
 \begin{equation}
-    q(\mathbf{x}_t\mid\mathbf{x}_{t-1})
-    =
-    \mathcal{N}\!\left(
-        \mathbf{x}_t;
-        \sqrt{1-\beta_t}\,\mathbf{x}_{t-1},
-        \beta_t\mathbf{I}
-    \right),
+d\mathbf{x}
+=
+\mathbf{f}(\mathbf{x},t)dt
++
+g(t)d\mathbf{w}
 \end{equation}
 
-where $\beta_t\in(0,1)$ controls the amount of noise introduced at step $t$.
-Defining $\alpha_t=1-\beta_t$ and
-$\overline{\alpha}_t=\prod_{s=1}^{t}\alpha_s$, any noisy state can be sampled
-directly from the original field:
+where $(t\in[0,T])$, $(\mathbf{w})$ denotes a standard Wiener process, $(\mathbf{f})$ is a drift coefficient and $(g)$ controls the intensity of the injected noise \citep{Song2021SDE}.
+
+The objective of this process is to progressively destroy the structure present in the data. As time increases, the probability distribution $(p_t(\mathbf{x}))$ evolves from the complex data distribution $(p_{\mathrm{data}})$ toward a simple prior distribution that is chosen as a standard Gaussian,
 
 \begin{equation}
-    \mathbf{x}_t
-    =
-    \sqrt{\overline{\alpha}_t}\,\mathbf{x}_0
-    +
-    \sqrt{1-\overline{\alpha}_t}\,\boldsymbol{\epsilon},
-    \qquad
-    \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+p_T(\mathbf{x})
+\approx
+\mathcal{N}(\mathbf{0},\mathbf{I}).
 \end{equation}
 
-The first term progressively suppresses the information contained in the RTI
-field, while the second replaces it with Gaussian noise. For a sufficiently
-long and appropriately chosen noise schedule,
-$q(\mathbf{x}_T)$ approaches the standard normal distribution
-$\mathcal{N}(\mathbf{0},\mathbf{I})$. This mechanism is illustrated in the
-one-dimensional notebook by a bimodal distribution: its two modes progressively
+Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by \citep{Ho2020DDPM}. In this case, the forward process can be written as
+
+\begin{equation}
+d\mathbf{x}
+=
+-\frac{1}{2}\beta(t)\mathbf{x},dt
++
+\sqrt{\beta(t)},d\mathbf{w},
+\end{equation}
+
+where $(\beta(t))$ controls the noise schedule.
+
+The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s$, the noisy sample at any diffusion time can be obtained directly through
+
+\begin{equation}
+\mathbf{x}_t
+=
+\sqrt{\bar{\alpha}_t},\mathbf{x}_0
++
+\sqrt{1-\bar{\alpha}_t},
+\boldsymbol{\epsilon},
+\qquad
+\boldsymbol{\epsilon}
+\sim
+\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+
+This expression reveals the competition between the information contained in the original RTI field and the progressively increasing Gaussian perturbation. For sufficiently large diffusion times, the signal component vanishes and the distribution approaches the Gaussian prior used to initialize the generation process.
+
+This mechanism is illustrated Figure~\ref{fig:diff1d} in
+one dimension by a bimodal distribution: its two modes progressively
 merge until the samples become approximately Gaussian. The same principle
 applies to RTI fields, although their probability distribution lies in a much
 higher-dimensional space and cannot be represented by a simple histogram.
-
-Figure~\ref{fig:diffusion_1d_forward} gives a static view of this forward
-corruption process for the one-dimensional example. At $t=0$, the density is
-the original bimodal distribution. As $t$ increases, the means of the two modes
-are multiplied by $\sqrt{\overline{\alpha}_t}$ and the random Gaussian part
-dominates. The two modes therefore collapse toward the origin and the final
-distribution becomes close to the standard normal prior used to start
-generation.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{figures/ch3/diffusion_1d_forward.png}
     \caption{Forward diffusion in one dimension. Left: evolution of the noisy
-    marginal density $q(x_t)$ for several diffusion times. Right: trajectories
+    marginal density $p_T(\mathbf{x})$ for several diffusion times. Right: trajectories
     of individual samples during the Markov noising process.}
-    \label{fig:diffusion_1d_forward}
+    \label{fig:diff1d}
 \end{figure}
 
-\subsection{Learning the reverse process through the score}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Generation consists in reversing the corruption process. Starting from a
-Gaussian sample $\mathbf{x}_T$, a neural network successively removes noise in
-order to produce a sample $\mathbf{x}_0$. The reverse transitions are modeled
-by
+\subsection{Learning the Reverse Process Through the Score}
 
+While the forward process is known analytically, the reverse evolution that transforms Gaussian noise back into realistic samples is generally intractable. A central result established by \citep{ANDERSON1982313} and exploited by \citep{Song2021SDE} is that the reverse-time dynamics of the diffusion process is itself governed by a stochastic differential equation,
+
+\begin{equation}
+d\mathbf{x}
+=
+\left[
+\mathbf{f}(\mathbf{x},t)
+-
+g(t)^2
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\right]dt
++
+g(t),d\bar{\mathbf{w}},
+\end{equation}
+
+where $(d\bar{\mathbf{w}})$ denotes a reverse-time Wiener process and
+
+\begin{equation}
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\end{equation}
+
+is the score function of the perturbed distribution at time (t).
+
+The score corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
+
+A neural network parameterized by $(\theta)$
 \begin{equation}
     p_{\theta}(\mathbf{x}_{0:T})
     =
     p(\mathbf{x}_T)
     \prod_{t=1}^{T}
-    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t).
+    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t)
 \end{equation}
 
-In the score-based formulation, the network learns the score of the noisy
+In the score-based formulation, the network learns the score $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ of the noisy
 distribution,
 
 \begin{equation}
@@ -200,7 +219,7 @@ transports samples from the Gaussian prior toward the regions occupied by the
 DNS data. The resulting ensemble of generated fields provides an approximation
 of the distribution sought in this work.
 
-In the one-dimensional setting, the score can be represented as arrows along
+In the one-dimensional setting, figure \ref{fig:diffusion_1d_reverse_score} shows the score can be represented as arrows along
 the $x$ axis. These arrows point toward regions where the noisy density is
 larger. Near the end of the forward process, the density is almost Gaussian and
 the score mainly points back toward the origin. At lower noise levels, the
@@ -219,6 +238,57 @@ back to the high-probability region, then assigned to one of the modes.
     \label{fig:diffusion_1d_reverse_score}
 \end{figure}
 
+\begin{equation}
+\mathbf{s}*{\theta}(\mathbf{x},t)
+\approx
+\nabla*{\mathbf{x}}
+\log p_t(\mathbf{x}).
+\end{equation}
+
+Since the exact score is unknown, it is estimated through denoising score matching. For the variance-preserving formulation adopted in this work, the score can be related to the Gaussian perturbation used during the forward process,
+% \citep{Vincent2011,Song2019}
+
+
+\begin{equation}
+\nabla_{\mathbf{x}_t}
+\log p(\mathbf{x}_t|\mathbf{x}_0)
+=
+-
+\frac{
+\boldsymbol{\epsilon}
+}{
+\sqrt{1-\bar{\alpha}_t}
+}.
+\end{equation}
+
+This relation motivates the widely used noise-prediction parameterization introduced by \citet{Ho2020DDPM}, where the neural network predicts the perturbation $(\boldsymbol{\epsilon})$ added to the clean sample. The corresponding training objective is,
+
+\begin{equation}
+\mathcal{L}(\theta)
+=
+\mathbb{E}_{\mathbf{x}*0,t,\boldsymbol{\epsilon}}
+\left[
+\left|
+\boldsymbol{\epsilon}
+-
+\boldsymbol{\epsilon}*{\theta}
+(\mathbf{x}_t,t)
+\right|_2^2
+\right].
+\end{equation}
+
+After training, the estimated score is used to numerically integrate the reverse-time dynamics from an initial Gaussian sample
+
+\begin{equation}
+\mathbf{x}_T
+\sim
+\mathcal{N}(\mathbf{0},\mathbf{I}),
+\end{equation}
+
+thereby transporting the probability mass from the simple Gaussian prior toward the complex distribution of RTI density fields. The generated samples can therefore be interpreted as approximate realizations drawn from the learned distribution $(p_{\theta}(\mathbf{x}))$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Adaptation to RTI dataset}
 
@@ -230,7 +300,7 @@ this work consists of approximately 60 independent simulations of the
 Rayleigh--Taylor instability. Each simulation produces thousands of temporal
 snapshots during its execution; however, only a subset of these snapshots is
 stored because of storage limitations. After preprocessing and filtering, the
-final dataset contains fewer than 7000 images.
+final dataset contains fewer than 7000 images split into training, testing and validation sets.b
 
 This dataset size is several orders of magnitude smaller than those typically
 used to train diffusion models for natural image generation, where millions of
