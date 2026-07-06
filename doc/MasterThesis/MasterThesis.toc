@@ -20,38 +20,38 @@
 \contentsline {subsection}{\numberline {2.3.2}From Continuous to Discrete Wavelets}{18}{}%
 \contentsline {subsection}{\numberline {2.3.3}Fast Discrete Wavelet Transform in Two Dimensions}{18}{}%
 \contentsline {subsection}{\numberline {2.3.4}Compression and Sparsity}{21}{}%
-\contentsline {section}{\numberline {2.4}Comparaison and Application to RTI Fields}{22}{}%
-\contentsline {subsection}{\numberline {2.4.1}Comparaison Criteria}{22}{}%
-\contentsline {chapter}{\numberline {3}Diffusion Models for RTI Fields}{24}{}%
-\contentsline {section}{\numberline {3.1}Introduction to score-based diffusion}{24}{}%
-\contentsline {subsection}{\numberline {3.1.1}From individual simulations to a probability distribution}{24}{}%
-\contentsline {subsection}{\numberline {3.1.2}One-dimensional illustrative example}{25}{}%
-\contentsline {subsection}{\numberline {3.1.3}Forward diffusion process}{25}{}%
-\contentsline {subsection}{\numberline {3.1.4}Learning the Reverse Process Through the Score}{27}{}%
-\contentsline {section}{\numberline {3.2}Adaptation to RTI dataset}{28}{}%
-\contentsline {subsection}{\numberline {3.2.1}Data size}{28}{}%
-\contentsline {subsection}{\numberline {3.2.2}Data augmentation}{29}{}%
-\contentsline {subsection}{\numberline {3.2.3}Data ratio}{30}{}%
-\contentsline {section}{\numberline {3.3}Pipeline}{32}{}%
-\contentsline {subsection}{\numberline {3.3.1}Overview}{32}{}%
-\contentsline {subsection}{\numberline {3.3.2}Model architecture}{32}{}%
-\contentsline {subsection}{\numberline {3.3.3}Model training}{34}{}%
-\contentsline {subsection}{\numberline {3.3.4}Baseline qualitative results}{35}{}%
-\contentsline {chapter}{\numberline {4}Evaluation Metrics for RTI Field Generation}{37}{}%
-\contentsline {section}{\numberline {4.1}Motivation}{37}{}%
-\contentsline {section}{\numberline {4.2}Feature-space metrics}{37}{}%
-\contentsline {subsection}{\numberline {4.2.1}Fr\'echet distance in a learned feature space}{37}{}%
-\contentsline {subsection}{\numberline {4.2.2}Classical FID and PhyFID}{38}{}%
-\contentsline {section}{\numberline {4.3}Physical metrics}{38}{}%
-\contentsline {subsection}{\numberline {4.3.1}Line-wise density statistics}{38}{}%
-\contentsline {subsection}{\numberline {4.3.2}Fluctuation 'energy' spectrum}{40}{}%
-\contentsline {section}{\numberline {4.4}Baseline results}{40}{}%
-\contentsline {subsection}{\numberline {4.4.1}PhyFID and FID comparison}{40}{}%
-\contentsline {subsection}{\numberline {4.4.2}Line profile and spectral indicators}{41}{}%
-\contentsline {chapter}{\numberline {5}Wavelet-based Diffusion Model}{42}{}%
-\contentsline {section}{\numberline {5.1}Motivation}{42}{}%
-\contentsline {section}{\numberline {5.2}Wavelet-based generative framework}{43}{}%
-\contentsline {subsection}{\numberline {5.2.1}Wavelet representation of RTI fields}{43}{}%
-\contentsline {subsection}{\numberline {5.2.2}Conditional diffusion on wavelet coefficients}{43}{}%
-\contentsline {section}{\numberline {5.3}Results and comparison with baseline diffusion}{44}{}%
-\contentsline {chapter}{Conclusion}{46}{}%
+\contentsline {section}{\numberline {2.4}Comparaison and Application to RTI Fields}{21}{}%
+\contentsline {subsection}{\numberline {2.4.1}Comparaison Criteria}{21}{}%
+\contentsline {chapter}{\numberline {3}Diffusion Models for RTI Fields}{23}{}%
+\contentsline {section}{\numberline {3.1}Introduction to score-based diffusion}{23}{}%
+\contentsline {subsection}{\numberline {3.1.1}From individual simulations to a probability distribution}{23}{}%
+\contentsline {subsection}{\numberline {3.1.2}One-dimensional illustrative example}{24}{}%
+\contentsline {subsection}{\numberline {3.1.3}Forward diffusion process}{24}{}%
+\contentsline {subsection}{\numberline {3.1.4}Learning the Reverse Process Through the Score}{26}{}%
+\contentsline {section}{\numberline {3.2}Adaptation to RTI dataset}{27}{}%
+\contentsline {subsection}{\numberline {3.2.1}Data size}{27}{}%
+\contentsline {subsection}{\numberline {3.2.2}Data augmentation}{28}{}%
+\contentsline {subsection}{\numberline {3.2.3}Data ratio}{29}{}%
+\contentsline {section}{\numberline {3.3}Pipeline}{31}{}%
+\contentsline {subsection}{\numberline {3.3.1}Overview}{31}{}%
+\contentsline {subsection}{\numberline {3.3.2}Model architecture}{31}{}%
+\contentsline {subsection}{\numberline {3.3.3}Model training}{33}{}%
+\contentsline {subsection}{\numberline {3.3.4}Baseline qualitative results}{34}{}%
+\contentsline {chapter}{\numberline {4}Evaluation Metrics for RTI Field Generation}{36}{}%
+\contentsline {section}{\numberline {4.1}Motivation}{36}{}%
+\contentsline {section}{\numberline {4.2}Feature-space metrics}{36}{}%
+\contentsline {subsection}{\numberline {4.2.1}Fr\'echet distance in a learned feature space}{36}{}%
+\contentsline {subsection}{\numberline {4.2.2}Classical FID and PhyFID}{37}{}%
+\contentsline {section}{\numberline {4.3}Physical metrics}{37}{}%
+\contentsline {subsection}{\numberline {4.3.1}Line-wise density statistics}{37}{}%
+\contentsline {subsection}{\numberline {4.3.2}Fluctuation 'energy' spectrum}{39}{}%
+\contentsline {section}{\numberline {4.4}Baseline results}{39}{}%
+\contentsline {subsection}{\numberline {4.4.1}PhyFID and FID comparison}{39}{}%
+\contentsline {subsection}{\numberline {4.4.2}Line profile and spectral indicators}{40}{}%
+\contentsline {chapter}{\numberline {5}Wavelet-based Diffusion Model}{41}{}%
+\contentsline {section}{\numberline {5.1}Motivation}{41}{}%
+\contentsline {section}{\numberline {5.2}Wavelet-based generative framework}{42}{}%
+\contentsline {subsection}{\numberline {5.2.1}Wavelet representation of RTI fields}{42}{}%
+\contentsline {subsection}{\numberline {5.2.2}Conditional diffusion on wavelet coefficients}{42}{}%
+\contentsline {section}{\numberline {5.3}Results and comparison with baseline diffusion}{43}{}%
+\contentsline {chapter}{Conclusion}{45}{}%
