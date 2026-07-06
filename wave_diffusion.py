@@ -148,7 +148,7 @@ def main():
     config = Config()
     logger = Logger(config.log_path, config.csv_path)
 
-    expected_channels = config.prior_channels + config.target_channels
+    expected_channels = config.prior_channels + config.target_channels 
     train_raw = load_wave_tensor(config.train_path, expected_channels=expected_channels)
     val_raw = load_wave_tensor(config.val_path, expected_channels=expected_channels)
 
