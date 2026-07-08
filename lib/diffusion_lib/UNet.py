@@ -127,17 +127,8 @@ class UNet(nn.Module):
             )
         self.channels = tuple(base_channels * multiplier for multiplier in channel_multipliers)
 
-        self.legacy_default = (
-            depth == 3
-            and blocks_per_level == 3
-            and base_channels == 10
-            and out_channels == in_channels
-            and tuple(channel_multipliers) == (1, 2, 4)
-        )
-        if self.legacy_default:
-            self._init_legacy_default(n_steps, time_emb_dim, size, in_channels, out_channels)
-            return
-
+        # spatial_sizes[level] est la resolution avant le downsampling du niveau.
+        # La derniere valeur est la resolution du bottleneck apres depth descentes.
         spatial_sizes = [size]
         for _ in range(depth):
             next_size = self._conv_size(spatial_sizes[-1], kernel_size=4, stride=2, padding=1)
@@ -149,12 +140,15 @@ class UNet(nn.Module):
             spatial_sizes.append(next_size)
         self.spatial_sizes = tuple(spatial_sizes)
 
-        # Sinusoidal embedding
+        # Embedding temporel fixe: t -> vecteur sinusoidal, ensuite projete au
+        # nombre de canaux attendu par chaque niveau.
         self.time_embed = nn.Embedding(n_steps, time_emb_dim)
         self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
         self.time_embed.requires_grad_(False)
 
-        # Application de l'embedding temporel à chaque niveau de la hiérarchie.
+        # Encodeur: un niveau = projection temporelle + blocks_per_level blocs +
+        # une convolution stride 2. Les sorties avant downsampling sont gardees
+        # pour les skip connections.
         self.encoder_time = nn.ModuleList()
         self.encoder_blocks = nn.ModuleList()
         self.downs = nn.ModuleList()
@@ -174,6 +168,8 @@ class UNet(nn.Module):
             self.downs.append(nn.Conv2d(level_channels, level_channels, 4, 2, 1))
             current_channels = level_channels
 
+        # Bottleneck a la resolution la plus basse. Il a la meme largeur que le
+        # dernier niveau encodeur.
         self.mid_time = self._make_te(time_emb_dim, current_channels)
         self.mid_block = self._make_block_stack(
             spatial_sizes[-1],
@@ -182,6 +178,8 @@ class UNet(nn.Module):
             blocks_per_level,
         )
 
+        # Decodeur: chaque niveau remonte d'un facteur 2, concatene le skip de
+        # meme resolution, puis applique blocks_per_level blocs.
         self.ups = nn.ModuleList()
         self.decoder_time = nn.ModuleList()
         self.decoder_blocks = nn.ModuleList()
@@ -205,90 +203,6 @@ class UNet(nn.Module):
 
         self.conv_out = nn.Conv2d(current_channels, self.out_channels, 3, 1, 1)
 
-    def _init_legacy_default(self, n_steps, time_emb_dim, size, in_channels, out_channels):
-        if size < 12:
-            raise ValueError("UNet nécessite size >= 12 avec cette architecture.")
-
-        size_1 = size
-        size_2 = self._conv_size(size_1, kernel_size=4, stride=2, padding=1)
-        size_3 = self._conv_size(size_2, kernel_size=4, stride=2, padding=1)
-        size_mid = self._conv_size(size_3, kernel_size=2, stride=1, padding=0)
-        size_mid = self._conv_size(size_mid, kernel_size=4, stride=2, padding=1)
-        if size_mid < 1:
-            raise ValueError("UNet nécessite une taille intermédiaire positive.")
-
-        self.spatial_sizes = (size_1, size_2, size_3, size_mid)
-
-        self.time_embed = nn.Embedding(n_steps, time_emb_dim)
-        self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
-        self.time_embed.requires_grad_(False)
-
-        self.te1 = self._make_te(time_emb_dim, in_channels)
-        self.b1 = nn.Sequential(
-            Block((in_channels, size_1, size_1), in_channels, 10),
-            Block((10, size_1, size_1), 10, 10),
-            Block((10, size_1, size_1), 10, 10)
-        )
-        self.down1 = nn.Conv2d(10, 10, 4, 2, 1)
-
-        self.te2 = self._make_te(time_emb_dim, 10)
-        self.b2 = nn.Sequential(
-            Block((10, size_2, size_2), 10, 20),
-            Block((20, size_2, size_2), 20, 20),
-            Block((20, size_2, size_2), 20, 20)
-        )
-        self.down2 = nn.Conv2d(20, 20, 4, 2, 1)
-
-        self.te3 = self._make_te(time_emb_dim, 20)
-        self.b3 = nn.Sequential(
-            Block((20, size_3, size_3), 20, 40),
-            Block((40, size_3, size_3), 40, 40),
-            Block((40, size_3, size_3), 40, 40)
-        )
-        self.down3 = nn.Sequential(
-            nn.Conv2d(40, 40, 2, 1),
-            nn.SiLU(),
-            nn.Conv2d(40, 40, 4, 2, 1)
-        )
-
-        self.te_mid = self._make_te(time_emb_dim, 40)
-        self.b_mid = nn.Sequential(
-            Block((40, size_mid, size_mid), 40, 20),
-            Block((20, size_mid, size_mid), 20, 20),
-            Block((20, size_mid, size_mid), 20, 40)
-        )
-
-        self.up1 = nn.Sequential(
-            nn.ConvTranspose2d(40, 40, 4, 2, 1),
-            nn.SiLU(),
-            nn.ConvTranspose2d(40, 40, 2, 1)
-        )
-
-        self.te4 = self._make_te(time_emb_dim, 80)
-        self.b4 = nn.Sequential(
-            Block((80, size_3, size_3), 80, 40),
-            Block((40, size_3, size_3), 40, 20),
-            Block((20, size_3, size_3), 20, 20)
-        )
-
-        self.up2 = nn.ConvTranspose2d(20, 20, 4, 2, 1)
-        self.te5 = self._make_te(time_emb_dim, 40)
-        self.b5 = nn.Sequential(
-            Block((40, size_2, size_2), 40, 20),
-            Block((20, size_2, size_2), 20, 10),
-            Block((10, size_2, size_2), 10, 10)
-        )
-
-        self.up3 = nn.ConvTranspose2d(10, 10, 4, 2, 1)
-        self.te_out = self._make_te(time_emb_dim, 20)
-        self.b_out = nn.Sequential(
-            Block((20, size_1, size_1), 20, 10),
-            Block((10, size_1, size_1), 10, 10),
-            Block((10, size_1, size_1), 10, 10, normalize=False)
-        )
-
-        self.conv_out = nn.Conv2d(10, out_channels, 3, 1, 1)
-
     def forward(self, x, t):
         """
         Prédit le bruit associé à une image bruitée.
@@ -308,8 +222,6 @@ class UNet(nn.Module):
 
         t = self.time_embed(t)
         n = len(x)
-        if self.legacy_default:
-            return self._forward_legacy_default(x, t, n)
 
         skips = []
         out = x
@@ -333,27 +245,6 @@ class UNet(nn.Module):
         out = self.conv_out(out)
 
         return out
-
-    def _forward_legacy_default(self, x, t, n):
-        out1 = self.b1(x + self.te1(t).reshape(n, -1, 1, 1))
-        out2 = self.b2(self.down1(out1) + self.te2(t).reshape(n, -1, 1, 1))
-        out3 = self.b3(self.down2(out2) + self.te3(t).reshape(n, -1, 1, 1))
-
-        out_mid = self.b_mid(self.down3(out3) + self.te_mid(t).reshape(n, -1, 1, 1))
-
-        up1 = self._resize_to(self.up1(out_mid), out3)
-        out4 = torch.cat((out3, up1), dim=1)
-        out4 = self.b4(out4 + self.te4(t).reshape(n, -1, 1, 1))
-
-        up2 = self._resize_to(self.up2(out4), out2)
-        out5 = torch.cat((out2, up2), dim=1)
-        out5 = self.b5(out5 + self.te5(t).reshape(n, -1, 1, 1))
-
-        up3 = self._resize_to(self.up3(out5), out1)
-        out = torch.cat((out1, up3), dim=1)
-        out = self.b_out(out + self.te_out(t).reshape(n, -1, 1, 1))
-
-        return self.conv_out(out)
 
     def _make_block_stack(self, size, in_channels, out_channels, num_blocks, final_normalize=True):
         blocks = []
