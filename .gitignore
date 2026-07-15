@@ -11,6 +11,7 @@ models/*
 exemples/nt_toolbox/*
 
 exemples/datasets/
+exemples/generated_data/
 exemples/saved_models/
 img/*
 outputs/*
