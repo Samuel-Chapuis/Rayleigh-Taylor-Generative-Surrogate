@@ -11,11 +11,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from lib.diffusion_lib.UNet import UNet
-from _to_move_wave_2D.wave_diffusion import (
-    WaveletConditionalDDPM,
-    load_wave_tensor,
-    normalize_with_stats,
-)
+from lib.diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
+from wave_diffusion import load_wave_tensor, normalize_with_stats
 
 # ============================================================
 # Configuration

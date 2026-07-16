@@ -126,12 +126,31 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
 
 
 def split_wave_batch(batch, device, prior_channels=1):
+    """
+    Separe un batch de coefficients wavelet en prior et details.
+
+    Args:
+        batch: Batch issu d'un ``TensorDataset`` contenant un tenseur
+            ``(N, C, H, W)`` en premiere position.
+        device: Device vers lequel deplacer les coefficients.
+        prior_channels: Nombre de premiers canaux utilises comme condition.
+
+    Returns:
+        Tuple ``(prior, details)``. Pour le cas wavelet standard, ``prior`` est
+        ``cA`` et ``details`` contient ``cH/cV/cD``.
+    """
     coeffs = batch[0].to(device)
     prior = coeffs[:, :prior_channels]
     details = coeffs[:, prior_channels:]
     return prior, details
 
 def wave_noise_prediction_loss(ddpm, batch, mse, device):
+    """
+    Calcule la loss epsilon-prediction du DDPM conditionnel wavelet.
+
+    Le bruit est ajoute uniquement aux canaux de details. Le prior est concatene
+    aux details bruites dans ``ddpm.backward`` pour conditionner la prediction.
+    """
     prior, details = split_wave_batch(batch, device, prior_channels=ddpm.prior_channels)
     n = len(details)
     eta = torch.randn_like(details)
@@ -141,6 +160,11 @@ def wave_noise_prediction_loss(ddpm, batch, mse, device):
     return mse(eta_theta, eta)
 
 def wave_evaluate_loss(ddpm, loader, device):
+    """
+    Evalue la loss moyenne du DDPM conditionnel wavelet sans mise a jour.
+
+    Le mode train/eval initial du modele est restaure apres l'evaluation.
+    """
     mse = nn.MSELoss()
     was_training = ddpm.training
     ddpm.eval()
@@ -156,6 +180,26 @@ def wave_evaluate_loss(ddpm, loader, device):
     return total_loss
 
 def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger=None, val_loader=None):
+    """
+    Entraine un DDPM conditionnel sur coefficients wavelet.
+
+    Le modele apprend a predire le bruit sur les details conditionnellement au
+    prior basse frequence. Le meilleur checkpoint est selectionne sur la loss de
+    validation si ``val_loader`` est fourni, sinon sur la loss d'entrainement.
+
+    Args:
+        ddpm: Instance de ``WaveletConditionalDDPM``.
+        loader: DataLoader d'entrainement.
+        n_epochs: Nombre d'epoques.
+        optim: Optimiseur PyTorch.
+        device: Device de calcul.
+        store_path: Chemin de sauvegarde du meilleur checkpoint.
+        logger: Logger optionnel.
+        val_loader: DataLoader de validation optionnel.
+
+    Returns:
+        Historique des pertes batch par batch.
+    """
     mse = nn.MSELoss()
     best_loss = float("inf")
     loss_list = []
@@ -204,4 +248,3 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
         logger.log_experiment_end("Wavelet conditional training finished")
 
     return loss_list
-
