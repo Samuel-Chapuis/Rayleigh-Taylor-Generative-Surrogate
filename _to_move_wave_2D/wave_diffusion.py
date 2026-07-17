@@ -1,8 +1,10 @@
 # %%
 from dataclasses import dataclass
+from logging import config
 from pathlib import Path
 import random
 
+from networkx import config
 import numpy as np
 import torch
 from torch.optim import Adam
@@ -35,20 +37,23 @@ from lib.diffusion_lib.wavelet_utils import (
 class Config:
     device: torch.device = None
 
+    wavelet_level: int = 2
+
     # Parametres generaux
     seed: int = 0
     store_path_dataset: str = "data/RT64"
-    wavelet_level: int = 1
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img/wave")
     batch_size: int = 128
     do_train: bool = False
     n_epochs: int = 1
     lr: float = 1e-3
-    store_path: str = "outputs/model/wave_j1_RT64.pt"
     input_path: str = ""
-    log_path: str = "outputs/logs/wave_j1_RT64.log"
-    csv_path: str = "outputs/logs/wave_j1_RT64.csv"
-    config_path: str = "outputs/model/wave_j1_RT64_config.json"
+
+
+    store_path: str = "" 
+    log_path: str = ""
+    csv_path: str = ""
+    config_path: str = "" 
 
     # Parametres du DDPM conditionnel wavelet
     time_emb_dim: int = 100
@@ -65,6 +70,27 @@ class Config:
     unet_base_channels: int = 10
 
     def __post_init__(self):
+        object.__setattr__(
+            self,
+            "store_path",
+            f"outputs/model/wave_j{self.wavelet_level}_RT64.pt",
+        )
+        object.__setattr__(
+            self,
+            "log_path",
+            f"outputs/logs/wave_j{self.wavelet_level}_RT64.log",
+        )
+        object.__setattr__(
+            self,
+            "csv_path",
+            f"outputs/logs/wave_j{self.wavelet_level}_RT64.csv",
+        )
+        object.__setattr__(
+            self,
+            "config_path",
+            f"outputs/model/wave_j{self.wavelet_level}_RT64_config.json",
+        )
+
         random.seed(self.seed)
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
@@ -98,15 +124,20 @@ class Config:
 
     @property
     def train_path(self):
+        print(f"Training path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_training.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_training.pt"
+        
 
     @property
     def val_path(self):
+        print(f"Validation path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_validation.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_validation.pt"
 
     @property
     def test_path(self):
+        print(f"Test path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_test.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_test.pt"
+
 
 # %%
 def main():
@@ -124,6 +155,8 @@ def main():
     expected_channels = config.prior_channels + config.target_channels
     train_raw = load_wave_tensor(config.train_path, expected_channels=expected_channels)
     val_raw = load_wave_tensor(config.val_path, expected_channels=expected_channels)
+
+    print(f"Train data shape: {train_raw.shape}, Val data shape: {val_raw.shape}")
 
     coeff_mean, coeff_std = channel_stats(train_raw)
     train_data = normalize_with_stats(train_raw, coeff_mean, coeff_std)
