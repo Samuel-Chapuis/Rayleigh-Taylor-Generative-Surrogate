@@ -1,0 +1,282 @@
+\documentclass[11pt,a4paper]{report}
+
+%% -----------------------------
+%% Packages
+%% -----------------------------
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{eso-pic}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{helvet}
+\usepackage{setspace}
+\usepackage{transparent}
+\usepackage{tcolorbox}
+\usepackage{float}
+\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{listings}
+\usepackage{xr}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\usepackage{algorithm}
+\usepackage[noend]{algorithmic}
+\usepackage{multirow}
+\usepackage{slashbox}
+\usepackage{rotating}
+\usepackage{mathtools}
+\usepackage{mathabx}
+\usepackage{wasysym}
+\usepackage{ulem}
+\usepackage{tikz-3dplot}
+
+\renewcommand{\familydefault}{\sfdefault}
+\renewcommand{\baselinestretch}{1.05}
+\graphicspath{{.}{images/}}
+
+%% -----------------------------
+%% Functions
+%% -----------------------------
+\input{functions}
+
+%% -----------------------------
+%% CEA Colors
+%% -----------------------------
+\definecolor{CEAred}{RGB}{218,41,28}
+\definecolor{CEAdark}{RGB}{1,1,1}
+\definecolor{linkcol}{rgb}{0,0,0.4}
+\definecolor{citecol}{rgb}{0.5,0,0}
+
+\hypersetup{
+    bookmarksopen=true,
+    pdftitle="Wavelet-Based Diffusion Surrogate Models",
+    pdfauthor="Samuel Chapuis",
+    pdfsubject="Master report",
+    pdfmenubar=true,
+    pdfhighlight=/O,
+    colorlinks=true,
+    pdfpagemode=UseNone,
+    pdfpagelayout=SinglePage,
+    pdffitwindow=true,
+    linkcolor=linkcol,
+    citecolor=citecol,
+    urlcolor=linkcol
+}
+
+%% -----------------------------
+%% Useful commands
+%% -----------------------------
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\def\abs{\operatorname{abs}}
+\def\argmax{\operatornamewithlimits{arg\,max}}
+\def\argmin{\operatornamewithlimits{arg\,min}}
+\def\diag{\operatorname{Diag}}
+\newcommand{\eqRef}[1]{(\ref{#1})}
+\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+\renewcommand{\epsilon}{\varepsilon}
+
+\newenvironment{bulletList}%
+{ \begin{list}%
+    {$\bullet$}%
+    {\setlength{\labelwidth}{25pt}%
+     \setlength{\leftmargin}{30pt}%
+     \setlength{\itemsep}{\parsep}}}%
+{ \end{list} }
+
+\newenvironment{maxime}[1]
+{
+\vspace*{0cm}
+\hfill
+\begin{minipage}{0.5\textwidth}%
+\hrulefill $\:$ {\bf #1}\\
+\it
+}%
+{%
+\hrulefill
+\vspace*{0.5cm}%
+\end{minipage}
+}
+
+\newenvironment{vcenterpage}
+{\newpage\vspace*{\fill}\thispagestyle{empty}\renewcommand{\headrulewidth}{0pt}}
+{\vspace*{\fill}}
+
+\newdimen\supsymwidth
+\newdimen\supsymheight
+\newdimen\tgtsymwidth
+\setbox0=\hbox{$_\bigboxvoid$}
+\supsymwidth=\wd0
+\supsymheight=\ht0
+\setbox0=\hbox{$_\bigovoid$}
+\tgtsymwidth=\wd0
+
+\newcommand{\supsym}[1]{%
+  \mathrlap{\bigboxvoid}
+  \raisebox{0.5pt}{\hbox to \supsymwidth{\hfill{\tiny#1}\hfill}}
+}
+
+\newcommand{\tgtsym}[1]{
+  \mathrlap{\bigovoid}
+  \raisebox{0.5pt}{\hbox to \supsymwidth{\hfill{\tiny#1}\hfill}}
+}
+
+\newcommand{\enumsentence}[1]{\begin{quotation}#1\end{quotation}}
+\newcommand{\evaluator}[1]{\uline{#1}$_{\smiley}$}
+\newcommand{\target}[2][\relax]{\uline{#2}$_{\ifx#1\relax\bigodot\else\tgtsym{#1}\fi}$}
+\newcommand{\comparator}[1]{#1$_{<}$}
+\newcommand{\comparatorthan}[1]{#1$_{>}$}
+\newcommand{\superordinate}[2][\relax]{#2$_{\ifx#1\relax\bigovoid\else\supsym{#1}\fi}$}
+\newcommand{\attitude}[1]{\uwave{#1}}
+\newcommand{\aspect}[1]{\uline{#1}$_{\ast}$}
+
+%% -----------------------------
+%% Header / Footer
+%% -----------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{27pt}
+
+\fancyhead[L]{
+    \includegraphics[height=0.8cm]{graphics/LOGO_CEA.png}
+    \includegraphics[height=0.8cm]{graphics/CS_Blanc_Rouge_petit.png}
+}
+
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+%% -----------------------------
+%% Section style
+%% -----------------------------
+\titleformat{\chapter}[display]
+{\bfseries\Huge\color{CEAred}}
+{\filleft\Huge\chaptertitlename\ \thechapter}
+{1ex}
+{\titlerule\vspace{1ex}\filright}
+
+\titleformat{\section}
+{\Large\bfseries\color{CEAred}}
+{\thesection}
+{1em}
+{}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+%% -----------------------------
+%% Document
+%% -----------------------------
+\begin{document}
+
+\RedTitleBackground
+
+\begin{titlepage}
+\thispagestyle{empty}
+\begingroup
+\color{white}
+
+\begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west]
+    at ([xshift=\TopLogoX,yshift=\TopLogoY]current page.south west)
+    {
+        \includegraphics[width=\TopLogoWidth]{graphics/CS_Rouge_Blanc.png}
+    };
+
+    \node[anchor=south west]
+    at ([xshift=\CEAlogoX,yshift=\CEAlogoY]current page.south west)
+    {
+        \includegraphics[width=\CEAlogoWidth]{graphics/LOGO_CEA_BLANC.png}
+    };
+\end{tikzpicture}
+
+\vspace*{-2cm}
+\vfill
+
+{\Huge\bfseries
+Big Data Management \& Analytics \\
+Master
+}
+
+\vspace{1cm}
+
+\begin{minipage}{0.95\textwidth}
+\raggedright
+\LARGE
+Wavelet-Based Diffusion Surrogate Models \\
+for Rayleigh--Taylor Instability
+\end{minipage}
+
+\vspace{1.5cm}
+
+{\Large
+Samuel Chapuis
+}
+
+\vspace{1cm}
+
+{\large
+CEA Bruy\`eres-le-Ch\^atel -- Mat\'eriaux en conditions extr\^emes
+}
+
+\vfill
+
+{\large
+Year 2025 -- 2026
+}
+
+\endgroup
+\end{titlepage}
+
+\ClearShipoutPictureBG
+\WhiteBackground
+
+\pagenumbering{roman}
+
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+\input{Acknowledgments}
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\input{AbstractContent}
+
+\vspace{1em}
+{\large\textbf{Keywords:}}
+ Rayleigh--Taylor instability; Direct Numerical Simulation; diffusion models; wavelets; surrogate modeling; physical metrics.
+
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+
+\include{Chapter1}
+\include{Chapter2}
+\include{Chapter3}
+\include{Chapter4}
+\include{Chapter5}
+\include{Chapter6}
+
+\appendix
+\include{Appendix1}
+
+\bibliographystyle{plainnat}
+\bibliography{Thesis}
+
+\end{document}
