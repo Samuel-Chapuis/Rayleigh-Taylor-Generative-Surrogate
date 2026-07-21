@@ -1,0 +1,240 @@
+poster:
+  title:
+    description: >
+      Clear title emphasizing the contribution rather than only the application.
+      Example:
+      "Hierarchical Wavelet Diffusion Models for Multi-scale Rayleigh–Taylor Instability"
+
+  layout:
+    rows:
+      - [block1]
+      - [block2, block3]
+      - [block4]
+      - [block5, block6]
+      - [block7, block8]
+
+  blocks:
+
+    block1:
+      title: "Physical Problem"
+      objective: >
+        Introduce the Rayleigh–Taylor instability and motivate the need for
+        generative modeling.
+
+      key_points:
+        - Rayleigh–Taylor instability occurs when a heavy fluid is accelerated into a lighter one.
+        - Generates turbulent mixing over a wide range of spatial scales.
+        - Direct Numerical Simulations are computationally expensive.
+        - Motivation for data-driven generative surrogate models.
+
+      illustration:
+        type: "Temporal sequence"
+        content:
+          - Evolution of RTI over time
+
+      importance: "Context"
+
+    block2:
+      title: "Multi-resolution Representation"
+      objective: >
+        Explain why wavelets are a natural representation for RTI.
+
+      key_points:
+        - RTI exhibits localized structures.
+        - Structures evolve across multiple spatial scales.
+        - Wavelet transform naturally separates coarse and fine information.
+        - Provides sparse hierarchical representation.
+
+      illustration:
+        type: "Diagram"
+        content:
+          - Fast 2D Discrete Wavelet Transform
+   
+
+      importance: "Method motivation"
+
+    block3:
+      title: "Score-Based Diffusion Models"
+      objective: >
+        Briefly explain the diffusion model used as the generative backbone.
+
+      key_points:
+        - Learn the probability distribution of RTI fields.
+        - Forward process progressively adds noise.
+        - Reverse process reconstructs realistic samples.
+        - UNet predicts the score/noise.
+
+      illustration:
+        type: "Simple schematic"
+        options:
+          - Forward / Reverse diffusion
+          - Noise → Sample
+          - Simplified UNet
+
+      importance: "Background"
+
+    block4:
+      title: "Hierarchical Wavelet Diffusion"
+      objective: >
+        Present the main contribution of the work.
+
+      key_points:
+        - Transform images into wavelet coefficients.
+        - Train diffusion models from coarse to fine scales.
+        - Generate approximation first.
+        - Generate successive detail coefficients conditionally.
+        - Reconstruct the final RT field using the inverse transform.
+
+      illustration:
+        type: "Pipeline"
+
+        pipeline:
+          - RT field
+          - 2D Wavelet Transform
+          - Coarse coefficients
+          - Diffusion model level 3
+          - Conditional diffusion level 2
+          - Conditional diffusion level 1
+          - Inverse Wavelet Transform
+          - Generated RT field
+
+      importance: "Main contribution"
+
+    block5:
+      title: "Experimental Setup"
+
+      objective: >
+        Summarize the implementation and training protocol.
+
+      content:
+        dataset:
+          - DNS Rayleigh–Taylor database
+          - Number of samples
+          - Resolution
+
+        wavelets:
+          - Wavelet family
+          - Decomposition level
+
+        diffusion:
+          - UNet backbone
+          - Noise schedule
+          - Training procedure
+
+        metrics:
+          - Reconstruction error
+          - FID (if used)
+          - Physical metrics
+
+      illustration:
+        type: "Compact table"
+
+      importance: "Implementation"
+
+    block6:
+      title: "Results"
+
+      objective: >
+        Demonstrate the effectiveness of the proposed method.
+
+      subsections:
+
+        reconstruction:
+          - Original
+          - Wavelet reconstruction
+          - Generated sample
+          - Error map
+
+        qualitative:
+          - Several generated RT fields
+          - Visual comparison with DNS
+
+        quantitative:
+          - Loss curves
+          - FID / metrics
+          - Physical statistics
+          - Spectrum comparison
+
+        comparison:
+          - Classical diffusion
+          - Wavelet diffusion
+
+      emphasis:
+        - Large figures
+        - Minimal text
+
+      importance: "Main results"
+
+    block7:
+      title: "References"
+
+      objective: >
+        Quote the most relevant references
+
+      importance: "Bibliography"
+
+    block8:
+      title: "Future Work"
+
+      objective: >
+        Present possible extensions.
+
+      bullet_points:
+        - Conditional diffusion models.
+        - Larger datasets.
+        - Higher image resolutions.
+        - Rare-event generation.
+        - Inverse design of experiments.
+        - Experimental validation.
+
+      illustration:
+        type: "Simple roadmap"
+
+      importance: "Perspectives"
+
+design_guidelines:
+
+  philosophy:
+    - Tell a scientific story.
+    - Focus on the contribution.
+    - Minimize long paragraphs.
+    - Maximize figures.
+
+  text_ratio:
+    context: 20%
+    methodology: 30%
+    results: 50%
+
+  visual_priority:
+    - Large central pipeline.
+    - Large results section.
+    - Consistent colors.
+    - Minimal equations.
+    - One key message per block.
+
+  reading_order:
+    - Physical problem
+    - Why wavelets?
+    - Why diffusion?
+    - Proposed method
+    - Experimental setup
+    - Results
+    - References
+    - Future work
+
+  central_figure:
+    description: >
+      RT Field
+          ↓
+      Wavelet Transform
+          ↓
+      Cascade of Diffusion Models
+          ↓
+      Inverse Wavelet Transform
+          ↓
+      Generated RT Field
+
+  overall_message: >
+    Multi-scale wavelet representations combined with score-based diffusion
+    provide a hierarchical framework for generative modeling of
+    Rayleigh–Taylor instability fields.

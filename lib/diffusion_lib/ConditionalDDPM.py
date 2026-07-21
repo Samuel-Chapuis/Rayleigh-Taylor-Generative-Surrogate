@@ -26,6 +26,21 @@ class WaveletConditionalDDPM(nn.Module):
         coeff_mean=None,
         coeff_std=None,
     ):
+        """
+        Initialise un DDPM conditionnel sur un prior wavelet basse frequence.
+
+        Args:
+            network: Reseau qui predit le bruit sur les canaux de details.
+            n_steps: Nombre de pas du processus de diffusion.
+            min_beta: Valeur initiale du calendrier lineaire des variances.
+            max_beta: Valeur finale du calendrier lineaire des variances.
+            device: Device PyTorch utilise pour le modele et les tenseurs.
+            prior_channels: Nombre de canaux conserves comme condition.
+            target_channels: Nombre de canaux de details diffuses.
+            image_hw: Resolution spatiale des coefficients wavelet.
+            coeff_mean: Moyenne canal par canal pour denormaliser les coefficients.
+            coeff_std: Ecart type canal par canal pour normaliser les coefficients.
+        """
         super().__init__()
         self.n_steps = n_steps
         self.device = device
@@ -46,6 +61,17 @@ class WaveletConditionalDDPM(nn.Module):
         self.register_buffer("coeff_std", coeff_std.float().reshape(1, -1, 1, 1))
 
     def forward(self, details_0, t, eta=None):
+        """
+        Applique le processus direct uniquement aux canaux de details.
+
+        Args:
+            details_0: Details propres de forme ``(N, target_channels, H, W)``.
+            t: Pas de diffusion pour chaque element du batch.
+            eta: Bruit gaussien optionnel. Si ``None``, il est echantillonne.
+
+        Returns:
+            Details bruites au pas ``t``.
+        """
         n, c, h, w = details_0.shape
         if c != self.target_channels:
             raise ValueError(f"Details attendus avec {self.target_channels} canaux, recu {c}.")
@@ -58,10 +84,31 @@ class WaveletConditionalDDPM(nn.Module):
         return a_bar.sqrt() * details_0 + (1 - a_bar).sqrt() * eta
 
     def backward(self, noisy_details, t, prior):
+        """
+        Predit le bruit des details conditionnellement au prior.
+
+        Args:
+            noisy_details: Details bruites de forme ``(N, target_channels, H, W)``.
+            t: Pas de diffusion associes au batch.
+            prior: Canaux conditionnants, typiquement ``cA``.
+
+        Returns:
+            Estimation du bruit ajoute aux details.
+        """
         model_input = torch.cat((prior, noisy_details), dim=1)
         return self.network(model_input, t)
 
     def sample(self, prior, device=None):
+        """
+        Genere des details par diffusion inverse conditionnee par le prior.
+
+        Args:
+            prior: Tenseur conditionnant de forme ``(N, prior_channels, H, W)``.
+            device: Device optionnel pour l'echantillonnage.
+
+        Returns:
+            Coefficients concatenes ``(prior, details_generes)``.
+        """
         if device is None:
             device = self.device
 
@@ -88,12 +135,15 @@ class WaveletConditionalDDPM(nn.Module):
         return torch.cat((prior, details), dim=1)
 
     def denormalize_coeffs(self, coeffs):
+        """Repasse des coefficients normalises vers l'echelle physique/statistique."""
         return coeffs * self.coeff_std + self.coeff_mean
 
     def normalize_coeffs(self, coeffs):
+        """Normalise des coefficients avec les statistiques stockees dans le modele."""
         return (coeffs - self.coeff_mean) / self.coeff_std
 
     def _flatten_time(self, t):
+        """Convertit un pas de temps scalaire ou tensoriel en vecteur ``long``."""
         if not isinstance(t, torch.Tensor):
             t = torch.tensor(t, device=self.device)
         return t.to(self.device).long().reshape(-1)

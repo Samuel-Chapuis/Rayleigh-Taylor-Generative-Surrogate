@@ -1,47 +1,66 @@
 # %%
 from dataclasses import dataclass
+from logging import config
 from pathlib import Path
 import random
 
+from networkx import config
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, TensorDataset
-from tqdm.auto import tqdm
 
 from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
 from lib.diffusion_lib.Logger import Logger
-from lib.diffusion_lib.UNet import UNet
 from lib.diffusion_lib.utils import get_best_device
-from lib.diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
-from lib.diffusion_lib.training_loop import *
 
+# Ces imports gardent les anciens points d'acces wave_diffusion.<fonction>.
+from lib.diffusion_lib.schedules import (
+    SCHEDULE_REFERENCE_STEPS,
+    diffusion_steps_from_snr,
+    get_diffusion_schedule,
+    linear_beta_schedule,
+    snr_from_alpha_bar,
+)
+from lib.diffusion_lib.training_loop import split_wave_batch, wave_training_loop
+from lib.diffusion_lib.wavelet_utils import (
+    build_wavelet_model,
+    channel_stats,
+    do_diffusion_until_snr,
+    load_wave_tensor,
+    make_loader,
+    normalize_with_stats,
+    show_wave_channels,
+)
+# %%
 
 @dataclass(frozen=True)
 class Config:
     device: torch.device = None
 
+    wavelet_level: int = 2
+
     # Parametres generaux
     seed: int = 0
     store_path_dataset: str = "data/RT64"
-    wavelet_level: int = 1
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img/wave")
     batch_size: int = 128
     do_train: bool = False
-    n_epochs: int = 1000
+    n_epochs: int = 1
     lr: float = 1e-3
-    store_path: str = "outputs/model/wave_j1_RT64.pt"
     input_path: str = ""
-    log_path: str = "outputs/logs/wave_j1_RT64.log"
-    csv_path: str = "outputs/logs/wave_j1_RT64.csv"
-    config_path: str = "outputs/model/wave_j1_RT64_config.json"
+
+
+    store_path: str = "" 
+    log_path: str = ""
+    csv_path: str = ""
+    config_path: str = "" 
 
     # Parametres du DDPM conditionnel wavelet
     time_emb_dim: int = 100
-    n_steps: int = 1000
+    snr_threshold: float = 2
     min_beta: float = 1e-4
     max_beta: float = 0.02
+    schedule_reference_steps: int = SCHEDULE_REFERENCE_STEPS
 
     # U-Net: entree = prior cA + details bruites, sortie = bruit sur les details.
     prior_channels: int = 1
@@ -51,6 +70,27 @@ class Config:
     unet_base_channels: int = 10
 
     def __post_init__(self):
+        object.__setattr__(
+            self,
+            "store_path",
+            f"outputs/model/wave_j{self.wavelet_level}_RT64.pt",
+        )
+        object.__setattr__(
+            self,
+            "log_path",
+            f"outputs/logs/wave_j{self.wavelet_level}_RT64.log",
+        )
+        object.__setattr__(
+            self,
+            "csv_path",
+            f"outputs/logs/wave_j{self.wavelet_level}_RT64.csv",
+        )
+        object.__setattr__(
+            self,
+            "config_path",
+            f"outputs/model/wave_j{self.wavelet_level}_RT64_config.json",
+        )
+
         random.seed(self.seed)
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
@@ -63,94 +103,60 @@ class Config:
         return self.prior_channels + self.target_channels
 
     @property
+    def n_steps(self):
+        n_steps, _ = diffusion_steps_from_snr(
+            self.snr_threshold,
+            min_beta=self.min_beta,
+            max_beta=self.max_beta,
+            reference_steps=self.schedule_reference_steps,
+        )
+        return n_steps
+
+    @property
+    def effective_max_beta(self):
+        _, effective_max_beta = diffusion_steps_from_snr(
+            self.snr_threshold,
+            min_beta=self.min_beta,
+            max_beta=self.max_beta,
+            reference_steps=self.schedule_reference_steps,
+        )
+        return effective_max_beta
+
+    @property
     def train_path(self):
+        print(f"Training path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_training.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_training.pt"
+        
 
     @property
     def val_path(self):
+        print(f"Validation path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_validation.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_validation.pt"
 
     @property
     def test_path(self):
+        print(f"Test path: {Path(self.store_path_dataset) / 'processed' / f'j{self.wavelet_level}_test.pt'}")
         return Path(self.store_path_dataset) / "processed" / f"j{self.wavelet_level}_test.pt"
-
-
-
-
-
-def load_wave_tensor(path, expected_channels=4):
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Dataset wavelet introuvable: {path}. Lance wave_data_mining_CEA.py "
-            f"pour generer les fichiers j*_training.pt / validation.pt / test.pt."
-        )
-
-    data = torch.load(path, map_location="cpu").float()
-    if data.ndim != 4:
-        raise ValueError(f"Dataset attendu en (N, C, H, W), recu {tuple(data.shape)}.")
-    if data.shape[1] != expected_channels:
-        raise ValueError(f"Dataset attendu avec {expected_channels} canaux, recu {data.shape[1]}.")
-    return data
-
-
-def channel_stats(data):
-    mean = data.mean(dim=(0, 2, 3))
-    std = data.std(dim=(0, 2, 3)).clamp_min(1e-6)
-    return mean, std
-
-
-def normalize_with_stats(data, mean, std):
-    return (data - mean.reshape(1, -1, 1, 1)) / std.reshape(1, -1, 1, 1)
-
-
-def make_loader(data, batch_size, shuffle):
-    return DataLoader(TensorDataset(data), batch_size=batch_size, shuffle=shuffle, drop_last=False)
-
-
-def show_wave_channels(viz, coeffs, title):
-    """
-    Sauvegarde une grille simple: chaque coefficient devient une image affichee.
-    Utile pour verifier cA/cH/cV/cD sans modifier ImageVisualizer.
-    """
-    n = min(8, len(coeffs))
-    images = coeffs[:n].reshape(n * coeffs.shape[1], 1, coeffs.shape[2], coeffs.shape[3])
-    viz.show_images(images, title)
-
-
-def build_model(config, image_hw, coeff_mean, coeff_std):
-    network = UNet(
-        n_steps=config.n_steps,
-        time_emb_dim=config.time_emb_dim,
-        size=image_hw[0],
-        in_channels=config.input_channels,
-        out_channels=config.target_channels,
-        depth=config.unet_depth,
-        blocks_per_level=config.unet_blocks_per_level,
-        base_channels=config.unet_base_channels,
-    )
-    return WaveletConditionalDDPM(
-        network,
-        n_steps=config.n_steps,
-        min_beta=config.min_beta,
-        max_beta=config.max_beta,
-        device=config.device,
-        prior_channels=config.prior_channels,
-        target_channels=config.target_channels,
-        image_hw=image_hw,
-        coeff_mean=coeff_mean,
-        coeff_std=coeff_std,
-    ).to(config.device)
 
 
 # %%
 def main():
     config = Config()
+    print(
+        "Diffusion schedule from SNR: "
+        f"snr_threshold={config.snr_threshold}, "
+        f"n_steps={config.n_steps}, "
+        f"min_beta={config.min_beta:g}, "
+        f"effective_max_beta={config.effective_max_beta:g} "
+        f"(max_beta_limit={config.max_beta:g})"
+    )
     logger = Logger(config.log_path, config.csv_path)
 
-    expected_channels = config.prior_channels + config.target_channels 
+    expected_channels = config.prior_channels + config.target_channels
     train_raw = load_wave_tensor(config.train_path, expected_channels=expected_channels)
     val_raw = load_wave_tensor(config.val_path, expected_channels=expected_channels)
+
+    print(f"Train data shape: {train_raw.shape}, Val data shape: {val_raw.shape}")
 
     coeff_mean, coeff_std = channel_stats(train_raw)
     train_data = normalize_with_stats(train_raw, coeff_mean, coeff_std)
@@ -170,9 +176,12 @@ def main():
         "store_path": config.store_path,
         "input_path": config.input_path,
         "time_emb_dim": config.time_emb_dim,
+        "snr_threshold": config.snr_threshold,
         "n_steps": config.n_steps,
+        "schedule_reference_steps": config.schedule_reference_steps,
         "min_beta": config.min_beta,
-        "max_beta": config.max_beta,
+        "max_beta": config.effective_max_beta,
+        "max_beta_limit": config.max_beta,
         "coeff_chw": (expected_channels, *image_hw),
         "prior_channels": config.prior_channels,
         "target_channels": config.target_channels,
@@ -191,7 +200,7 @@ def main():
 
     show_wave_channels(config.viz, train_data, f"wave_j{config.wavelet_level}_first_batch_normalized")
 
-    ddpm = build_model(config, image_hw, coeff_mean, coeff_std)
+    ddpm = build_wavelet_model(config, image_hw, coeff_mean, coeff_std)
     if config.input_path:
         input_path = Path(config.input_path)
         if not input_path.exists():

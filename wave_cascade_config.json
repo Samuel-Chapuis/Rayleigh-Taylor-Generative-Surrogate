@@ -1,0 +1,57 @@
+{
+  "levels": [1, 2, 3],
+
+  "model": {
+    "seed": 0,
+    "store_path_dataset": "data/RT64",
+    "experiment_name": "RT64",
+
+    "time_emb_dim": 100,
+    "n_steps": null,
+    "snr_threshold": 2.0,
+    "min_beta": 0.0001,
+    "max_beta": 0.02,
+    "schedule_reference_steps": 1000,
+
+    "prior_channels": 1,
+    "target_channels": 3,
+    "unet_depth": 2,
+    "unet_blocks_per_level": 2,
+    "unet_base_channels": 10,
+
+    "model_dir": "saved_model/cascade",
+    "log_dir": "outputs/logs",
+    "image_dir": "outputs/img/wave"
+  },
+
+  "train": {
+    "enabled": true,
+    "batch_size": 128,
+    "n_epochs": 100,
+    "lr": 0.001,
+    "input_path": "",
+    "preview_samples": 8
+  },
+
+  "generate": {
+    "enabled": true,
+    "dataset": "validation",
+    "batch_size": 64,
+    "n_batches": 1,
+    "n_samples": null,
+    "wavelet": "db1",
+    "border_mode": "periodization",
+    "initial_ca_source": "generated",
+    "initial_ca_config_path": "saved_model/cascade/ca3_RT64_config.json",
+    "initial_ca_checkpoint_path": "saved_model/cascade/ca3_RT64.pt",
+    "export_generated_initial_ca": true,
+    "output_dir": "outputs/generated/cascade",
+    "save_intermediate": true
+  },
+
+  "level_overrides": {
+    "1": {},
+    "2": {},
+    "3": {}
+  }
+}

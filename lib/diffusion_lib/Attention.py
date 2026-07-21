@@ -28,6 +28,14 @@ class AttentionBlock(nn.Module):
     """
 
     def __init__(self, channels, num_heads=1, use_checkpoint=False):
+        """
+        Initialise le bloc d'attention spatiale.
+
+        Args:
+            channels: Nombre de canaux du tenseur d'entree.
+            num_heads: Nombre de tetes d'attention.
+            use_checkpoint: Active le checkpointing gradient pour reduire la memoire.
+        """
         super().__init__()
         self.channels = channels
         self.num_heads = num_heads
@@ -39,9 +47,24 @@ class AttentionBlock(nn.Module):
         self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
 
     def forward(self, x):
+        """
+        Applique l'attention avec checkpointing optionnel.
+
+        Args:
+            x: Tenseur de forme ``(N, C, *spatial)``.
+
+        Returns:
+            Tenseur de meme forme que ``x``.
+        """
         return checkpoint(self._forward, (x,), self.parameters(), self.use_checkpoint)
 
     def _forward(self, x):
+        """
+        Calcule l'attention en aplatissant les dimensions spatiales.
+
+        Les positions spatiales deviennent la dimension de sequence ``T`` pour
+        l'attention QKV, puis la forme spatiale initiale est restauree.
+        """
         b, c, *spatial = x.shape
         x = x.reshape(b, c, -1)
         qkv = self.qkv(self.norm(x))

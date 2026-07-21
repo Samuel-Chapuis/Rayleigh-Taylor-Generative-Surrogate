@@ -6,23 +6,28 @@ __pycache__/
 .venv/*
 .vscode/*
 data/*
+
 datasets/*
 models/*
+saved_models/
+saved_models/*
 exemples/nt_toolbox/*
 
 exemples/datasets/
+exemples/generated_data/
 exemples/saved_models/
 img/*
 outputs/*
 wheelhouse/*
 
-analyse_reslutat/
 analyse_reslutat/res/
 doc/presentation/model/
 generated/
 wsgm_natural_images/
 
 lib/Phy
+
+doc/poster_template
 
 # Latex Files
 *.aux

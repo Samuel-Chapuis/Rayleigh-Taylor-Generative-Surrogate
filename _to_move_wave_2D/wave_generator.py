@@ -11,21 +11,20 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from lib.diffusion_lib.UNet import UNet
-from _to_move_wave_2D.wave_diffusion import (
-    WaveletConditionalDDPM,
-    load_wave_tensor,
-    normalize_with_stats,
-)
+from lib.diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
+from _to_move_wave_2D.wave_diffusion import load_wave_tensor, normalize_with_stats
 
 # ============================================================
 # Configuration
 # ============================================================
 
-CONFIG_PATH = PROJECT_ROOT / "outputs/model/wave_j1_RT64_config.json"
+DECOMPOSITION = "j1"
+
+CONFIG_PATH = PROJECT_ROOT / f"outputs/model/wave_{DECOMPOSITION}_RT64_config.json"
 
 OUTPUT_DIR = PROJECT_ROOT / "outputs/generated"
 
-OUTPUT_DATASET = OUTPUT_DIR / "generated_wavelet_dataset.pt"
+OUTPUT_DATASET = OUTPUT_DIR / f"{DECOMPOSITION}_gen_wave_data.pt"
 
 DATASET = "validation"          # train / validation / test
 

@@ -247,6 +247,19 @@ class UNet(nn.Module):
         return out
 
     def _make_block_stack(self, size, in_channels, out_channels, num_blocks, final_normalize=True):
+        """
+        Construit une pile de blocs convolutionnels a resolution fixe.
+
+        Args:
+            size: Taille spatiale carree traitee par les blocs.
+            in_channels: Nombre de canaux en entree du premier bloc.
+            out_channels: Nombre de canaux en sortie de chaque bloc.
+            num_blocks: Nombre de blocs a empiler.
+            final_normalize: Desactive la normalisation du dernier bloc si faux.
+
+        Returns:
+            Sequence PyTorch de blocs convolutionnels.
+        """
         blocks = []
         current_channels = in_channels
         for block_idx in range(num_blocks):
@@ -280,9 +293,20 @@ class UNet(nn.Module):
         )
 
     def _conv_size(self, size, kernel_size, stride, padding, dilation=1):
+        """
+        Calcule la taille spatiale de sortie d'une convolution 2D.
+
+        La formule suit la convention PyTorch pour une dimension spatiale.
+        """
         return ((size + 2 * padding - dilation * (kernel_size - 1) - 1) // stride) + 1
 
     def _resize_to(self, x, target):
+        """
+        Redimensionne ``x`` vers la resolution spatiale de ``target`` si besoin.
+
+        Ce correctif evite les erreurs de concaténation des skip connections
+        quand les resolutions impaires produisent un decalage d'un pixel.
+        """
         if x.shape[-2:] == target.shape[-2:]:
             return x
         return F.interpolate(x, size=target.shape[-2:], mode="nearest")
