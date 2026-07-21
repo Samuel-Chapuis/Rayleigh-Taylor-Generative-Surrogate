@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 from dataclasses import asdict, dataclass, fields
@@ -14,10 +15,12 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from lib.diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
+from lib.diffusion_lib.DDPM import DDPM
 from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
 from lib.diffusion_lib.Logger import Logger
 from lib.diffusion_lib.UNet import UNet
@@ -55,6 +58,7 @@ class LevelConfig:
     input_path: str = ""
 
     time_emb_dim: int = 100
+    manual_n_steps: int | None = None
     snr_threshold: float = 2.0
     min_beta: float = 1e-4
     max_beta: float = 0.02
@@ -77,6 +81,11 @@ class LevelConfig:
 
     @property
     def n_steps(self) -> int:
+        if self.manual_n_steps is not None:
+            if int(self.manual_n_steps) < 1:
+                raise ValueError(f"manual_n_steps doit être >= 1, reçu {self.manual_n_steps}.")
+            return int(self.manual_n_steps)
+
         n_steps, _ = diffusion_steps_from_snr(
             self.snr_threshold,
             min_beta=self.min_beta,
@@ -87,6 +96,9 @@ class LevelConfig:
 
     @property
     def effective_max_beta(self) -> float:
+        if self.manual_n_steps is not None:
+            return self.max_beta
+
         _, effective_max_beta = diffusion_steps_from_snr(
             self.snr_threshold,
             min_beta=self.min_beta,
@@ -182,13 +194,19 @@ def make_level_config(
     for section_name in ("model", "train"):
         section = run_config.get(section_name, {})
         for key, value in section.items():
+            if key == "n_steps":
+                values["manual_n_steps"] = value
+                continue
             if key in allowed:
                 values[key] = value
 
     # Une surcharge locale permet par exemple un batch_size différent à j1.
     override = run_config.get("level_overrides", {}).get(str(level), {})
     for key, value in override.items():
-        if key not in allowed:
+        if key == "n_steps":
+            values["manual_n_steps"] = value
+            continue
+        if key not in allowed and key != "n_steps":
             raise ValueError(f"Paramètre de niveau inconnu pour j{level}: {key}")
         values[key] = value
 
@@ -227,6 +245,8 @@ def experiment_config_dict(
         "store_path": config.store_path,
         "input_path": config.input_path,
         "time_emb_dim": config.time_emb_dim,
+        "schedule_mode": "manual" if config.manual_n_steps is not None else "snr",
+        "manual_n_steps": config.manual_n_steps,
         "snr_threshold": config.snr_threshold,
         "n_steps": config.n_steps,
         "schedule_reference_steps": config.schedule_reference_steps,
@@ -362,6 +382,12 @@ def load_saved_model_config(level_config: LevelConfig) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as file:
         config = json.load(file)
     config["coeff_chw"] = tuple(config["coeff_chw"])
+
+    checkpoint_path = PROJECT_ROOT / config["store_path"]
+    if not checkpoint_path.exists():
+        sibling_checkpoint = path.with_name(path.name.replace("_config.json", ".pt"))
+        if sibling_checkpoint.exists():
+            config["store_path"] = str(sibling_checkpoint.relative_to(PROJECT_ROOT))
     return config
 
 
@@ -403,6 +429,111 @@ def build_model_from_saved_config(
     ddpm.to(device)
     ddpm.eval()
     return ddpm
+
+
+def load_unconditional_ca_config(
+    config_path: str | Path,
+    checkpoint_path: str | Path | None = None,
+) -> dict[str, Any]:
+    path = PROJECT_ROOT / config_path
+    if not path.exists():
+        raise FileNotFoundError(f"Configuration du modèle cA non conditionné introuvable : {path}")
+
+    with path.open("r", encoding="utf-8") as file:
+        config = json.load(file)
+
+    config["image_chw"] = tuple(config["image_chw"])
+    if int(config.get("image_chw", (0,))[0]) != 1:
+        raise ValueError(
+            "La cascade attend un modèle non conditionné générant un seul canal cA, "
+            f"reçu image_chw={config['image_chw']}."
+        )
+    if checkpoint_path is not None:
+        config["store_path"] = str(checkpoint_path)
+    return config
+
+
+def build_unconditional_ca_model(
+    config: dict[str, Any],
+    device: torch.device,
+) -> DDPM:
+    image_chw = tuple(config["image_chw"])
+    network = UNet(
+        n_steps=int(config["n_steps"]),
+        time_emb_dim=int(config["time_emb_dim"]),
+        size=int(image_chw[1]),
+        in_channels=int(image_chw[0]),
+        out_channels=config.get("unet_out_channels"),
+        depth=int(config["unet_depth"]),
+        blocks_per_level=int(config["unet_blocks_per_level"]),
+        base_channels=int(config["unet_base_channels"]),
+    )
+    ddpm = DDPM(
+        network,
+        n_steps=int(config["n_steps"]),
+        min_beta=float(config["min_beta"]),
+        max_beta=float(config["max_beta"]),
+        device=device,
+        image_chw=image_chw,
+    )
+
+    checkpoint_path = PROJECT_ROOT / config["store_path"]
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint du modèle cA non conditionné introuvable : {checkpoint_path}")
+
+    ddpm.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    ddpm.to(device)
+    ddpm.eval()
+    return ddpm
+
+
+def denormalize_unconditional_ca(
+    sampled_ca: torch.Tensor,
+    config: dict[str, Any],
+) -> torch.Tensor:
+    sampled_ca = sampled_ca.detach().cpu().float()
+    if not bool(config.get("normalize_ca", False)):
+        return sampled_ca
+
+    mean = config.get("ca_mean")
+    std = config.get("ca_std")
+    if mean is None or std is None:
+        raise ValueError("normalize_ca=True mais ca_mean/ca_std sont absents de la config cA.")
+
+    std_tensor = torch.tensor(float(std), dtype=sampled_ca.dtype)
+    if not torch.isfinite(std_tensor) or std_tensor <= 0:
+        raise ValueError(f"Écart-type cA invalide dans la config non conditionnée : {std}.")
+    return sampled_ca * std_tensor + float(mean)
+
+
+def generate_unconditional_ca(
+    ca_config: dict[str, Any],
+    device: torch.device,
+    n_samples: int,
+    batch_size: int,
+) -> torch.Tensor:
+    ddpm = build_unconditional_ca_model(ca_config, device)
+    generated_batches = []
+
+    with torch.no_grad():
+        n_done = 0
+        batch_index = 0
+        while n_done < n_samples:
+            current_batch_size = min(batch_size, n_samples - n_done)
+            batch_index += 1
+            print(
+                f"cA non conditionné: génération batch {batch_index}, "
+                f"{current_batch_size} échantillons"
+            )
+            sampled = ddpm.sample(n_samples=current_batch_size, device=device)
+            generated_batches.append(denormalize_unconditional_ca(sampled, ca_config))
+            n_done += current_batch_size
+
+    generated_ca = torch.cat(generated_batches, dim=0)
+    del ddpm
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return generated_ca
 
 
 def normalize_approximation(ca: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
@@ -541,7 +672,22 @@ def generate_cascade(
     border_mode = generation.get("border_mode", "periodization")
     output_dir = PROJECT_ROOT / generation.get("output_dir", "outputs/generated/cascade")
     save_intermediate = bool(generation.get("save_intermediate", True))
+    initial_ca_source = generation.get("initial_ca_source", "dataset")
+    initial_ca_config_path = generation.get(
+        "initial_ca_config_path",
+        "outputs/model/ca3_RT64_config.json",
+    )
+    initial_ca_checkpoint_path = generation.get("initial_ca_checkpoint_path")
+    export_generated_initial_ca = bool(
+        generation.get("export_generated_initial_ca", initial_ca_source == "generated")
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if initial_ca_source not in {"dataset", "generated"}:
+        raise ValueError(
+            "generate.initial_ca_source doit valoir 'dataset' ou 'generated', "
+            f"reçu {initial_ca_source!r}."
+        )
 
     coarsest_level = levels[0]
     coarsest_level_config = make_level_config(run_config, coarsest_level, device)
@@ -569,11 +715,55 @@ def generate_cascade(
     if n_samples <= 0:
         raise ValueError("Aucun échantillon sélectionné pour la génération.")
 
-    current_ca = coarsest_coeffs[:n_samples, 0:1].float().cpu()
+    reference_ca = coarsest_coeffs[:n_samples, 0:1].float().cpu()
     if save_intermediate:
+        torch.save(reference_ca, output_dir / f"j{coarsest_level}_reference_cA.pt")
+
+    generated_initial_ca = None
+    if initial_ca_source == "generated" or export_generated_initial_ca:
+        ca_config = load_unconditional_ca_config(
+            initial_ca_config_path,
+            checkpoint_path=initial_ca_checkpoint_path,
+        )
+        expected_level = int(ca_config.get("wavelet_level", coarsest_level))
+        if expected_level != coarsest_level:
+            raise ValueError(
+                f"Le modèle non conditionné génère cA{expected_level}, "
+                f"mais la cascade démarre à j{coarsest_level}."
+            )
+        if tuple(ca_config["image_chw"][1:]) != tuple(reference_ca.shape[2:]):
+            raise ValueError(
+                "Résolution du modèle cA non conditionné incompatible : "
+                f"config={tuple(ca_config['image_chw'][1:])}, "
+                f"cascade={tuple(reference_ca.shape[2:])}."
+            )
+
+        generated_initial_ca = generate_unconditional_ca(
+            ca_config,
+            device=device,
+            n_samples=n_samples,
+            batch_size=batch_size,
+        )
+        if generated_initial_ca.shape != reference_ca.shape:
+            raise RuntimeError(
+                "Le modèle cA non conditionné a produit une forme incompatible : "
+                f"{tuple(generated_initial_ca.shape)} != {tuple(reference_ca.shape)}."
+            )
+
+    if initial_ca_source == "generated":
+        current_ca = generated_initial_ca
+    else:
+        current_ca = reference_ca
+
+    if save_intermediate:
+        if generated_initial_ca is not None:
+            torch.save(generated_initial_ca, output_dir / f"j{coarsest_level}_generated_initial_cA.pt")
         torch.save(current_ca, output_dir / f"j{coarsest_level}_initial_cA.pt")
 
-    print(f"\nDébut de la cascade {levels}: cA initial={tuple(current_ca.shape)}")
+    print(
+        f"\nDébut de la cascade {levels}: "
+        f"cA initial={tuple(current_ca.shape)} source={initial_ca_source}"
+    )
 
     for level in levels:
         print(f"\n{'-' * 72}\nGénération cascade j{level}\n{'-' * 72}")

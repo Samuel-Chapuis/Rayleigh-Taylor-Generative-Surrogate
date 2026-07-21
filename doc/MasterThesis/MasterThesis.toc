@@ -9,7 +9,7 @@
 \contentsline {subsection}{\numberline {1.2.1}Need for High-Fidelity Simulations}{11}{}%
 \contentsline {subsection}{\numberline {1.2.2}Numerical Solver and Simulation Setup}{11}{}%
 \contentsline {subsection}{\numberline {1.2.3}Dataset Characteristics and Limitations}{12}{}%
-\contentsline {chapter}{\numberline {2}Dimensionality Reduction and Multi-scale Representations}{14}{}%
+\contentsline {chapter}{\numberline {2}Dimensionality Reduction for Multi-scale Representations}{14}{}%
 \contentsline {section}{\numberline {2.1}Motivation}{14}{}%
 \contentsline {section}{\numberline {2.2}Fourier Transform}{15}{}%
 \contentsline {subsection}{\numberline {2.2.1}Spectral Decomposition}{15}{}%
