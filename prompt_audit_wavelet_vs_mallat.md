@@ -1,3 +1,4 @@
+
 Contexte
 
 Je veux analyser et améliorer mon implémentation de diffusion en ondelettes dans `wave_diffusion_cascade.py` en la comparant au code de référence issu du matériel supplémentaire de Mallat dans `wavelet_score_based_generative-Supplementary Material/wsgm_gaussian_phi4`.
