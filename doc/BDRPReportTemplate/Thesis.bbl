@@ -8,12 +8,10 @@
 \bibitem[Anderson(1982)]{ANDERSON1982313}
 Brian~D.O. Anderson.
 \newblock Reverse-time diffusion equation models.
-\newblock \emph{Stochastic Processes and their Applications}, 12\penalty0
-  (3):\penalty0 313--326, 1982.
+\newblock \emph{Stochastic Processes and their Applications}, 12\penalty0 (3):\penalty0 313--326, 1982.
 \newblock ISSN 0304-4149.
 \newblock \doi{https://doi.org/10.1016/0304-4149(82)90051-5}.
-\newblock URL
-  \url{https://www.sciencedirect.com/science/article/pii/0304414982900515}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/0304414982900515}.
 
 \bibitem[Ho et~al.(2020)Ho, Jain, and Abbeel]{Ho2020DDPM}
 Jonathan Ho, Ajay Jain, and Pieter Abbeel.
@@ -27,8 +25,7 @@ H.J. Kull.
 \newblock \emph{Physics Reports}, 206\penalty0 (5):\penalty0 197--325, 1991.
 \newblock ISSN 0370-1573.
 \newblock \doi{https://doi.org/10.1016/0370-1573(91)90153-D}.
-\newblock URL
-  \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
 
 \bibitem[Mallat(2009)]{Mallat2009}
 Stéphane Mallat.
@@ -52,19 +49,15 @@ Stephen~B. Pope.
 \newblock \emph{Turbulent Flows}.
 \newblock Cambridge University Press, 2000.
 
-\bibitem[Song et~al.(2020)Song, Sohl{-}Dickstein, Kingma, Kumar, Ermon, and
-  Poole]{Song2021SDE}
-Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano
-  Ermon, and Ben Poole.
-\newblock Score-based generative modeling through stochastic differential
-  equations.
+\bibitem[Song et~al.(2020)Song, Sohl{-}Dickstein, Kingma, Kumar, Ermon, and Poole]{Song2021SDE}
+Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole.
+\newblock Score-based generative modeling through stochastic differential equations.
 \newblock \emph{CoRR}, abs/2011.13456, 2020.
 \newblock URL \url{https://arxiv.org/abs/2011.13456}.
 
 \bibitem[Zhou(2017)]{zhou2017rti1}
 Ye~Zhou.
-\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow,
-  turbulence, and mixing. i.
+\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow, turbulence, and mixing. i.
 \newblock \emph{Physics Reports}, 720-722:\penalty0 1--136, 2017.
 
 \end{thebibliography}
