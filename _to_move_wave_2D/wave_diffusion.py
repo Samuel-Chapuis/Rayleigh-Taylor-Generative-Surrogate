@@ -9,20 +9,20 @@ import numpy as np
 import torch
 from torch.optim import Adam
 
-from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
-from lib.diffusion_lib.Logger import Logger
-from lib.diffusion_lib.utils import get_best_device
+from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.wavelet_diffusion_lib.Logger import Logger
+from lib.wavelet_diffusion_lib.utils import get_best_device
 
 # Ces imports gardent les anciens points d'acces wave_diffusion.<fonction>.
-from lib.diffusion_lib.schedules import (
+from lib.wavelet_diffusion_lib.schedules import (
     SCHEDULE_REFERENCE_STEPS,
     diffusion_steps_from_snr,
     get_diffusion_schedule,
     linear_beta_schedule,
     snr_from_alpha_bar,
 )
-from lib.diffusion_lib.training_loop import split_wave_batch, wave_training_loop
-from lib.diffusion_lib.wavelet_utils import (
+from lib.wavelet_diffusion_lib.training_loop import split_wave_batch, wave_training_loop
+from lib.wavelet_diffusion_lib.wavelet_utils import (
     build_wavelet_model,
     channel_stats,
     do_diffusion_until_snr,

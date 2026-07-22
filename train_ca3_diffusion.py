@@ -7,13 +7,13 @@ import numpy as np
 import torch
 from torch.optim import Adam
 
-from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
-from lib.diffusion_lib.Logger import Logger
-from lib.diffusion_lib.data_loader import wavelet_approximation_data_loader
-from lib.diffusion_lib.utils import get_best_device
-from lib.diffusion_lib.DDPM import DDPM
-from lib.diffusion_lib.UNet import UNet
-from lib.diffusion_lib.training_loop import training_loop
+from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.wavelet_diffusion_lib.Logger import Logger
+from lib.wavelet_diffusion_lib.data_loader import wavelet_approximation_data_loader
+from lib.wavelet_diffusion_lib.utils import get_best_device
+from lib.wavelet_diffusion_lib.DDPM import DDPM
+from lib.wavelet_diffusion_lib.UNet import UNet
+from lib.wavelet_diffusion_lib.training_loop import training_loop
 
 
 @dataclass(frozen=True)

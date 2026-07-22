@@ -19,18 +19,18 @@ os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from lib.diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
-from lib.diffusion_lib.DDPM import DDPM
-from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
-from lib.diffusion_lib.Logger import Logger
-from lib.diffusion_lib.UNet import UNet
-from lib.diffusion_lib.schedules import (
+from lib.wavelet_diffusion_lib.ConditionalDDPM import WaveletConditionalDDPM
+from lib.wavelet_diffusion_lib.DDPM import DDPM
+from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.wavelet_diffusion_lib.Logger import Logger
+from lib.wavelet_diffusion_lib.UNet import UNet
+from lib.wavelet_diffusion_lib.schedules import (
     SCHEDULE_REFERENCE_STEPS,
     diffusion_steps_from_snr,
 )
-from lib.diffusion_lib.training_loop import split_wave_batch, wave_training_loop
-from lib.diffusion_lib.utils import get_best_device
-from lib.diffusion_lib.wavelet_utils import (
+from lib.wavelet_diffusion_lib.training_loop import split_wave_batch, wave_training_loop
+from lib.wavelet_diffusion_lib.utils import get_best_device
+from lib.wavelet_diffusion_lib.wavelet_utils import (
     build_wavelet_model,
     channel_stats,
     load_wave_tensor,
