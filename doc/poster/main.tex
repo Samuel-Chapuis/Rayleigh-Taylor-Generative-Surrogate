@@ -40,13 +40,30 @@
 \setlist[itemize]{leftmargin=1.0em,itemsep=0.03em,topsep=0.02em}
 \renewcommand{\arraystretch}{1.13}
 
-\newcommand{\bodyfont}{\fontsize{21pt}{25pt}\selectfont}
-\newcommand{\smallbody}{\fontsize{18pt}{22pt}\selectfont}
-\newcommand{\reffont}{\fontsize{14pt}{17pt}\selectfont}
-\newcommand{\headfont}{\fontsize{29pt}{34pt}\selectfont}
-\newcommand{\titlefont}{\fontsize{47pt}{54pt}\selectfont}
-\newcommand{\authorfont}{\fontsize{29pt}{34pt}\selectfont}
-\newcommand{\institutefont}{\fontsize{23pt}{27pt}\selectfont}
+% ======================== Font-size parameters =========================
+% Change these values to globally resize the poster text hierarchy.
+\newcommand{\PosterBodySize}{24pt}
+\newcommand{\PosterBodyLeading}{29pt}
+\newcommand{\PosterSmallSize}{21pt}
+\newcommand{\PosterSmallLeading}{25pt}
+\newcommand{\PosterReferenceSize}{16pt}
+\newcommand{\PosterReferenceLeading}{19pt}
+\newcommand{\PosterHeadingSize}{31pt}
+\newcommand{\PosterHeadingLeading}{37pt}
+\newcommand{\PosterTitleSize}{47pt}
+\newcommand{\PosterTitleLeading}{54pt}
+\newcommand{\PosterAuthorSize}{30pt}
+\newcommand{\PosterAuthorLeading}{35pt}
+\newcommand{\PosterInstituteSize}{24pt}
+\newcommand{\PosterInstituteLeading}{29pt}
+
+\newcommand{\bodyfont}{\fontsize{\PosterBodySize}{\PosterBodyLeading}\selectfont}
+\newcommand{\smallbody}{\fontsize{\PosterSmallSize}{\PosterSmallLeading}\selectfont}
+\newcommand{\reffont}{\fontsize{\PosterReferenceSize}{\PosterReferenceLeading}\selectfont}
+\newcommand{\headfont}{\fontsize{\PosterHeadingSize}{\PosterHeadingLeading}\selectfont}
+\newcommand{\titlefont}{\fontsize{\PosterTitleSize}{\PosterTitleLeading}\selectfont}
+\newcommand{\authorfont}{\fontsize{\PosterAuthorSize}{\PosterAuthorLeading}\selectfont}
+\newcommand{\institutefont}{\fontsize{\PosterInstituteSize}{\PosterInstituteLeading}\selectfont}
 
 \newtcolorbox{posterbox}[2][]{
   enhanced,
@@ -139,12 +156,14 @@
 \begin{posterbox}[height=150mm,valign=top]{Physical Problem}
   \begin{minipage}[t]{0.54\linewidth}
     \vspace{0pt}
-    \badge{deepBlue}{Context} \quad Direct Numerical Simulations of Rayleigh--Taylor instability provide high-fidelity density fields, but their cost limits the number of available realizations.
+    \badge{deepBlue}{Context} \quad Rayleigh--Taylor instability (RTI) is a fundamental hydrodynamic instability that occurs when a dense fluid is accelerated by a lighter one, leading to complex mixing and turbulence. Direct Numerical Simulations (DNS) provide high-fidelity density fields, but their computational cost limits the number of available realizations.
+    \vspace{3px}
     \begin{itemize}
       \item RTI occurs when a dense fluid is accelerated by a lighter one; perturbations grow into bubbles, spikes and turbulent mixing.
       \item The flow is nonlinear and strongly multi-scale: large coherent structures coexist with sharp interfaces and localized fluctuations.
-      \item Goal: learn the distribution of two-dimensional RTI density fields and generate new physically plausible samples.
     \end{itemize}
+    \vspace{3px}
+    \badge{deepBlue}{Goal} \quad learn the distribution of two-dimensional RTI density fields and generate new physically plausible samples.
   \end{minipage}
   \hfill
   \begin{minipage}[t]{0.45\linewidth}
@@ -156,7 +175,7 @@
 \end{posterbox}
 
 \begin{minipage}[t]{0.492\linewidth}
-\begin{posterbox}[height=166mm,valign=top]{Multi-resolution Representation}
+\begin{posterbox}[height=170mm,valign=top]{Multi-resolution Representation}
   \begin{itemize}
     \item Fourier modes are natural for periodic flows, but they are global.
     \item Wavelets localize information both in space and scale.
@@ -170,7 +189,7 @@
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.492\linewidth}
-\begin{posterbox}[height=166mm,valign=top]{Score-Based Diffusion Models}
+\begin{posterbox}[height=170mm,valign=top]{Score-Based Diffusion Models}
   A diffusion model learns a reverse denoising process:
   \[
     x_t=\sqrt{\bar\alpha_t}x_0+\sqrt{1-\bar\alpha_t}\epsilon,
@@ -185,27 +204,9 @@
 \end{minipage}
 
 
-% \begin{posterbox}[height=150mm,valign=top]{Physical Problem}
-%   \begin{minipage}[t]{0.54\linewidth}
-%     \vspace{0pt}
-%     \badge{deepBlue}{Context} \quad Direct Numerical Simulations of Rayleigh--Taylor instability provide high-fidelity density fields, but their cost limits the number of available realizations.
-%     \begin{itemize}
-%       \item RTI occurs when a dense fluid is accelerated by a lighter one; perturbations grow into bubbles, spikes and turbulent mixing.
-%       \item The flow is nonlinear and strongly multi-scale: large coherent structures coexist with sharp interfaces and localized fluctuations.
-%       \item Goal: learn the distribution of two-dimensional RTI density fields and generate new physically plausible samples.
-%     \end{itemize}
-%   \end{minipage}
-%   \hfill
-%   \begin{minipage}[t]{0.45\linewidth}
-%     \vspace{0pt}
-%     \centering
-%     \includegraphics[height=130mm,keepaspectratio]{figures/RTI-Sebastien_Thevenin.png}
-%     \captionof{figure}{Temporal evolution of a Rayleigh--Taylor density field from DNS.}
-%   \end{minipage}
-% \end{posterbox}
 \vspace{8px}
-\begin{posterbox}[height=170mm,valign=top]{Hierarchical Wavelet Diffusion}
-  \begin{minipage}[t]{0.54\linewidth}
+\begin{posterbox}[height=220mm,valign=top]{Hierarchical Wavelet Diffusion}
+  \begin{minipage}[t]{0.49\linewidth}
     \vspace{0pt}
     \badge{teal}{Coarse prior} \quad The approximation coefficients $c_A$ are generated first, capturing the main vertical organization of the mixing zone.
     \begin{itemize}
@@ -220,10 +221,10 @@
     \end{itemize}
   \end{minipage}
   \hfill
-  \begin{minipage}[t]{0.45\linewidth}
+  \begin{minipage}[t]{0.5\linewidth}
     \vspace{0pt}
     \centering
-    \includegraphics[width=\linewidth,height=150mm,keepaspectratio]{figures/WaveletDiffusion.png}
+    \includegraphics[width=\linewidth,height=200mm,keepaspectratio]{figures/WaveletDiffusion.png}
     \captionof{figure}{Hierarchical wavelet diffusion: coarse approximation coefficients are generated first, then detail coefficients are synthesized conditionally.}
   \end{minipage}
 \end{posterbox}
@@ -231,36 +232,44 @@
 
 % \vspace{3px}
 \begin{minipage}[t]{0.37\linewidth}
-\begin{posterbox}[height=298mm,valign=top]{Experimental Setup}
+\begin{posterbox}[height=240mm,valign=top]{Experimental Setup}
   \smallbody
-  \begin{tabularx}{\linewidth}{>{\bfseries}p{0.31\linewidth}X}
-    Data & DNS Rayleigh--Taylor density snapshots, preprocessed as $64\times64$ images. \\
+  \begin{tabularx}{\linewidth}{>{\bfseries}p{0.29\linewidth}X}
+    Data & DNS Rayleigh--Taylor density snapshots, preprocessed as $64\times64$ fields. \\
     Splits & Training, validation and test tensors; validation contains 6528 fields. \\
-    Augmentation & Horizontal periodic translations and horizontal reflections. \\
-    Wavelets & 2D DWT, Daubechies-1 basis, levels $j=3,2,1$. \\
-    Models & Baseline DDPM in image space; conditional DDPMs for wavelet details. \\
-    Metrics & FID, domain-adapted PhyFID, vertical density profiles and fluctuation spectra. \\
+    Augmentation & Horizontal cyclic translations exploit the periodic direction; horizontal reflections preserve RTI symmetries while increasing sample diversity. \\
+    Wavelets & 2D DWT with Daubechies-1 and periodization; cascade levels $j=3,2,1$ with $c_A$ as prior and $(c_H,c_V,c_D)$ as details. \\
+    Cascade & One unconditional DDPM samples coarse $c_A$; conditional DDPMs synthesize details given the current approximation. \\
+    PhyFID & A convolutional autoencoder encoder is trained on reference RTI fields; validation features define $(\mu,\Sigma)$ for a Frechet distance in physical feature space. \\
+    Reference & Feature dimension 64, batch size 128, 600 PhyFID training epochs; evaluation compares generated ensembles to validation statistics. \\
   \end{tabularx}
-  \vspace{0.45em}
-  \includegraphics[width=\linewidth,height=85mm,keepaspectratio]{figures/phyfid_summary.png}
 \end{posterbox}
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.612\linewidth}
-\begin{posterbox}[height=298mm,valign=top]{Results}
-  \begin{minipage}[t]{0.55\linewidth}
+\begin{posterbox}[height=240mm,valign=top]{Results}
+  \begin{minipage}[t]{0.58\linewidth}
+    \vspace{0pt}
     \centering
-    \includegraphics[width=\linewidth,height=220mm,keepaspectratio]{figures/cascade_reconstruction_comparison.png}
+    \includegraphics[width=\linewidth,height=230mm,keepaspectratio]{figures/cascade_reconstruction_comparison.png}
   \end{minipage}
   \hfill
-  \begin{minipage}[t]{0.42\linewidth}
-    \centering
-    \includegraphics[width=\linewidth,height=95mm,keepaspectratio]{figures/cascade_generated_samples.png}
-    \vspace{0.3em}
+  \begin{minipage}[t]{0.38\linewidth}
+    \vspace{0pt}
+    \smallbody
+    \renewcommand{\arraystretch}{1.05}
+    \begin{tabularx}{\linewidth}{>{\bfseries}Xr}
+      Comparison & PhyFID \\
+      \hline
+      Validation vs. noise & 6.04 \\
+      Validation vs. direct DDPM & 0.132 \\
+      Validation vs. wavelet cascade & 3.26 \\
+    \end{tabularx}
+    \vspace{0.7em}
     \begin{itemize}
-      \item Direct DDPM captures the main vertical organization of the mixing zone and gives the best current PhyFID.
-      \item Wavelet cascade preserves the low-frequency morphology but produces rougher fine-scale details.
-      \item The coefficient-space formulation is useful diagnostically: artifacts can be assigned to specific scales.
+      \item Direct DDPM gives the strongest current feature-space score.
+      \item The wavelet cascade preserves coarse morphology but adds fine-scale artifacts.
+      \item Coefficient-space generation remains useful for scale-wise diagnostics.
     \end{itemize}
   \end{minipage}
 \end{posterbox}
