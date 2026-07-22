@@ -1,5 +1,5 @@
 {
-  "levels": [1, 2, 3],
+  "levels": [1],
 
   "model": {
     "seed": 0,
@@ -41,10 +41,10 @@
     "n_samples": null,
     "wavelet": "db1",
     "border_mode": "periodization",
-    "initial_ca_source": "generated",
+    "initial_ca_source": "dataset",
     "initial_ca_config_path": "saved_model/cascade/ca3_RT64_config.json",
     "initial_ca_checkpoint_path": "saved_model/cascade/ca3_RT64.pt",
-    "export_generated_initial_ca": true,
+    "export_generated_initial_ca": false,
     "output_dir": "outputs/generated/cascade",
     "save_intermediate": true
   },

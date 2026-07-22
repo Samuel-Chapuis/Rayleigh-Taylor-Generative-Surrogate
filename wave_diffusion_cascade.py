@@ -678,15 +678,28 @@ def generate_cascade(
         "outputs/model/ca3_RT64_config.json",
     )
     initial_ca_checkpoint_path = generation.get("initial_ca_checkpoint_path")
-    export_generated_initial_ca = bool(
-        generation.get("export_generated_initial_ca", initial_ca_source == "generated")
-    )
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if initial_ca_source not in {"dataset", "generated"}:
         raise ValueError(
             "generate.initial_ca_source doit valoir 'dataset' ou 'generated', "
             f"reçu {initial_ca_source!r}."
+        )
+
+    export_generated_initial_ca_requested = generation.get("export_generated_initial_ca")
+    if initial_ca_source == "dataset":
+        export_generated_initial_ca = False
+        if bool(export_generated_initial_ca_requested):
+            print(
+                "generate.export_generated_initial_ca=True ignoré car "
+                "generate.initial_ca_source='dataset': aucun modèle cA non conditionné "
+                "n'est requis."
+            )
+    else:
+        export_generated_initial_ca = bool(
+            True
+            if export_generated_initial_ca_requested is None
+            else export_generated_initial_ca_requested
         )
 
     coarsest_level = levels[0]

@@ -17,7 +17,7 @@ Plusieurs options possible,
 Ce fichier pilote `wave_diffusion_cascade.py` : entrainement des modeles conditionnes `wave_j*`, generation du `cA` initial non conditionne, puis reconstruction inverse en cascade.
 
 ### `levels`
-- `levels`: niveaux wavelet utilises. Le code les trie en ordre croissant pour l'entrainement et en ordre decroissant pour la generation. Doivent etre consecutifs, par exemple `[1, 2, 3]`.
+- `levels`: niveaux wavelet utilises. Le code les trie en ordre croissant pour l'entrainement et en ordre decroissant pour la generation. Si `generate.initial_ca_source="generated"`, les niveaux doivent former la cascade complete attendue par le modele `cA` initial, par exemple `[1, 2, 3]` avec un modele `cA3`. Si `generate.initial_ca_source="dataset"`, un seul niveau est possible, par exemple `[1]`: le `cA1` est lu directement depuis `processed/j1_{split}.pt`, puis seul le modele conditionne `j1` est utilise.
 
 ### `model`
 - `seed`: fixe les tirages aleatoires par niveau via `seed + level`.
@@ -53,10 +53,10 @@ Ce fichier pilote `wave_diffusion_cascade.py` : entrainement des modeles conditi
 - `n_samples`: nombre exact d'echantillons; prioritaire sur `n_batches` si non nul.
 - `wavelet`: ondelette utilisee par les transformees inverses `pywt.idwt2`.
 - `border_mode`: mode de bord PyWavelets pour les IDWT.
-- `initial_ca_source`: `dataset` utilise le vrai `cA` du split; `generated` utilise le modele non conditionne `cA`.
+- `initial_ca_source`: `dataset` utilise le vrai `cA` du split et ne charge pas de modele `cA` non conditionne; `generated` utilise le modele non conditionne `cA`.
 - `initial_ca_config_path`: config JSON du modele non conditionne qui genere le `cA` initial.
 - `initial_ca_checkpoint_path`: checkpoint du modele non conditionne; surcharge le `store_path` contenu dans sa config.
-- `export_generated_initial_ca`: genere et sauvegarde le `cA` non conditionne meme si `initial_ca_source=dataset`.
+- `export_generated_initial_ca`: genere et sauvegarde le `cA` non conditionne quand `initial_ca_source=generated`. Ce parametre est ignore quand `initial_ca_source=dataset`, afin que ce mode ne depende d'aucun modele `cA` anterieur.
 - `output_dir`: dossier des tenseurs generes.
 - `save_intermediate`: sauvegarde les tenseurs intermediaires (`details`, coefficients complets, `cA` reconstruits).
 
