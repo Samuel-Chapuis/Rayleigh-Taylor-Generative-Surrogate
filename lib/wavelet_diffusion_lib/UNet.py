@@ -9,17 +9,29 @@ class Block(nn.Module):
     """
     Bloc convolutionnel utilisé dans le U-Net.
 
-    Le bloc applique éventuellement une normalisation par couche, puis deux
+    Le bloc applique éventuellement une normalisation par canaux, puis deux
     convolutions successives séparées par une activation.
     """
 
-    def __init__(self, shape, in_c, out_c, kernel_size=3, stride=1, padding=1, activation=None, normalize=True):
+    def __init__(
+        self,
+        shape,
+        in_c,
+        out_c,
+        kernel_size=3,
+        stride=1,
+        padding=1,
+        activation=None,
+        normalize=True,
+        norm_type="group",
+        max_groups=8,
+    ):
         """
         Initialise un bloc convolutionnel.
 
         Args:
-            shape (tuple[int, int, int]): Forme attendue pour la normalisation
-                par couche sous la forme ``(C, H, W)``.
+            shape (tuple[int, int, int]): Forme ``(C, H, W)`` conservée pour
+                compatibilite avec l'ancienne LayerNorm.
             in_c (int): Nombre de canaux en entrée.
             out_c (int): Nombre de canaux en sortie.
             kernel_size (int, optional): Taille du noyau de convolution. Par défaut 3.
@@ -28,11 +40,14 @@ class Block(nn.Module):
                 Par défaut 1.
             activation (torch.nn.Module | None, optional): Fonction d'activation
                 à utiliser. Si `None`, `SiLU` est employée.
-            normalize (bool, optional): Indique si la normalisation par couche est
+            normalize (bool, optional): Indique si la normalisation est
                 activée. Par défaut True.
+            norm_type (str, optional): Type de normalisation. ``"group"`` est
+                translation-equivariant; ``"layer"`` garde l'ancien comportement.
+            max_groups (int, optional): Nombre maximal de groupes pour GroupNorm.
         """
         super(Block, self).__init__()
-        self.ln = nn.LayerNorm(shape)
+        self.norm = self._make_norm(shape, in_c, norm_type, max_groups)
         self.conv1 = nn.Conv2d(in_c, out_c, kernel_size, stride, padding)
         self.conv2 = nn.Conv2d(out_c, out_c, kernel_size, stride, padding)
         self.activation = nn.SiLU() if activation is None else activation
@@ -48,12 +63,25 @@ class Block(nn.Module):
         Returns:
             torch.Tensor: Tenseur transformé par le bloc.
         """
-        out = self.ln(x) if self.normalize else x
+        out = self.norm(x) if self.normalize else x
         out = self.conv1(out)
         out = self.activation(out)
         out = self.conv2(out)
         out = self.activation(out)
         return out
+
+    @staticmethod
+    def _make_norm(shape, channels, norm_type, max_groups):
+        if norm_type == "group":
+            num_groups = min(max_groups, channels)
+            while channels % num_groups != 0:
+                num_groups -= 1
+            return nn.GroupNorm(num_groups=num_groups, num_channels=channels)
+        if norm_type == "layer":
+            return nn.LayerNorm(shape)
+        if norm_type in {"none", None}:
+            return nn.Identity()
+        raise ValueError(f"norm_type inconnu: {norm_type!r}.")
 
 class UNet(nn.Module):
     """
@@ -74,6 +102,8 @@ class UNet(nn.Module):
         blocks_per_level=3,
         base_channels=10,
         channel_multipliers=None,
+        norm_type="group",
+        norm_max_groups=8,
     ):
         """
         Initialise le U-Net.
@@ -98,6 +128,9 @@ class UNet(nn.Module):
             channel_multipliers (list[int] | tuple[int, ...] | None, optional):
                 Multiplicateurs de canaux par niveau. Si ``None``, utilise
                 ``[1, 2, 4, ...]``. Par défaut None.
+            norm_type (str, optional): Normalisation des blocs convolutionnels.
+                ``"group"`` par défaut pour éviter les paramètres spatiaux.
+            norm_max_groups (int, optional): Nombre maximal de groupes.
         """
         super(UNet, self).__init__()
         if out_channels is None:
@@ -117,6 +150,8 @@ class UNet(nn.Module):
         self.depth = depth
         self.blocks_per_level = blocks_per_level
         self.base_channels = base_channels
+        self.norm_type = norm_type
+        self.norm_max_groups = norm_max_groups
 
         if channel_multipliers is None:
             channel_multipliers = tuple(2 ** level for level in range(depth))
@@ -142,9 +177,9 @@ class UNet(nn.Module):
 
         # Embedding temporel fixe: t -> vecteur sinusoidal, ensuite projete au
         # nombre de canaux attendu par chaque niveau.
-        self.time_embed = nn.Embedding(n_steps, time_emb_dim)
-        self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
-        self.time_embed.requires_grad_(False)
+        # Embedding sinusoidal continu : l'entraînement échantillonne t dans
+        # [0,T], il ne faut donc pas indexer une table par un entier.
+        self.time_emb_dim = time_emb_dim
 
         # Encodeur: un niveau = projection temporelle + blocks_per_level blocs +
         # une convolution stride 2. Les sorties avant downsampling sont gardees
@@ -220,7 +255,7 @@ class UNet(nn.Module):
                 f"mais a reçu {tuple(x.shape)}."
             )
 
-        t = self.time_embed(t)
+        t = sinusoidal_embedding(t, self.time_emb_dim).to(x.dtype)
         n = len(x)
 
         skips = []
@@ -270,6 +305,8 @@ class UNet(nn.Module):
                     current_channels,
                     out_channels,
                     normalize=normalize,
+                    norm_type=self.norm_type,
+                    max_groups=self.norm_max_groups,
                 )
             )
             current_channels = out_channels

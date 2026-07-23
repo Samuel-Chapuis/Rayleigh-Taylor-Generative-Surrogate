@@ -3,6 +3,20 @@ import torch
 import torch.nn as nn
 
 
+class EMA:
+    def __init__(self, model, decay=0.9999):
+        self.decay = float(decay)
+        self.shadow = {k: v.detach().clone() for k, v in model.state_dict().items()}
+
+    @torch.no_grad()
+    def update(self, model):
+        for key, value in model.state_dict().items():
+            if torch.is_floating_point(value):
+                self.shadow[key].mul_(self.decay).add_(value.detach(), alpha=1-self.decay)
+            else:
+                self.shadow[key].copy_(value)
+
+
 def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
     """
     Calcule la loss DDPM epsilon-prediction sur un batch.
@@ -10,7 +24,7 @@ def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
     x0 = batch[0].to(device)
     n = len(x0)
     eta = torch.randn_like(x0).to(device)
-    t = torch.randint(0, ddpm.n_steps, (n,), device=device)
+    t = ddpm.final_time * torch.rand(n, device=device).square()
 
     noisy_imgs = ddpm(x0, t, eta)
     eta_theta = ddpm.backward(noisy_imgs, t.reshape(n, -1))
@@ -38,7 +52,7 @@ def evaluate_loss(ddpm, loader, device):
 
 
 
-def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None, val_loader=None):
+def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None, val_loader=None, ema_decay=0.9999):
     """
     Entraîne un modèle DDPM sur un jeu de données.
 
@@ -67,6 +81,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     mse = nn.MSELoss()
     best_loss = float("inf")
     loss_list = []
+    ema = EMA(ddpm, ema_decay)
 
     if logger:
         logger.info(f"Training started for {n_epochs} epochs")
@@ -81,6 +96,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
             optim.zero_grad(set_to_none=True)
             loss.backward()
             optim.step()
+            ema.update(ddpm)
 
             epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
 
@@ -98,7 +114,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
         # Storing the model
         if best_loss > selection_loss:
             best_loss = selection_loss
-            torch.save(ddpm.state_dict(), store_path)
+            torch.save(ema.shadow, store_path)
             log_string += " --> Best model ever (stored)"
 
         if logger:

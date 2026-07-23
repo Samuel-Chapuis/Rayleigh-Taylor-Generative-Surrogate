@@ -5,12 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from .ConditionalDDPM import WaveletConditionalDDPM
 from .UNet import UNet
-from .schedules import (
-    SCHEDULE_REFERENCE_STEPS,
-    diffusion_steps_from_snr,
-    get_diffusion_schedule,
-    snr_from_alpha_bar,
-)
+from .schedules import snr_from_time
 
 
 def load_wave_tensor(path, expected_channels=4):
@@ -62,7 +57,6 @@ def build_wavelet_model(config, image_hw, coeff_mean, coeff_std):
     # Le U-Net voit le prior cA concatene aux details bruites, mais ne predit
     # que le bruit ajoute aux canaux de details.
     network = UNet(
-        n_steps=config.n_steps,
         time_emb_dim=config.time_emb_dim,
         size=image_hw[0],
         in_channels=config.input_channels,
@@ -70,12 +64,15 @@ def build_wavelet_model(config, image_hw, coeff_mean, coeff_std):
         depth=config.unet_depth,
         blocks_per_level=config.unet_blocks_per_level,
         base_channels=config.unet_base_channels,
+        norm_type=getattr(config, "unet_norm_type", "group"),
+        norm_max_groups=getattr(config, "unet_norm_max_groups", 8),
     )
     return WaveletConditionalDDPM(
         network,
-        n_steps=config.n_steps,
-        min_beta=config.min_beta,
-        max_beta=config.effective_max_beta,
+        final_time=getattr(config, "final_time", 5.0),
+        snr_terminal=getattr(config, "snr_terminal", None),
+        sampling_steps=getattr(config, "sampling_steps", 16),
+        sampling_eta=getattr(config, "sampling_eta", 1.0),
         device=config.device,
         prior_channels=config.prior_channels,
         target_channels=config.target_channels,
@@ -87,12 +84,12 @@ def build_wavelet_model(config, image_hw, coeff_mean, coeff_std):
 
 def do_diffusion_until_snr(
     data,
-    snr_threshold=2.0,
-    steps=None,
+    snr_threshold=None,
+    steps=16,
     ddpm=None,
-    min_beta=1e-4,
-    max_beta=0.02,
-    reference_steps=SCHEDULE_REFERENCE_STEPS,
+    min_beta=None,
+    max_beta=None,
+    reference_steps=None,
     prior_channels=1,
     diffuse_prior=False,
     keep_every=1,
@@ -113,6 +110,8 @@ def do_diffusion_until_snr(
     if keep_every < 1:
         raise ValueError(f"keep_every doit etre >= 1, recu {keep_every}.")
 
+    # Fonction de visualisation historique : le processus utilisé par la
+    # bibliothèque est désormais OU continu, sans calendrier beta discret.
     data = data.to(
         device=ddpm.device if ddpm is not None and ddpm.device is not None else data.device,
     )
@@ -130,24 +129,11 @@ def do_diffusion_until_snr(
         prior = data[:, :prior_channels]
         xt = data[:, prior_channels:]
 
-    # Si aucun modele n'est fourni, on deduit un nombre de pas et un max_beta
-    # effectif a partir du seuil SNR et du calendrier de reference.
-    if steps is None and ddpm is None:
-        steps, max_beta = diffusion_steps_from_snr(
-            snr_threshold,
-            min_beta=min_beta,
-            max_beta=max_beta,
-            reference_steps=reference_steps,
-        )
-
-    betas, alphas, alpha_bars = get_diffusion_schedule(
-        steps,
-        device=data.device,
-        dtype=data.dtype,
-        min_beta=min_beta,
-        max_beta=max_beta,
-        ddpm=ddpm,
-    )
+    final_time = ddpm.final_time if ddpm is not None else 5.0
+    if snr_threshold is not None:
+        final_time = 0.5 * torch.log1p(torch.tensor(1.0 / snr_threshold)).item()
+    n_steps = steps or (ddpm.sampling_steps if ddpm is not None else 16)
+    times = torch.linspace(0.0, final_time, n_steps + 1, device=data.device, dtype=data.dtype)[1:]
 
     # Les echantillons sauvegardes gardent la meme convention de canaux que
     # l'entree: prior en premier, details ensuite.
@@ -158,19 +144,19 @@ def do_diffusion_until_snr(
 
     samples = [pack_sample(xt)]
     last_step = 0
+    x0 = xt
 
     with torch.no_grad():
-        for i in range(len(betas)):
-            # Processus direct markovien: x_t = sqrt(alpha_t) x_{t-1}
-            # + sqrt(beta_t) epsilon. Ici il est applique seulement a xt.
-            xt = torch.sqrt(alphas[i]) * xt + torch.sqrt(betas[i]) * torch.randn_like(xt)
+        for i, t in enumerate(times):
+            alpha = torch.exp(-2 * t)
+            xt = alpha.sqrt() * x0 + (1-alpha).sqrt() * torch.randn_like(x0)
             last_step = i + 1
 
             if last_step % keep_every == 0:
                 samples.append(pack_sample(xt))
 
             if snr_threshold is not None:
-                snr = snr_from_alpha_bar(alpha_bars[i])
+                snr = snr_from_time(t)
                 # Meme convention que le notebook: arret des que SNR <= seuil.
                 if float(snr.item()) <= snr_threshold:
                     if last_step % keep_every != 0:

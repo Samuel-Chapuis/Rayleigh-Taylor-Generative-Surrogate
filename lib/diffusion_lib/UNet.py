@@ -5,6 +5,13 @@ import torch.nn.functional as F
 
 from lib.diffusion_lib.embeding import sinusoidal_embedding
 
+
+def _group_count(channels, maximum=8):
+    groups = min(channels, maximum)
+    while channels % groups:
+        groups -= 1
+    return groups
+
 class Block(nn.Module):
     """
     Bloc convolutionnel utilisé dans le U-Net.
@@ -32,7 +39,7 @@ class Block(nn.Module):
                 activée. Par défaut True.
         """
         super(Block, self).__init__()
-        self.ln = nn.LayerNorm(shape)
+        self.norm = nn.GroupNorm(num_groups=_group_count(in_c), num_channels=in_c)
         self.conv1 = nn.Conv2d(in_c, out_c, kernel_size, stride, padding)
         self.conv2 = nn.Conv2d(out_c, out_c, kernel_size, stride, padding)
         self.activation = nn.SiLU() if activation is None else activation
@@ -48,7 +55,7 @@ class Block(nn.Module):
         Returns:
             torch.Tensor: Tenseur transformé par le bloc.
         """
-        out = self.ln(x) if self.normalize else x
+        out = self.norm(x) if self.normalize else x
         out = self.conv1(out)
         out = self.activation(out)
         out = self.conv2(out)
@@ -142,9 +149,7 @@ class UNet(nn.Module):
 
         # Embedding temporel fixe: t -> vecteur sinusoidal, ensuite projete au
         # nombre de canaux attendu par chaque niveau.
-        self.time_embed = nn.Embedding(n_steps, time_emb_dim)
-        self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
-        self.time_embed.requires_grad_(False)
+        self.time_emb_dim = time_emb_dim
 
         # Encodeur: un niveau = projection temporelle + blocks_per_level blocs +
         # une convolution stride 2. Les sorties avant downsampling sont gardees
@@ -220,7 +225,7 @@ class UNet(nn.Module):
                 f"mais a reçu {tuple(x.shape)}."
             )
 
-        t = self.time_embed(t)
+        t = sinusoidal_embedding(t, self.time_emb_dim).to(x.dtype)
         n = len(x)
 
         skips = []

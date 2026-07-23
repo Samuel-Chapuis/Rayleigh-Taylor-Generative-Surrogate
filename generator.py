@@ -16,7 +16,7 @@ from lib.diffusion_lib.DDPM import DDPM
 from lib.diffusion_lib.UNet import UNet
 
 
-DATA_SIZE = 16
+DATA_SIZE = 2048
 CONFIG_PATH = PROJECT_ROOT / "outputs" / "model" / "RT64_config.json"
 GENERATED_DIR = PROJECT_ROOT / "outputs" / "generated"
 GENERATED_DATASET_PATH = GENERATED_DIR / "64generated_dataset.pt"
@@ -46,7 +46,6 @@ def build_ddpm_from_config(config, device):
     """
     image_chw = tuple(config["image_chw"])
     network = UNet(
-        n_steps=config["n_steps"],
         time_emb_dim=config["time_emb_dim"],
         size=image_chw[1],
         in_channels=image_chw[0],
@@ -57,9 +56,10 @@ def build_ddpm_from_config(config, device):
     )
     return DDPM(
         network,
-        n_steps=config["n_steps"],
-        min_beta=config["min_beta"],
-        max_beta=config["max_beta"],
+        final_time=config.get("final_time", 5.0),
+        snr_terminal=config.get("snr_terminal"),
+        sampling_steps=config.get("sampling_steps", 16),
+        sampling_eta=config.get("sampling_eta", 1.0),
         device=device,
         image_chw=image_chw,
     )

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import pywt
 import torch
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.utils.data import DataLoader, TensorDataset
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -24,10 +24,6 @@ from lib.wavelet_diffusion_lib.DDPM import DDPM
 from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
 from lib.wavelet_diffusion_lib.Logger import Logger
 from lib.wavelet_diffusion_lib.UNet import UNet
-from lib.wavelet_diffusion_lib.schedules import (
-    SCHEDULE_REFERENCE_STEPS,
-    diffusion_steps_from_snr,
-)
 from lib.wavelet_diffusion_lib.training_loop import split_wave_batch, wave_training_loop
 from lib.wavelet_diffusion_lib.utils import get_best_device
 from lib.wavelet_diffusion_lib.wavelet_utils import (
@@ -58,11 +54,11 @@ class LevelConfig:
     input_path: str = ""
 
     time_emb_dim: int = 100
-    manual_n_steps: int | None = None
-    snr_threshold: float = 2.0
-    min_beta: float = 1e-4
-    max_beta: float = 0.02
-    schedule_reference_steps: int = SCHEDULE_REFERENCE_STEPS
+    final_time: float = 5.0
+    snr_terminal: float | None = None
+    sampling_steps: int = 16
+    sampling_eta: float = 1.0
+    ema_decay: float = 0.9999
 
     prior_channels: int = 1
     target_channels: int = 3
@@ -78,34 +74,6 @@ class LevelConfig:
     @property
     def input_channels(self) -> int:
         return self.prior_channels + self.target_channels
-
-    @property
-    def n_steps(self) -> int:
-        if self.manual_n_steps is not None:
-            if int(self.manual_n_steps) < 1:
-                raise ValueError(f"manual_n_steps doit être >= 1, reçu {self.manual_n_steps}.")
-            return int(self.manual_n_steps)
-
-        n_steps, _ = diffusion_steps_from_snr(
-            self.snr_threshold,
-            min_beta=self.min_beta,
-            max_beta=self.max_beta,
-            reference_steps=self.schedule_reference_steps,
-        )
-        return n_steps
-
-    @property
-    def effective_max_beta(self) -> float:
-        if self.manual_n_steps is not None:
-            return self.max_beta
-
-        _, effective_max_beta = diffusion_steps_from_snr(
-            self.snr_threshold,
-            min_beta=self.min_beta,
-            max_beta=self.max_beta,
-            reference_steps=self.schedule_reference_steps,
-        )
-        return effective_max_beta
 
     @property
     def train_path(self) -> Path:
@@ -195,7 +163,6 @@ def make_level_config(
         section = run_config.get(section_name, {})
         for key, value in section.items():
             if key == "n_steps":
-                values["manual_n_steps"] = value
                 continue
             if key in allowed:
                 values[key] = value
@@ -204,7 +171,6 @@ def make_level_config(
     override = run_config.get("level_overrides", {}).get(str(level), {})
     for key, value in override.items():
         if key == "n_steps":
-            values["manual_n_steps"] = value
             continue
         if key not in allowed and key != "n_steps":
             raise ValueError(f"Paramètre de niveau inconnu pour j{level}: {key}")
@@ -245,14 +211,11 @@ def experiment_config_dict(
         "store_path": config.store_path,
         "input_path": config.input_path,
         "time_emb_dim": config.time_emb_dim,
-        "schedule_mode": "manual" if config.manual_n_steps is not None else "snr",
-        "manual_n_steps": config.manual_n_steps,
-        "snr_threshold": config.snr_threshold,
-        "n_steps": config.n_steps,
-        "schedule_reference_steps": config.schedule_reference_steps,
-        "min_beta": config.min_beta,
-        "max_beta": config.effective_max_beta,
-        "max_beta_limit": config.max_beta,
+        "final_time": config.final_time,
+        "snr_terminal": config.snr_terminal,
+        "sampling_steps": config.sampling_steps,
+        "sampling_eta": config.sampling_eta,
+        "ema_decay": config.ema_decay,
         "coeff_chw": (expected_channels, *image_hw),
         "prior_channels": config.prior_channels,
         "target_channels": config.target_channels,
@@ -269,10 +232,9 @@ def experiment_config_dict(
 def train_one_level(config: LevelConfig, preview_samples: int = 8) -> None:
     print(f"\n{'=' * 72}\nEntraînement du modèle j{config.wavelet_level}\n{'=' * 72}")
     print(
-        "Diffusion schedule from SNR: "
-        f"threshold={config.snr_threshold}, n_steps={config.n_steps}, "
-        f"min_beta={config.min_beta:g}, "
-        f"effective_max_beta={config.effective_max_beta:g}"
+        "Continuous OU diffusion: "
+        f"T={config.final_time}, snr_terminal={config.snr_terminal}, "
+        f"sampling_steps={config.sampling_steps}"
     )
 
     Path(config.model_dir).mkdir(parents=True, exist_ok=True)
@@ -321,7 +283,7 @@ def train_one_level(config: LevelConfig, preview_samples: int = 8) -> None:
         ddpm.load_state_dict(torch.load(input_path, map_location=config.device))
         print(f"Checkpoint de reprise chargé : {input_path}")
 
-    optimizer = Adam(ddpm.parameters(), lr=config.lr)
+    optimizer = AdamW(ddpm.parameters(), lr=config.lr)
     wave_training_loop(
         ddpm,
         train_loader,
@@ -331,6 +293,7 @@ def train_one_level(config: LevelConfig, preview_samples: int = 8) -> None:
         store_path=config.store_path,
         logger=logger,
         val_loader=val_loader,
+        ema_decay=config.ema_decay,
     )
 
     checkpoint_path = PROJECT_ROOT / config.store_path
@@ -398,7 +361,6 @@ def build_model_from_saved_config(
     coeff_chw = tuple(config["coeff_chw"])
 
     network = UNet(
-        n_steps=int(config["n_steps"]),
         time_emb_dim=int(config["time_emb_dim"]),
         size=int(coeff_chw[1]),
         in_channels=int(config["prior_channels"]) + int(config["target_channels"]),
@@ -410,9 +372,10 @@ def build_model_from_saved_config(
 
     ddpm = WaveletConditionalDDPM(
         network,
-        n_steps=int(config["n_steps"]),
-        min_beta=float(config["min_beta"]),
-        max_beta=float(config["max_beta"]),
+        final_time=float(config.get("final_time", 5.0)),
+        snr_terminal=config.get("snr_terminal"),
+        sampling_steps=int(config.get("sampling_steps", 16)),
+        sampling_eta=float(config.get("sampling_eta", 1.0)),
         device=device,
         prior_channels=int(config["prior_channels"]),
         target_channels=int(config["target_channels"]),
@@ -459,7 +422,6 @@ def build_unconditional_ca_model(
 ) -> DDPM:
     image_chw = tuple(config["image_chw"])
     network = UNet(
-        n_steps=int(config["n_steps"]),
         time_emb_dim=int(config["time_emb_dim"]),
         size=int(image_chw[1]),
         in_channels=int(image_chw[0]),
@@ -470,9 +432,10 @@ def build_unconditional_ca_model(
     )
     ddpm = DDPM(
         network,
-        n_steps=int(config["n_steps"]),
-        min_beta=float(config["min_beta"]),
-        max_beta=float(config["max_beta"]),
+        final_time=float(config.get("final_time", 5.0)),
+        snr_terminal=config.get("snr_terminal"),
+        sampling_steps=int(config.get("sampling_steps", 16)),
+        sampling_eta=float(config.get("sampling_eta", 1.0)),
         device=device,
         image_chw=image_chw,
     )

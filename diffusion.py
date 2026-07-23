@@ -7,7 +7,7 @@ import os
 
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torchview import draw_graph
 
@@ -34,8 +34,8 @@ class Config:
     store_path_dataset: str = "data/RT64"
     viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
     batch_size: int = 128
-    do_train: bool = False
-    n_epochs: int = 1000
+    do_train: bool = True
+    n_epochs: int = 2000
     lr: float = 0.001
     store_path: str = "outputs/model/RT64.pt"
     input_path: str = ""
@@ -51,9 +51,11 @@ class Config:
 
     # Parametres du DDPM
     time_emb_dim: int = 100 # dimension de l'embedding temporel
-    n_steps: int = 1000 # discretisation du processus de diffusion (nombre de bruitages successifs)
-    min_beta: float = 10 ** -4
-    max_beta: float = 0.02
+    final_time: float = 5.0
+    snr_terminal: float = 1e-3
+    sampling_steps: int = 128
+    sampling_eta: float = 1.0
+    ema_decay: float = 0.9999
     image_chw: tuple[int, int, int] = (1, 64, 64) # format des images (channels, height, width)
     unet_depth: int = 3 # nombre de niveaux de descente/remontee du U-Net
     unet_blocks_per_level: int = 3 # nombre de blocs convolutionnels par niveau
@@ -82,9 +84,11 @@ experiment_config = {
     "store_path": config.store_path,
     "input_path": config.input_path,
     "time_emb_dim": config.time_emb_dim,
-    "n_steps": config.n_steps,
-    "min_beta": config.min_beta,
-    "max_beta": config.max_beta,
+    "final_time": config.final_time,
+    "snr_terminal": config.snr_terminal,
+    "sampling_steps": config.sampling_steps,
+    "sampling_eta": config.sampling_eta,
+    "ema_decay": config.ema_decay,
     "image_chw": config.image_chw,
     "unet_depth": config.unet_depth,
     "unet_blocks_per_level": config.unet_blocks_per_level,
@@ -128,7 +132,7 @@ config.viz.show_first_batch(loader)
 # model_graph.visual_graph
 
 # # Visualisation du U-Net complet
-# unet = UNet(n_steps=config.n_steps, time_emb_dim=config.time_emb_dim)
+# l'embedding temporel est continu ; aucun nombre de pas d'entraînement n'est requis
 # model_graph = draw_graph(
 #     unet,
 #     input_data=[
@@ -148,7 +152,6 @@ config.viz.show_first_batch(loader)
 # Visualisation du processus de diffusion directe avant entraînement
 ddpm = DDPM(
     UNet(
-        n_steps=config.n_steps,
         time_emb_dim=config.time_emb_dim,
         size=config.image_chw[1],
         in_channels=config.image_chw[0],
@@ -157,9 +160,10 @@ ddpm = DDPM(
         blocks_per_level=config.unet_blocks_per_level,
         base_channels=config.unet_base_channels,
     ),
-    n_steps=config.n_steps,
-    min_beta=config.min_beta,
-    max_beta=config.max_beta,
+    final_time=config.final_time,
+    snr_terminal=config.snr_terminal,
+    sampling_steps=config.sampling_steps,
+    sampling_eta=config.sampling_eta,
     device=config.device,
     image_chw=config.image_chw,
 )
@@ -174,7 +178,7 @@ generate = ddpm.sample()
 config.viz.show_images(generate, "before training")
 
 # Choix de l'optimiseur
-optimizer = Adam(ddpm.parameters(), lr=config.lr)
+optimizer = AdamW(ddpm.parameters(), lr=config.lr)
 
 # Entraînement du modèle
 if config.do_train:
@@ -187,12 +191,12 @@ if config.do_train:
         store_path=config.store_path,
         logger=logger,
         val_loader=val_loader,
+        ema_decay=config.ema_decay,
     )
 
 # Chargement du meilleur modèle sauvegardé
 best_model = DDPM(
     UNet(
-        n_steps=config.n_steps,
         time_emb_dim=config.time_emb_dim,
         size=config.image_chw[1],
         in_channels=config.image_chw[0],
@@ -201,9 +205,10 @@ best_model = DDPM(
         blocks_per_level=config.unet_blocks_per_level,
         base_channels=config.unet_base_channels,
     ),
-    n_steps=config.n_steps,
-    min_beta=config.min_beta,
-    max_beta=config.max_beta,
+    final_time=config.final_time,
+    snr_terminal=config.snr_terminal,
+    sampling_steps=config.sampling_steps,
+    sampling_eta=config.sampling_eta,
     device=config.device,
     image_chw=config.image_chw,
 )

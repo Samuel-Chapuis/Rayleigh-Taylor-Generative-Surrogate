@@ -1,23 +1,27 @@
 import torch
 
-def sinusoidal_embedding(n, d):
+def sinusoidal_embedding(t, d):
     """
     Construit l'embedding positionnel sinusoidal standard.
 
     Args:
-        n: Nombre de positions ou pas de temps.
+        t: Temps continus de forme ``(N,)``.
         d: Dimension de l'embedding.
 
     Returns:
         Tenseur de forme ``(n, d)`` alternant sinus et cosinus a plusieurs
         frequences.
     """
-    # Returns the standard positional embedding
-    embedding = torch.zeros(n, d)
-    wk = torch.tensor([1 / 10_000 ** (2 * j / d) for j in range(d)])
-    wk = wk.reshape((1, d))
-    t = torch.arange(n).reshape((n, 1))
-    embedding[:,::2] = torch.sin(t * wk[:,::2])
-    embedding[:,1::2] = torch.cos(t * wk[:,::2])
-
+    if not torch.is_tensor(t):
+        t = torch.as_tensor(t, dtype=torch.float32)
+    t = t.reshape(-1).float()
+    half = d // 2
+    frequencies = torch.exp(
+        -torch.log(torch.tensor(10_000.0, device=t.device))
+        * torch.arange(half, device=t.device, dtype=t.dtype) / max(half, 1)
+    )
+    embedding = torch.cat((torch.sin(t[:, None] * frequencies[None]),
+                           torch.cos(t[:, None] * frequencies[None])), dim=1)
+    if d % 2:
+        embedding = torch.cat((embedding, torch.zeros_like(embedding[:, :1])), dim=1)
     return embedding

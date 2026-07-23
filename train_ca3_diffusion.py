@@ -5,7 +5,7 @@ import random
 
 import numpy as np
 import torch
-from torch.optim import Adam
+from torch.optim import AdamW
 
 from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
 from lib.wavelet_diffusion_lib.Logger import Logger
@@ -41,9 +41,11 @@ class Config:
 
     # DDPM
     time_emb_dim: int = 100
-    n_steps: int = 1000
-    min_beta: float = 1e-4
-    max_beta: float = 0.02
+    final_time: float = 5.0
+    snr_terminal: float | None = None
+    sampling_steps: int = 16
+    sampling_eta: float = 1.0
+    ema_decay: float = 0.9999
 
     # La résolution est déduite du dataset cA3.
     image_channels: int = 1
@@ -51,6 +53,8 @@ class Config:
     unet_blocks_per_level: int = 3
     unet_base_channels: int = 10
     unet_out_channels: int | None = None
+    unet_norm_type: str = "group"
+    unet_norm_max_groups: int = 8
 
     def __post_init__(self) -> None:
         random.seed(self.seed)
@@ -95,18 +99,20 @@ def build_ca_loaders(config: Config):
 def build_ddpm(config: Config, image_chw: tuple[int, int, int]) -> DDPM:
     return DDPM(
         UNet(
-            n_steps=config.n_steps,
-            time_emb_dim=config.time_emb_dim,
+        time_emb_dim=config.time_emb_dim,
             size=image_chw[1],
             in_channels=image_chw[0],
             out_channels=config.unet_out_channels,
             depth=config.unet_depth,
             blocks_per_level=config.unet_blocks_per_level,
             base_channels=config.unet_base_channels,
+            norm_type=config.unet_norm_type,
+            norm_max_groups=config.unet_norm_max_groups,
         ),
-        n_steps=config.n_steps,
-        min_beta=config.min_beta,
-        max_beta=config.max_beta,
+        final_time=config.final_time,
+        snr_terminal=config.snr_terminal,
+        sampling_steps=config.sampling_steps,
+        sampling_eta=config.sampling_eta,
         device=config.device,
         image_chw=image_chw,
     )
@@ -157,14 +163,18 @@ def main() -> None:
         "store_path": config.store_path,
         "input_path": config.input_path,
         "time_emb_dim": config.time_emb_dim,
-        "n_steps": config.n_steps,
-        "min_beta": config.min_beta,
-        "max_beta": config.max_beta,
+        "final_time": config.final_time,
+        "snr_terminal": config.snr_terminal,
+        "sampling_steps": config.sampling_steps,
+        "sampling_eta": config.sampling_eta,
+        "ema_decay": config.ema_decay,
         "image_chw": image_chw,
         "unet_depth": config.unet_depth,
         "unet_blocks_per_level": config.unet_blocks_per_level,
         "unet_base_channels": config.unet_base_channels,
         "unet_out_channels": config.unet_out_channels,
+        "unet_norm_type": config.unet_norm_type,
+        "unet_norm_max_groups": config.unet_norm_max_groups,
         "device": str(config.device),
     }
     logger.log_experiment_start(experiment_config)
@@ -187,7 +197,7 @@ def main() -> None:
         generated_before = ddpm.sample()
     config.viz.show_images(generated_before, "ca3_before_training")
 
-    optimizer = Adam(ddpm.parameters(), lr=config.lr)
+    optimizer = AdamW(ddpm.parameters(), lr=config.lr)
 
     if config.do_train:
         training_loop(
@@ -199,6 +209,7 @@ def main() -> None:
             store_path=config.store_path,
             logger=logger,
             val_loader=val_loader,
+            ema_decay=config.ema_decay,
         )
 
     checkpoint_path = Path(config.store_path)

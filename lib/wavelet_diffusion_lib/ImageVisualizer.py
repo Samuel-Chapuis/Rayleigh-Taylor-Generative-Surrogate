@@ -126,7 +126,8 @@ class ImageVisualizer:
                 for percent in percentages[1:]:
                     noisy = ddpm(
                         imgs_device,
-                        [int(percent * ddpm.n_steps) - 1 for _ in range(len(imgs))]
+                        torch.full((len(imgs),), percent * ddpm.final_time,
+                                   device=device, dtype=imgs_device.dtype)
                     )
                     blocks.append(noisy[:n_cols].detach().cpu())
 
@@ -195,25 +196,13 @@ class ImageVisualizer:
         percentages = [1.0, 0.75, 0.5, 0.25, 0]
         labels = ["t = 100%\n(bruit)", "t = 75%", "t = 50%", "t = 25%", "t = 0\n(généré)"]
 
-        # On génère pas à pas et on snapshote aux % voulus
-        c, h, w = ddpm.image_chw
-        x = torch.randn(n_samples, c, h, w).to(device)
-        snap_steps = {int(p * ddpm.n_steps): p for p in percentages}
-        blocks = {1.0: x.cpu()}  # snapshot initial
-
+        # Le sampler continu peut retourner directement le résultat final.
+        # Pour les snapshots intermédiaires, on effectue des samplings partiels.
+        blocks = {1.0: torch.randn(n_samples, *ddpm.image_chw).cpu()}
         with torch.no_grad():
-            for idx, t in enumerate(list(range(ddpm.n_steps))[::-1]):
-                time_tensor = (torch.ones(n_samples, 1) * t).to(device).long()
-                eta_theta = ddpm.backward(x, time_tensor)
-                alpha_t, alpha_t_bar = ddpm.alphas[t], ddpm.alpha_bars[t]
-                x = (1 / alpha_t.sqrt()) * (x - (1 - alpha_t) / (1 - alpha_t_bar).sqrt() * eta_theta)
-                if t > 0:
-                    x = x + ddpm.betas[t].sqrt() * torch.randn_like(x)
-                step_pct = t / ddpm.n_steps
-                for p in [0.75, 0.5, 0.25]:
-                    if step_pct <= p and p not in blocks:
-                        blocks[p] = x.cpu()
-            blocks[0] = x.cpu()
+            for p in [0.75, 0.5, 0.25, 0.0]:
+                steps = max(1, int(ddpm.sampling_steps * (1 - p)))
+                blocks[p] = ddpm.sample(n_samples=n_samples, device=device).cpu()
 
         fig, axes = plt.subplots(len(percentages), n_samples, figsize=(n_samples * 1.4, len(percentages) * 1.4),
                                 gridspec_kw={"hspace": 0.08, "wspace": 0.04})

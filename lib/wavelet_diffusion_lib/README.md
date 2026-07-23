@@ -1,5 +1,17 @@
 # wavelet_diffusion_lib
 
+La bibliothèque utilise une diffusion OU continue :
+
+\[
+x_t=e^{-t}x_0+\sqrt{1-e^{-2t}}\,\epsilon.
+\]
+
+Pendant l'entraînement, ``t = T u²`` avec ``u ~ U(0,1)`` et ``T=5`` par
+défaut. Le sampler discrétise ensuite l'intervalle en ``sampling_steps``
+(16 par défaut). ``snr_terminal`` peut remplacer T via
+``T = 0.5 log(1 + 1/snr_terminal)``. Les boucles d'entraînement sauvegardent
+les poids EMA (``ema_decay=0.9999`` par défaut).
+
 Ce document regroupe les docstrings presentes dans les modules de `wavelet_diffusion_lib`.
 Il est organise par fichier, puis par classe, methode ou fonction.
 

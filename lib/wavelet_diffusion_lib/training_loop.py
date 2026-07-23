@@ -5,6 +5,24 @@ import torch
 import torch.nn as nn
 
 
+class EMA:
+    """Copie exponentiellement lissée des paramètres d'un modèle."""
+    def __init__(self, model, decay=0.9999):
+        self.decay = float(decay)
+        self.shadow = {k: v.detach().clone() for k, v in model.state_dict().items()}
+
+    @torch.no_grad()
+    def update(self, model):
+        for key, value in model.state_dict().items():
+            if torch.is_floating_point(value):
+                self.shadow[key].mul_(self.decay).add_(value.detach(), alpha=1-self.decay)
+            else:
+                self.shadow[key].copy_(value)
+
+    def copy_to(self, model):
+        model.load_state_dict(self.shadow, strict=True)
+
+
 def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
     """
     Calcule la loss DDPM epsilon-prediction sur un batch.
@@ -12,7 +30,8 @@ def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
     x0 = batch[0].to(device)
     n = len(x0)
     eta = torch.randn_like(x0).to(device)
-    t = torch.randint(0, ddpm.n_steps, (n,), device=device)
+    u = torch.rand(n, device=device)
+    t = ddpm.final_time * u.square()
 
     noisy_imgs = ddpm(x0, t, eta)
     eta_theta = ddpm.backward(noisy_imgs, t.reshape(n, -1))
@@ -40,7 +59,7 @@ def evaluate_loss(ddpm, loader, device):
 
 
 
-def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None, val_loader=None):
+def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_path="ddpm_model.pt", logger=None, val_loader=None, ema_decay=0.9999):
     """
     Entraîne un modèle DDPM sur un jeu de données.
 
@@ -69,6 +88,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     mse = nn.MSELoss()
     best_loss = float("inf")
     loss_list = []
+    ema = EMA(ddpm, ema_decay)
 
     if logger:
         logger.info(f"Training started for {n_epochs} epochs")
@@ -83,6 +103,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
             optim.zero_grad(set_to_none=True)
             loss.backward()
             optim.step()
+            ema.update(ddpm)
 
             epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
 
@@ -100,7 +121,8 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
         # Storing the model
         if best_loss > selection_loss:
             best_loss = selection_loss
-            torch.save(ddpm.state_dict(), store_path)
+            # Le checkpoint de production est l'EMA, comme dans Mallat.
+            torch.save(ema.shadow, store_path)
             log_string += " --> Best model ever (stored)"
 
         if logger:
@@ -154,7 +176,8 @@ def wave_noise_prediction_loss(ddpm, batch, mse, device):
     prior, details = split_wave_batch(batch, device, prior_channels=ddpm.prior_channels)
     n = len(details)
     eta = torch.randn_like(details)
-    t = torch.randint(0, ddpm.n_steps, (n,), device=device)
+    u = torch.rand(n, device=device)
+    t = ddpm.final_time * u.square()
     noisy_details = ddpm(details, t, eta)
     eta_theta = ddpm.backward(noisy_details, t.reshape(n, -1), prior)
     return mse(eta_theta, eta)
@@ -179,7 +202,7 @@ def wave_evaluate_loss(ddpm, loader, device):
         ddpm.train()
     return total_loss
 
-def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger=None, val_loader=None):
+def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger=None, val_loader=None, ema_decay=0.9999):
     """
     Entraine un DDPM conditionnel sur coefficients wavelet.
 
@@ -203,6 +226,7 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
     mse = nn.MSELoss()
     best_loss = float("inf")
     loss_list = []
+    ema = EMA(ddpm, ema_decay)
     store_path = Path(store_path)
     store_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -220,6 +244,7 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
             optim.zero_grad(set_to_none=True)
             loss.backward()
             optim.step()
+            ema.update(ddpm)
 
             epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
 
@@ -233,7 +258,7 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
         stored = best_loss > selection_loss
         if stored:
             best_loss = selection_loss
-            torch.save(ddpm.state_dict(), store_path)
+            torch.save(ema.shadow, store_path)
             log_string += " --> Best model ever (stored)"
 
         print(log_string)
