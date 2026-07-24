@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import contextmanager
 
 from tqdm.auto import tqdm
 import torch
@@ -21,6 +22,15 @@ class EMA:
 
     def copy_to(self, model):
         model.load_state_dict(self.shadow, strict=True)
+
+    @contextmanager
+    def use_weights(self, model):
+        backup = {k: v.detach().clone() for k, v in model.state_dict().items()}
+        self.copy_to(model)
+        try:
+            yield
+        finally:
+            model.load_state_dict(backup, strict=True)
 
 
 def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
@@ -107,16 +117,20 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
 
             epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
 
-        val_loss = evaluate_loss(ddpm, val_loader, device) if val_loader is not None else None
-        selection_loss = val_loss if val_loss is not None else epoch_loss
+        selection_loader = val_loader if val_loader is not None else loader
+        with ema.use_weights(ddpm):
+            selection_loss = evaluate_loss(ddpm, selection_loader, device)
 
         # Display images generated at this epoch
         if display:
-            display.show_images(ddpm.sample(device=device), f"Images generated at epoch {epoch + 1}")
+            with ema.use_weights(ddpm):
+                display.show_images(ddpm.sample(device=device), f"EMA images generated at epoch {epoch + 1}")
 
         log_string = f"Train loss at epoch {epoch + 1}: {epoch_loss:.3f}"
-        if val_loss is not None:
-            log_string += f" | Val loss: {val_loss:.3f}"
+        if val_loader is not None:
+            log_string += f" | EMA val loss: {selection_loss:.3f}"
+        else:
+            log_string += f" | EMA train loss: {selection_loss:.3f}"
 
         # Storing the model
         if best_loss > selection_loss:
@@ -128,9 +142,10 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
         if logger:
             metrics = {
                 "train_loss": epoch_loss,
+                "ema_selection_loss": selection_loss,
             }
-            if val_loss is not None:
-                metrics["val_loss"] = val_loss
+            if val_loader is not None:
+                metrics["ema_val_loss"] = selection_loss
             metrics["best_loss"] = best_loss
             metrics["stored"] = best_loss == selection_loss
             logger.log_epoch(epoch + 1, metrics)
@@ -248,12 +263,15 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
 
             epoch_loss += loss_value * len(batch[0]) / len(loader.dataset)
 
-        val_loss = wave_evaluate_loss(ddpm, val_loader, device) if val_loader is not None else None
-        selection_loss = val_loss if val_loss is not None else epoch_loss
+        selection_loader = val_loader if val_loader is not None else loader
+        with ema.use_weights(ddpm):
+            selection_loss = wave_evaluate_loss(ddpm, selection_loader, device)
 
         log_string = f"Train loss at epoch {epoch + 1}: {epoch_loss:.4f}"
-        if val_loss is not None:
-            log_string += f" | Val loss: {val_loss:.4f}"
+        if val_loader is not None:
+            log_string += f" | EMA val loss: {selection_loss:.4f}"
+        else:
+            log_string += f" | EMA train loss: {selection_loss:.4f}"
 
         stored = best_loss > selection_loss
         if stored:
@@ -263,9 +281,14 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
 
         print(log_string)
         if logger:
-            metrics = {"train_loss": epoch_loss, "best_loss": best_loss, "stored": stored}
-            if val_loss is not None:
-                metrics["val_loss"] = val_loss
+            metrics = {
+                "train_loss": epoch_loss,
+                "ema_selection_loss": selection_loss,
+                "best_loss": best_loss,
+                "stored": stored,
+            }
+            if val_loader is not None:
+                metrics["ema_val_loss"] = selection_loss
             logger.log_epoch(epoch + 1, metrics)
             logger.info(log_string)
 
