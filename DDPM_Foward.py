@@ -140,9 +140,9 @@ if config.input_path:
     ddpm.load_state_dict(torch.load(config.input_path, map_location=config.device))
 config.viz.show_forward(ddpm, loader, config.device)
 
-# Visualisation du processus de diffusion inverse avant entraînement
-generate = ddpm.sample()
-config.viz.show_images(generate, "before training")
+# # Visualisation du processus de diffusion inverse avant entraînement
+# generate = ddpm.sample()
+# config.viz.show_images(generate, "before training")
 
 # Choix de l'optimiseur
 optimizer = Adam(ddpm.parameters(), lr=config.lr)

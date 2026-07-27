@@ -1,6 +1,7 @@
 from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
+from pathlib import Path
 
 
 def _ddpm_noise_prediction_loss(ddpm, batch, mse, device):
@@ -119,4 +120,102 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     if logger:
         logger.log_experiment_end("Training finished")
     
+    return loss_list
+
+
+def _sgm_epsilon_loss(sgm, batch, mse, device):
+    """Loss de denoising score matching pour un VP-SDE continu."""
+    x0 = batch[0].to(device)
+    n = x0.shape[0]
+    t = torch.rand(n, device=device, dtype=x0.dtype)
+    t = sgm.eps_time + (1.0 - sgm.eps_time) * t
+    eps = torch.randn_like(x0)
+    xt = sgm(x0, t, eps)
+    eps_pred = sgm.predict_epsilon(xt, t)
+    return mse(eps_pred, eps)
+
+
+def evaluate_sgm_loss(sgm, loader, device):
+    """Evalue la loss SGM moyenne sur un loader, sans mise a jour."""
+    mse = nn.MSELoss()
+    was_training = sgm.training
+    sgm.eval()
+    total_loss = 0.0
+    n_total = 0
+    with torch.no_grad():
+        for batch in loader:
+            loss = _sgm_epsilon_loss(sgm, batch, mse, device)
+            batch_size = len(batch[0])
+            total_loss += loss.item() * batch_size
+            n_total += batch_size
+    if was_training:
+        sgm.train()
+    return total_loss / max(n_total, 1)
+
+
+def sgm_training_loop(
+    sgm,
+    loader,
+    n_epochs,
+    optim,
+    device,
+    display=None,
+    store_path="sgm_model.pt",
+    logger=None,
+    val_loader=None,
+    grad_clip=None,
+):
+    """Entraine un SGM VP-SDE par minibatches et sauvegarde le meilleur modele."""
+    mse = nn.MSELoss()
+    best_loss = float("inf")
+    loss_list = []
+    Path(store_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if logger:
+        logger.info(f"SGM training started for {n_epochs} epochs")
+
+    for epoch in tqdm(range(n_epochs), desc="SGM training", colour="#00ff00"):
+        sgm.train()
+        weighted_loss = 0.0
+        n_total = 0
+        for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}", colour="#005500"):
+            loss = _sgm_epsilon_loss(sgm, batch, mse, device)
+            optim.zero_grad(set_to_none=True)
+            loss.backward()
+            if grad_clip is not None:
+                torch.nn.utils.clip_grad_norm_(sgm.parameters(), grad_clip)
+            optim.step()
+
+            batch_size = len(batch[0])
+            loss_value = loss.item()
+            loss_list.append(loss_value)
+            weighted_loss += loss_value * batch_size
+            n_total += batch_size
+
+        train_loss = weighted_loss / max(n_total, 1)
+        val_loss = evaluate_sgm_loss(sgm, val_loader, device) if val_loader is not None else None
+        selection_loss = train_loss if val_loss is None else val_loss
+        stored = selection_loss < best_loss
+        if stored:
+            best_loss = selection_loss
+            torch.save(sgm.state_dict(), store_path)
+
+        if display:
+            display.show_images(sgm.sample(device=device), f"SGM epoch {epoch + 1}")
+
+        log_string = f"SGM train loss at epoch {epoch + 1}: {train_loss:.6f}"
+        if val_loss is not None:
+            log_string += f" | Val loss: {val_loss:.6f}"
+        if stored:
+            log_string += " --> Best model stored"
+        print(log_string)
+        if logger:
+            metrics = {"train_loss": train_loss, "best_loss": best_loss, "stored": stored}
+            if val_loss is not None:
+                metrics["val_loss"] = val_loss
+            logger.log_epoch(epoch + 1, metrics)
+            logger.info(log_string)
+
+    if logger:
+        logger.log_experiment_end("SGM training finished")
     return loss_list

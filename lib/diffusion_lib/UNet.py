@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from lib.diffusion_lib.embeding import sinusoidal_embedding
+from lib.diffusion_lib.embeding import continuous_sinusoidal_embedding, sinusoidal_embedding
 
 class Block(nn.Module):
     """
@@ -74,6 +74,7 @@ class UNet(nn.Module):
         blocks_per_level=3,
         base_channels=10,
         channel_multipliers=None,
+        continuous_time=False,
     ):
         """
         Initialise le U-Net.
@@ -98,6 +99,8 @@ class UNet(nn.Module):
             channel_multipliers (list[int] | tuple[int, ...] | None, optional):
                 Multiplicateurs de canaux par niveau. Si ``None``, utilise
                 ``[1, 2, 4, ...]``. Par défaut None.
+            continuous_time (bool, optional): Utilise un embedding differentiable
+                pour ``t`` dans ``[0, 1]``. A conserver a ``False`` pour DDPM.
         """
         super(UNet, self).__init__()
         if out_channels is None:
@@ -117,6 +120,8 @@ class UNet(nn.Module):
         self.depth = depth
         self.blocks_per_level = blocks_per_level
         self.base_channels = base_channels
+        self.continuous_time = continuous_time
+        self.time_embed_dim = time_emb_dim
 
         if channel_multipliers is None:
             channel_multipliers = tuple(2 ** level for level in range(depth))
@@ -142,9 +147,12 @@ class UNet(nn.Module):
 
         # Embedding temporel fixe: t -> vecteur sinusoidal, ensuite projete au
         # nombre de canaux attendu par chaque niveau.
-        self.time_embed = nn.Embedding(n_steps, time_emb_dim)
-        self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
-        self.time_embed.requires_grad_(False)
+        if continuous_time:
+            self.time_embed = None
+        else:
+            self.time_embed = nn.Embedding(n_steps, time_emb_dim)
+            self.time_embed.weight.data = sinusoidal_embedding(n_steps, time_emb_dim)
+            self.time_embed.requires_grad_(False)
 
         # Encodeur: un niveau = projection temporelle + blocks_per_level blocs +
         # une convolution stride 2. Les sorties avant downsampling sont gardees
@@ -220,7 +228,10 @@ class UNet(nn.Module):
                 f"mais a reçu {tuple(x.shape)}."
             )
 
-        t = self.time_embed(t)
+        if self.continuous_time:
+            t = continuous_sinusoidal_embedding(t.float(), self.time_embed_dim)
+        else:
+            t = self.time_embed(t.long().reshape(-1))
         n = len(x)
 
         skips = []
