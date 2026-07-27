@@ -4,7 +4,7 @@ import torch
 
 
 def snr_from_time(t):
-    return torch.exp(-2 * t) / torch.expm1(2 * t).clamp_min(torch.finfo(t.dtype).eps)
+    return 1.0 / torch.expm1(2 * t).clamp_min(torch.finfo(t.dtype).eps)
 
 
 def time_from_snr(snr):
