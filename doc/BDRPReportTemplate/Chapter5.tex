@@ -13,10 +13,6 @@ The dataset consists of two-dimensional density fields extracted from Direct Num
 
 The experiments compare the direct image-space diffusion model with the wavelet-based diffusion model. The evaluation focuses on visual realism, convergence behavior, statistical similarity to validation data, preservation of vertical density profiles, and reproduction of scale-dependent fluctuation spectra.
 
-\section{Evaluation Metrics}
-
-\section{Motivation}
-
 The objective of the baseline diffusion model introduced in Chapter~3 is not to
 reconstruct one specific DNS realization, but to generate new samples whose
 distribution is close to that of the reference RTI dataset. Consequently, the
@@ -335,20 +331,63 @@ The profiles and spectra extracted from the validation, generated and noise data
 
 The results confirm the conclusions drawn from the feature-space metrics. The generated samples are much closer to the validation set than pure noise or MNIST, both in terms of mean vertical profile and fluctuation energy spectrum with proximately two orders of magnitude.
 
-\section{Baseline Results}
+\section{Wavelet-based results and comparison with baseline diffusion}
 
-The baseline diffusion model generates samples that reproduce the main organization of the reference simulations and remain significantly closer to the validation dataset than pure noise or unrelated images. In PhyFID space, the generated fields obtain a distance of approximately .132$ from the validation set, compared with .04$ for pure noise.
+At this stage, the evaluation of the wavelet-based diffusion model remains
+primarily qualitative. The generated coefficient fields shown in
+Figures~\ref{fig:ch5_wavelet_coefficients} and
+\ref{fig:ch5_wavelet_reconstruction} demonstrate that the conditional
+diffusion framework is capable of learning non-trivial relationships between
+the coarse approximation and the associated detail coefficients. The wavelet
+representation also makes it easier to localize the origin of reconstruction
+errors because the approximation and detail channels are analyzed separately.
 
-\textbf{TODO:} Add final tables and figures for all reported metrics. Each figure and table must be explicitly cited and interpreted in the text.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch5/wavelet_cascade_coefficients_comparison.png}
+    \caption{Comparison of final wavelet coefficient maps at level $j=1$ for the cascade model. For each example, the reference coefficients and the cascade-generated coefficients are shown for the approximation channel $c_A^1$ and the three detail channels $c_H^1$, $c_V^1$, and $c_D^1$.}
+    \label{fig:ch5_wavelet_coefficients}
+\end{figure}
 
-\section{Wavelet-based Results}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{figures/ch5/wavelet_cascade_reconstruction_comparison.png}
+    \caption{RTI fields reconstructed from the final cascade wavelet coefficients. For each example, the reference field, the cascade-generated field, and the absolute pointwise difference are shown.}
+    \label{fig:ch5_wavelet_reconstruction}
+\end{figure}
 
-The wavelet-based formulation introduces a multi-resolution inductive bias and shows that diffusion can learn relationships between large-scale approximations and fine-scale details. In its current implementation, reconstructed fields remain rougher than those obtained with the direct baseline, which indicates that the conditioning mechanism and architecture still need refinement.
+The reconstructed density fields nevertheless reveal several limitations. While
+the large-scale organization imposed by the approximation coefficients is
+generally preserved, the synthesized detail coefficients often introduce
+artifacts and yield reconstructions that remain visibly rougher than the
+reference DNS fields. In qualitative comparison, the direct image-space
+baseline currently produces smoother samples that are visually closer to the
+target distribution.
 
-\textbf{TODO:} Evaluate the wavelet-based model with the same metrics as the baseline: PhyFID, FID, line-wise statistics, and fluctuation spectra. Add qualitative comparisons of reference, baseline, wavelet reconstruction, and generated fields.
+This comparison must, however, be interpreted with care. Unlike the baseline,
+the wavelet formulation has not yet been evaluated with the full set of
+quantitative metrics introduced in this chapter. At present, the evidence is
+therefore sufficient to conclude that the wavelet pipeline captures meaningful
+coarse-to-fine dependencies, but not yet sufficient to claim competitive
+generative quality with respect to the baseline DDPM.
+
+\textbf{TODO:} Evaluate the wavelet-based model with the same metrics as the
+baseline: PhyFID, FID, line-wise statistics, and fluctuation spectra. Add
+qualitative comparisons of reference, baseline, wavelet reconstruction, and
+generated fields.
 
 \section{Interpretation}
 
-The current results show that direct diffusion is the strongest baseline in terms of generation quality, while wavelet diffusion provides a more interpretable and physically meaningful direction for future improvement. The comparison highlights the importance of adapting architectures and normalization strategies to transformed coefficient spaces.
+The current experiments show that the direct diffusion model provides the
+strongest generative baseline in terms of overall sample quality and agreement
+with the validation distribution. The wavelet-based formulation remains less
+mature quantitatively, but it introduces a physically meaningful multi-scale
+inductive bias and a more interpretable coarse-to-fine generation mechanism.
+
+The comparison therefore does not simply oppose a good model to a bad one. It
+highlights a genuine methodological trade-off: direct diffusion currently gives
+better samples, whereas wavelet diffusion offers a more structured and
+physically motivated representation whose conditioning strategy, normalization,
+and architecture still require refinement.
 
 This evaluation chapter showed the strengths and limitations of the implemented pipelines. The final chapter summarizes the main findings and discusses perspectives for improving the wavelet-based approach.

@@ -136,52 +136,6 @@ As turbulence develops, energy is transferred across a wide range of spatial sca
 
 The presence of coherent structures, intermittent mixing regions, and localized gradients motivates the use of multi-resolution analysis tools capable of simultaneously capturing both spatial localization and scale-dependent information. This aspect will later motivate the investigation of wavelet-based representations for generative modeling purposes.
 
-\section{Direct Numerical Simulation Dataset}
-
-\subsection{Need for High-Fidelity Simulations}
-
-Due to the highly non-linear and turbulent nature of RTI flows, analytical approaches remain limited to simplified configurations and early linear growth regimes. Numerical simulations therefore constitute an essential tool for studying instability dynamics under realistic physical conditions.
-
-Several numerical approaches can be considered depending on the level of physical fidelity required. Reduced-order turbulence models, such as Reynolds-averaged approaches or Large Eddy Simulations (LES), can provide approximate descriptions of turbulent flows at moderate computational cost. However, such methods rely on modeling assumptions and closure relations that may become inaccurate in strongly transient and multi-scale instability regimes.
-
-In the present work, Direct Numerical Simulations (DNS) are used in order to generate high-fidelity reference data. DNS explicitly resolve all dynamically relevant scales of the flow without relying on turbulence closure models. As a consequence, they provide detailed representations of interface evolution, coherent structures, and turbulent mixing processes.
-
-\subsection{Numerical Solver and Simulation Setup}
-
-The dataset considered in this study is generated using a pseudo-spectral DNS solver designed for compressible fluid dynamics simulations. Spectral methods are particularly well suited for turbulence simulations because of their high numerical accuracy and low numerical dissipation properties.
-
-The simulations are performed on two-dimensional periodic domains initialized with perturbed density interfaces. Different perturbation configurations can be considered, including mono-mode and multi-mode initial conditions.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.30\textwidth]{figures/ch1/initial_perturbation.png}
-\caption{Illustration of the numerical domain normalized and initial perturbation setup used for DNS generation}
-\label{fig:dns_domain}
-\end{figure}
-
-The temporal evolution of the density field is sampled during the simulation and stored as image-like representations suitable for machine learning applications. Each sample therefore corresponds to a snapshot of the instability evolution at a given time.
-
-\subsection{Dataset Characteristics and Limitations}
-
-Although DNS provide highly accurate physical information, their computational cost remains extremely high. One of the main reasons lies in the turbulent and multi-scale nature of Rayleigh--Taylor flows. As the instability develops, energy is transferred from large coherent structures toward increasingly smaller scales through turbulent cascade mechanisms.
-
-According to Kolmogorov's theory of turbulence~\citep{pope2000turbulent}, viscous dissipation occurs at very small spatial scales, commonly referred to as Kolmogorov scales. In order to fully resolve the flow dynamics without introducing turbulence closure models, DNS must accurately capture all dynamically relevant scales, from the largest structures of the mixing layer down to the smallest dissipative scales.
-
-This requirement leads to a rapid increase in computational cost with the Reynolds number. The number of grid points required for DNS grows very rapidly as the smallest turbulent scales become finer, resulting in large memory requirements and long execution times on high-performance computing infrastructures.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.65\textwidth]{figures/ch1/kolmo.png}
-\caption{Illustration of the Kolmogorov turbulent energy cascade from large coherent structures toward small dissipative scales}
-\label{fig:kolmogorov_cascade}
-\end{figure}
-
-As a consequence, only a limited number of simulations can generally be produced. This limitation constitutes a major challenge for machine learning approaches, whose performances often depend on the quantity and diversity of available data.
-
-In addition to dataset size limitations, RTI simulations exhibit several specific properties that influence the learning process. The generated fields contain strong spatial correlations, localized coherent structures, sharp density gradients, and significant scale interactions. Furthermore, depending on the simulation setup, physical symmetries and statistical invariances may also be present.
-
-These characteristics motivate the investigation of representations capable of efficiently capturing the hierarchical and localized nature of RTI structures. In particular, multi-resolution approaches based on wavelet decompositions appear promising for reducing dimensional complexity while preserving physically relevant structures.
-
 \section{Dimensionality Reduction and Multi-scale Representations}
 
 \section{Motivation}
@@ -736,314 +690,126 @@ thereby transporting the probability mass from the simple Gaussian prior toward 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Adaptation to RTI dataset}
+\subsection{Conditional diffusion models}
 
-\subsection{Data size}
-
-Due to the high computational cost of Direct Numerical Simulations (DNS), the
-number of available realizations is inherently limited. The dataset used in
-this work consists of approximately 60 independent simulations of the
-Rayleigh--Taylor instability. Each simulation produces thousands of temporal
-snapshots during its execution; however, only a subset of these snapshots is
-stored because of storage limitations. After preprocessing and filtering, the
-final dataset contains fewer than 7000 images split into training, testing and validation sets.b
-
-This dataset size is several orders of magnitude smaller than those typically
-used to train diffusion models for natural image generation, where millions of
-samples are commonly available. Such a limited amount of training data
-increases the risk of overfitting and limits the ability of the model to learn
-the underlying distribution of RTI density fields. Consequently, physically
-consistent data augmentation techniques are employed during training to increase
-the effective diversity of the dataset.
-
-\subsection{Data augmentation}
-
-Since the dataset originates from numerical simulations rather than
-experimental measurements, the admissible data augmentations are constrained by
-the symmetries of the governing equations and by the numerical formulation of
-the DNS. The simulations are performed with a pseudo-spectral solver using
-periodic boundary conditions in the horizontal direction. Consequently, the
-flow is invariant under cyclic translations along the horizontal axis. Random
-horizontal shifts therefore preserve both the physical solution and its
-statistical properties. Likewise, the governing equations remain invariant
-under the reflection $x\rightarrow -x$, making horizontal flipping a physically
-consistent augmentation. On the other hand, the vertical direction is
-distinguished by the gravitational acceleration. Vertical translations modify
-the position of the mixing layer within the computational domain, while
-vertical reflections exchange the heavy and light fluids and reverse the
-direction of gravity. These operations no longer correspond to realizations of
-the original physical problem and are therefore excluded. For the same reason,
-arbitrary image rotations are not considered. During training, each sample is
-randomly augmented using horizontal cyclic translations and horizontal
-reflections only. These transformations increase the effective diversity of the
-training set while preserving the physical properties of the Rayleigh--Taylor
-instability. In the first set of experiments, ten horizontal translations were
-used. This choice was consistent with the initial $16\times16$ patch-based
-preprocessing and provided a simple way to expose the network to the periodic
-symmetry of the domain without modifying the vertical evolution of the mixing
-layer.
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{figures/ch3/augmentation.png}
-    \caption{Data augmentation for the Rayleigh--Taylor instability dataset. The original simulation (top left) is randomly translated along the horizontal axis and flipped horizontally.}
-    \label{fig:augmentation}
-\end{figure}
-
-
-\subsection{Data ratio}
-Unlike conventional image generation tasks, the geometry of the RTI dataset is
-not chosen for computational convenience but is directly constrained by the
-numerical formulation of the Direct Numerical Simulations (DNS).
-
-The simulations are performed using a pseudo-spectral solver with periodic
-boundary conditions in the horizontal direction. Consequently, every flow field
-is periodically replicated outside the computational domain. If the largest
-coherent structures become comparable to the domain width, they interact with
-their own periodic images, introducing artificial correlations that modify the
-physical evolution of the instability.
-
-Let $L_x$ denote the horizontal size of the computational domain and
-$L_b$ the characteristic diameter of the largest RTI bubbles. To avoid
-significant finite-domain effects, the dominant structures must satisfy
+The unconditional formulation above learns a marginal distribution
+$p_{\theta}(\mathbf{x}_0)$ and generates samples from Gaussian noise alone.
+Many practical settings instead require a \emph{conditional} model, where one
+wants to sample from a distribution constrained by external information
+$\mathbf{c}$. The objective then becomes
 
 \begin{equation}
-    L_b \ll L_x
+    p_{\theta}(\mathbf{x}_0 \mid \mathbf{c}).
 \end{equation}
 
-In practice, a conservative criterion commonly adopted in pseudo-spectral DNS is
+The conditioning variable may be a discrete label, a low-dimensional physical
+parameter, or another structured signal. In the simple scalar example used in
+the exploratory notebooks, $\mathbf{c}$ is a class label selecting one of two
+signal families. In the wavelet setting that will be used in Chapter~4,
+$\mathbf{c}$ is instead a coarse approximation coefficient field, while the
+variable to be generated is the associated fine-scale detail field.
 
-\begin{equation}
-    L_b \lesssim \frac{L_x}{4}
-\end{equation}
-
-which ensures that the largest bubbles remain sufficiently separated from their
-periodic replicas throughout the simulation.
-
-The vertical direction obeys a different constraint. Since the mixing layer
-continuously grows under the action of gravity, the computational domain must be
-long enough to avoid interactions between the evolving interface and the
-artificial numerical boundaries. For this reason, the domain is chosen much
-taller than it is wide.
-
-As a consequence, all simulations are generated on computational grids of
-$128\times512$ points, corresponding to an aspect ratio of $1:4$. The horizontal
-resolution is sufficient to accurately represent the largest admissible bubble
-structures while preventing spurious periodic interactions, whereas the extended
-vertical dimension allows the mixing layer to develop over long physical times
-without being constrained by the finite size of the computational domain.
-
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[width=0.65\textwidth]{figures/ch3/original.png}
-%     \caption{Original DNS simulations of the Rayleigh--Taylor instability. The aspect ratio of the computational domain is $1:4$, with a horizontal size of $128$ points and a vertical size of $512$ points.}
-%     \label{fig:original_dns}
-% \end{figure}
-
-The original simulations are subsequently cropped from a $128\times512$ domain
-to a square field of view in order to match the input geometry required by the
-diffusion model. Let $y_b(t)$ and $y_s(t)$ denote respectively the vertical
-positions of the lowest bubble tip and the highest spike tip. A cropped sample
-is retained only if
-
-\[
-y_{\min}^{\mathrm{crop}} < y_b(t)
-\quad\text{and}\quad
-y_s(t) < y_{\max}^{\mathrm{crop}},
-\]
-
-ensuring that the complete mixing layer remains inside the observation window.
-Consequently, every retained sample contains the full physical evolution of the
-interface without introducing artificial truncation of large-scale coherent
-structures.
+Figure~\ref{fig:conditional_diffusion_0d_forward} illustrates this idea on a
+zero-dimensional toy problem. The marginal dataset is a mixture of several
+Gaussian components, but each sample also carries a label $y\in\{0,1\}$. The
+forward diffusion process still corrupts the scalar value $x_0$ with Gaussian
+noise until the two conditional marginals become almost indistinguishable in
+the noisy variable $x_t$. The crucial point is that the label is not diffused:
+it remains available to the reverse model as side information.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.65\textwidth]{figures/ch3/zone_melange.png}
-    \caption{Representation of $y_b(t)$ and $y_s(t)$ for every $x$ to ensure that the mixing zone (yellow) is fully contained within the cropped field of view.}
-    \label{fig:zone_melange}
+    \includegraphics[width=0.85\textwidth]{figures/ch3/conditional_diffusion_0d_forward.png}
+    \caption{Forward diffusion in a scalar conditional example. The initial distribution is split into two label-conditioned families. After sufficient noising, the two marginals collapse toward the same Gaussian-like distribution in $x_t$, while the label remains available as conditioning information.}
+    \label{fig:conditional_diffusion_0d_forward}
 \end{figure}
 
-
-\section{Pipeline}
-
-\subsection{Overview}
-
-The overall workflow adopted in this study follows the standard paradigm of
-Denoising Diffusion Probabilistic Models (DDPMs), adapted to the specific
-characteristics of the Rayleigh--Taylor instability dataset. The complete
-pipeline is summarized in Figure~\ref{fig:general_pipeline}.
-
-The process begins with the DNS database described in the previous sections.
-Each density field is first preprocessed through cropping, normalization and
-physically consistent data augmentation. The resulting samples are then used to
-train a diffusion model whose objective is to learn the probability
-distribution of RTI density fields.
-
-The denoising network is implemented as a U-Net architecture augmented with a
-temporal embedding. The embedding provides information about the current
-diffusion timestep and allows the network to adapt its prediction depending on
-the noise level present in the input image. The predicted noise is compared to
-the true noise using a mean squared error objective, and the network parameters
-are optimized through gradient descent.
-
-\begin{figure}[p]
-\centering
-\makebox[\textwidth][c]{%
-    \includegraphics[width=1.15\textwidth]{figures/ch3/Diffusion.png}
-}
-\caption{General pipeline of the proposed diffusion framework.}
-\label{fig:general_pipeline}
-\end{figure}
-
-
-
-\subsection{Model architecture}
-
-The denoising model used in this baseline experiment is a two-dimensional U-Net
-that takes as input a noisy density field $\mathbf{x}_t$ and the corresponding
-diffusion timestep $t$. Its output has the same spatial resolution and number
-of channels as the input and is interpreted as the predicted noise
-$\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$.
-
-The use of a U-Net is well suited to RTI fields because the instability
-contains both localized interfacial structures and larger coherent motions.
-The encoder path progressively reduces the spatial resolution and increases
-the number of feature channels, allowing the network to extract increasingly
-coarse representations of the flow. The decoder path then reconstructs a
-full-resolution prediction, while skip connections transfer high-frequency
-information from the encoder to the decoder. These skip connections are
-important because the model must preserve thin structures near the mixing layer
-while still accounting for the global organization of bubbles and spikes.
-
-In the implementation used for the $64\times64$ baseline, the input tensor has
-shape $(1,64,64)$. The U-Net contains three downsampling levels and three
-upsampling levels. Each level is composed of convolutional blocks using
-$3\times3$ convolutions, SiLU activations and layer normalization. The first
-level uses 10 channels, then the number of channels is increased to 20 and 40
-at deeper levels. The default architecture therefore remains relatively light,
-which is appropriate given the limited size of the DNS dataset and the risk of
-overfitting.
-
-The timestep is encoded using a fixed sinusoidal embedding of dimension 100.
-This embedding is projected by small fully connected networks and added to the
-feature maps at each resolution level. This conditioning mechanism allows the
-same U-Net to adapt its behavior across the whole diffusion trajectory: at
-large timesteps the input is dominated by Gaussian noise and the network must
-predict coarse denoising directions, whereas at small timesteps it must recover
-finer structures of the RTI field.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{figures/ch3/Unet.png}
-    \caption{U-Net denoising architecture used in the baseline DDPM. The noisy
-    field and the diffusion timestep are given as inputs, and the network
-    predicts the Gaussian noise component added during the forward process.}
-    \label{fig:baseline_unet}
-\end{figure}
-
-\subsection{Model training}
-
-All density fields are first converted to floating-point tensors and normalized
-from image values in $[0,255]$ to the interval $[-1,1]$. The baseline model is
-trained on square $64\times64$ samples with a batch size of 128. The DDPM uses
-$T=1000$ diffusion steps and a linear variance schedule
+At the level of the forward process, nothing changes fundamentally: the target
+variable is still progressively noised according to the same Markov chain. The
+difference appears in the learned reverse model, which now predicts the noise
+or the score using both the current noisy sample and the condition,
 
 \begin{equation}
-    \beta_t \in [10^{-4},\,2\times10^{-2}],
+    \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t,\mathbf{c})
+    \approx
+    \boldsymbol{\epsilon}.
 \end{equation}
 
-which progressively transforms the normalized RTI fields into an approximately
-standard Gaussian distribution.
-
-At each training iteration, a clean sample $\mathbf{x}_0$ is drawn from the
-training set, a timestep $t$ is sampled uniformly from
-$\{0,\ldots,T-1\}$, and a Gaussian noise field
-$\boldsymbol{\epsilon}$ is generated. The noisy sample is then obtained with
-the closed-form forward relation
+The corresponding training objective becomes
 
 \begin{equation}
-    \mathbf{x}_t
+    \mathcal{L}_{\mathrm{cond}}(\theta)
     =
-    \sqrt{\overline{\alpha}_t}\,\mathbf{x}_0
-    +
-    \sqrt{1-\overline{\alpha}_t}\,\boldsymbol{\epsilon}.
+    \mathbb{E}_{\mathbf{x}_0,\mathbf{c},t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t,\mathbf{c})
+        \right\|_2^2
+    \right].
 \end{equation}
 
-The U-Net receives $(\mathbf{x}_t,t)$ and predicts
-$\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$. The parameters are optimized
-with Adam by minimizing the mean squared error between the predicted and true
-noise,
+This modification is conceptually simple but important. In an unconditional
+model, the network must simultaneously infer the global organization and the
+small-scale variability of the data. In a conditional model, part of this
+uncertainty is removed by the condition. The model therefore learns a family of
+conditional distributions rather than a single global distribution. When the
+condition captures the low-frequency organization of the signal, the diffusion
+model can focus its capacity on the residual variability compatible with that
+coarse structure.
+
+The practical effect is shown in
+Figure~\ref{fig:conditional_diffusion_0d_generation}. A conditional network can
+generate samples from the two label-conditioned distributions by changing only
+the conditioning input. Without this information, an unconditional model would
+only learn the marginal mixture and would not provide direct control over which
+family is sampled. The conditioning therefore changes the learned reverse
+transition from a single denoising field to a collection of denoising fields
+indexed by $\mathbf{c}$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch3/conditional_diffusion_0d_generation.png}
+    \caption{Conditional generation in the scalar toy example. Left: generated samples reproduce the two target conditional distributions when the label is provided to the model. Right: reverse trajectories starting from Gaussian noise separate according to the prescribed condition.}
+    \label{fig:conditional_diffusion_0d_generation}
+\end{figure}
+
+This coarse-to-fine factorization is especially relevant for multi-scale
+physical fields. For a wavelet decomposition of a signal or image, one may
+seek to model
 
 \begin{equation}
-    \mathcal{L}(\theta)
+    p(\mathbf{x})
     =
-    \left\|
-    \boldsymbol{\epsilon}
-    -
-    \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
-    \right\|_2^2.
+    p(\mathbf{c}_A,\mathbf{c}_D)
+    =
+    p(\mathbf{c}_A)\,p(\mathbf{c}_D\mid\mathbf{c}_A),
 \end{equation}
 
-A validation split is used to monitor the generalization of the denoising
-objective. At the end of each epoch, the validation loss is evaluated without
-updating the weights, and the checkpoint with the lowest validation loss is
-kept. This selection criterion is preferable to keeping the last epoch because
-the dataset is small and the training loss alone may not reveal overfitting.
+where $\mathbf{c}_A$ denotes approximation coefficients and $\mathbf{c}_D$
+detail coefficients. In a deeper cascade, this factorization can be iterated
+across scales, for example
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.65\textwidth]{figures/ch3/training_loop.png}
-    \caption{Training loop of the baseline DDPM. A random timestep and a random
-    Gaussian perturbation are sampled for each batch, the U-Net predicts the
-    injected noise, and the model is optimized using a mean squared error
-    objective.}
-    \label{fig:baseline_training_loop}
-\end{figure}
+\begin{equation}
+    p(Ca_3,Ch_3,Ch_2,Ch_1)
+    =
+    p(Ca_3)\,p(Ch_3\mid Ca_3)\,p(Ch_2\mid Ca_2)\,p(Ch_1\mid Ca_1),
+\end{equation}
 
-\subsection{Baseline qualitative results}
+which is precisely the logic explored in the multi-level wavelet notebooks.
+The conceptual gain is that the model no longer needs to generate all scales at
+once: coarse content is generated first, then progressively refined by
+conditional detail models.
 
-The baseline DDPM provides a first reference point for unconditional generation
-of RTI density fields in image space. Before training, samples drawn by the
-reverse process are visually indistinguishable from random Gaussian noise,
-which confirms that the generation procedure itself does not impose RTI-like
-structures. After training, the reverse process progressively transforms the
-initial noise into fields containing a recognizable mixing region and
-interface-like structures.
+This decomposition does not make the problem trivial. Its usefulness depends on
+how informative the condition really is, on whether the chosen architecture can
+exploit it effectively, and on whether the coefficient normalization preserves
+a reasonable balance between coarse and fine scales. Nevertheless, conditional
+diffusion provides the theoretical bridge between the standard DDPM introduced
+in this chapter and the wavelet-based methodology described in the next one.
 
-This result indicates that the model has learned part of the low-dimensional
-organization of the dataset: generated samples are no longer arbitrary images
-but concentrate around configurations compatible with the training
-distribution. In particular, the generated fields tend to recover the global
-vertical organization of the RTI problem, with a central mixing zone separating
-the two fluids, and they reproduce some of the bubble-and-spike morphology
-observed in the DNS samples.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.65\textwidth]{figures/ch3/loss_curve.png}
-    \caption{Training and validation loss curves for the baseline DDPM. The model is trained for 2000 epochs, and the checkpoint with the lowest validation loss is retained.}
-    \label{fig:loss_curve}
-\end{figure}
-
-Therefore the outputs images are indistinguishable from the training samples qualitatively, but they are not exact copies of the training data. The model has learned to generate new samples that share the same statistical properties as the training set, demonstrating its ability to capture the underlying distribution of RTI density fields. However, further quantitative evaluation is necessary to assess the fidelity of the generated samples and their adherence to the physical characteristics of the Rayleigh--Taylor instability.
-
-\begin{figure}[H]
-    \centering
-
-    \begin{minipage}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{figures/ch3/original.png}
-        \caption*{(a) Original DNS field}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\linewidth]{figures/ch3/generated.png}
-        \caption*{(b) Generated field}
-    \end{minipage}
-
-    \caption{Comparison between a DNS sample and a generated sample.}
-    \label{fig:comparison}
-\end{figure}
-
-This background chapter introduced the physical, numerical, and algorithmic foundations of the work. The next chapter builds on these elements to describe the implemented methodology and the two generative pipelines studied during the internship.
+This background chapter introduced the physical, representational, and
+algorithmic foundations of the work. The next chapter builds on these elements
+to describe the dataset preparation, the implemented training pipelines, and
+the conditional wavelet framework used during the internship.
