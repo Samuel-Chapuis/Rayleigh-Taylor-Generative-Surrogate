@@ -1,0 +1,185 @@
+# %%
+from dataclasses import dataclass
+import random
+import numpy as np
+from tqdm.auto import tqdm
+import os
+
+import torch
+import torch.nn as nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchview import draw_graph
+
+from torchvision.transforms import Compose, ToTensor, Lambda
+from torchvision.datasets.mnist import MNIST, FashionMNIST
+
+
+from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.diffusion_lib.Logger import Logger
+from lib.diffusion_lib.data_loader import data_loader
+from lib.diffusion_lib.utils import *
+from lib.diffusion_lib.DDPM import *
+from lib.diffusion_lib.UNet import *
+from lib.diffusion_lib.embeding import *
+from lib.diffusion_lib.training_loop import *
+# %%
+
+@dataclass(frozen=True)
+class Config:
+    device: torch.device = None
+
+    # Parametres généraux
+    seed: int = 0
+    store_path_dataset: str = "data/RT64"
+    viz: ImageVisualizer = ImageVisualizer(output_dir="outputs/img")
+    batch_size: int = 128
+    do_train: bool = False
+    n_epochs: int = 1000
+    lr: float = 0.001
+    store_path: str = "outputs/model/RT64.pt"
+    input_path: str = ""
+    log_path: str = "outputs/logs/RT64.log"
+    csv_path: str = "outputs/logs/RT64.csv"
+    config_path: str = "outputs/model/RT64_config.json"
+
+    # Hyperparametres
+    kernel_size: int = 3
+    stride: int = 1
+    padding: int = 1
+    out_channels: int = 10
+
+    # Parametres du DDPM
+    time_emb_dim: int = 100 # dimension de l'embedding temporel
+    n_steps: int = 1000 # discretisation du processus de diffusion (nombre de bruitages successifs)
+    min_beta: float = 10 ** -4
+    max_beta: float = 0.02
+    image_chw: tuple[int, int, int] = (1, 64, 64) # format des images (channels, height, width)
+    unet_depth: int = 3 # nombre de niveaux de descente/remontee du U-Net
+    unet_blocks_per_level: int = 3 # nombre de blocs convolutionnels par niveau
+    unet_base_channels: int = 10 # nombre de canaux du premier niveau du U-Net
+    unet_out_channels: int | None = None # None garde le meme nombre de canaux que l'entree
+    
+    def __post_init__(self):
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
+
+        object.__setattr__(self, "device", get_best_device())
+        print(self.device)
+
+# %%
+''' Setup '''
+# Preparation de l'expérience
+config = Config()
+logger = Logger(config.log_path, config.csv_path)
+experiment_config = {
+    "seed": config.seed,
+    "store_path_dataset": config.store_path_dataset,
+    "batch_size": config.batch_size,
+    "n_epochs": config.n_epochs,
+    "lr": config.lr,
+    "store_path": config.store_path,
+    "input_path": config.input_path,
+    "time_emb_dim": config.time_emb_dim,
+    "n_steps": config.n_steps,
+    "min_beta": config.min_beta,
+    "max_beta": config.max_beta,
+    "image_chw": config.image_chw,
+    "unet_depth": config.unet_depth,
+    "unet_blocks_per_level": config.unet_blocks_per_level,
+    "unet_base_channels": config.unet_base_channels,
+    "unet_out_channels": config.unet_out_channels,
+    "device": config.device,
+}
+logger.log_experiment_start(experiment_config)
+
+
+loader = data_loader(config)
+val_loader = data_loader(config, split="validation", shuffle=False)
+
+
+first_batch = next(iter(loader))[0]
+actual_image_chw = tuple(first_batch.shape[1:])
+if actual_image_chw != config.image_chw:
+    raise ValueError(
+        "Incoherence entre le dataset et le modele: "
+        f"dataset={actual_image_chw}, config.image_chw={config.image_chw}. "
+        "Corrige store_path_dataset ou image_chw dans Config."
+    )
+
+
+logger.save_config(experiment_config, config.config_path)
+
+
+# On affiche le premier batch de donnée pour vérifier que tout est en ordre
+config.viz.show_first_batch(loader)
+
+''' Entraînement '''
+# Visualisation du processus de diffusion directe avant entraînement
+ddpm = DDPM(
+    UNet(
+        n_steps=config.n_steps,
+        time_emb_dim=config.time_emb_dim,
+        size=config.image_chw[1],
+        in_channels=config.image_chw[0],
+        out_channels=config.unet_out_channels,
+        depth=config.unet_depth,
+        blocks_per_level=config.unet_blocks_per_level,
+        base_channels=config.unet_base_channels,
+    ),
+    n_steps=config.n_steps,
+    min_beta=config.min_beta,
+    max_beta=config.max_beta,
+    device=config.device,
+    image_chw=config.image_chw,
+)
+if config.input_path:
+    if not os.path.exists(config.input_path):
+        raise FileNotFoundError(f"Checkpoint introuvable: {config.input_path}")
+    ddpm.load_state_dict(torch.load(config.input_path, map_location=config.device))
+config.viz.show_forward(ddpm, loader, config.device)
+
+# Visualisation du processus de diffusion inverse avant entraînement
+generate = ddpm.sample()
+config.viz.show_images(generate, "before training")
+
+# Choix de l'optimiseur
+optimizer = Adam(ddpm.parameters(), lr=config.lr)
+
+# Entraînement du modèle
+if config.do_train:
+    loss = training_loop(
+        ddpm,
+        loader,
+        config.n_epochs,
+        optimizer,
+        config.device,
+        store_path=config.store_path,
+        logger=logger,
+        val_loader=val_loader,
+    )
+
+# Chargement du meilleur modèle sauvegardé
+best_model = DDPM(
+    UNet(
+        n_steps=config.n_steps,
+        time_emb_dim=config.time_emb_dim,
+        size=config.image_chw[1],
+        in_channels=config.image_chw[0],
+        out_channels=config.unet_out_channels,
+        depth=config.unet_depth,
+        blocks_per_level=config.unet_blocks_per_level,
+        base_channels=config.unet_base_channels,
+    ),
+    n_steps=config.n_steps,
+    min_beta=config.min_beta,
+    max_beta=config.max_beta,
+    device=config.device,
+    image_chw=config.image_chw,
+)
+best_model.load_state_dict(torch.load(config.store_path, map_location=config.device))
+best_model.eval()
+
+# Visualisation du processus de diffusion inverse après entraînement
+config.viz.show_backward(best_model, config.device)
