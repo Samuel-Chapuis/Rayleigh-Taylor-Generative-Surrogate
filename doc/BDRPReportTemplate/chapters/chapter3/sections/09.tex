@@ -111,7 +111,7 @@ d\mathbf{x}
 
 where $(\beta(t))$ controls the noise schedule.
 
-The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s$, the noisy sample at any diffusion time can be obtained directly through
+The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\sqrt{e^{-\frac{1}{2}\int_0^t \beta(s) ds}}$, the noisy sample at any diffusion time can be obtained directly through
 
 \begin{equation}
 \mathbf{x}_t
@@ -126,30 +126,81 @@ The discrete implementation used during training relies on a finite number of ti
 \mathcal{N}(\mathbf{0},\mathbf{I}).
 \end{equation}
 
-\begin{compactproof}[title={Example: closed-form noising law}]
-\proofstep{Idea} Starting from the discrete Gaussian transition, one repeatedly
-substitutes the previous state and uses the stability of Gaussian variables under
-independent affine combinations. For two consecutive steps,
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea} Integrate $d\mathbf{x}$ without the diffusion term to get the
+deterministic part, then add the stochastic contribution.
+
+\proofstep{Linear ODE} With $d\mathbf{w}=0$, the deterministic dynamics is
 \[
-\mathbf{x}_t
-=
-\sqrt{\alpha_t\alpha_{t-1}}\,\mathbf{x}_{t-2}
-+\sqrt{\alpha_t(1-\alpha_{t-1})}\,\boldsymbol{\epsilon}_{t-1}
-+\sqrt{1-\alpha_t}\,\boldsymbol{\epsilon}_{t}.
+    \frac{d\mathbf{x}}{dt}
+    =
+    -\frac{1}{2}\beta(t)\mathbf{x}.
 \]
-Since the two noise terms are independent and centered, their sum is again
-Gaussian with covariance
+Its solution is
 \[
-\alpha_t(1-\alpha_{t-1})\mathbf{I}
-+(1-\alpha_t)\mathbf{I}
-=
-(1-\alpha_t\alpha_{t-1})\mathbf{I}.
+    \mathbf{x}(t)
+    =
+    \mathbf{x}_0
+    \, e^{
+        -\frac{1}{2}\int_0^t \beta(s)\,ds}.
 \]
-Iterating this argument yields the compact marginal expression above with
-\(\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s\). \qedcompact
+Thus one may define
+\[
+    \alpha_t
+    = e^{
+        -\frac{1}{2}\int_0^t \beta(s)\,ds},
+    \qquad
+    \mathbf{x}(t)=\alpha_t\mathbf{x}_0.
+\]
+
+\proofstep{Stochastic term} For the stochastic part, set
+$\mathbf{y}(t)=\alpha_t^{-1}\mathbf{x}(t)$. Since $\alpha_t$ is deterministic,
+Ito's product rule gives
+\[
+    d\mathbf{y}
+    =
+    \alpha_t^{-1}d\mathbf{x}
+    +
+    \mathbf{x}\,d(\alpha_t^{-1}).
+\]
+Substituting the SDE and the derivative of $\alpha_t^{-1}$ cancels the drift,
+which yields
+\[
+    d\mathbf{y}
+    =
+    \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}.
+\]
+
+Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and multiply by $\alpha_t$:
+\begin{align*}
+    \int_{0}^{t} dy &= \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w} \\
+    \Rightarrow x(t) &= \alpha_t \, x_0 + \alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}
+\end{align*}
+
+\proofstep{Distribution} The integral of the stochastic term is a Gaussian random variable with mean zero and variance
+\begin{align*}
+    \text{Var}\left(\alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}\right)
+    &= \alpha_t^2 \int_{0}^{t} (\alpha_s^{-1}\sqrt{\beta(s)})^2 ds \\
+    &= \alpha_t^2 \int_{0}^{t} \alpha_s^{-2} \beta(s) ds \\
+    &= \alpha_t^2 \left( \frac{1}{\alpha_t^2} -1 \right) \\
+    &= 1 - \alpha_t^2
+\end{align*}
+
+
+\proofstep{Conclusion} By combining the deterministic and stochastic parts, we obtain the final expression for $\mathbf{x}_t$ seting $\bar{\alpha}_t = \alpha_t^2$:
+\[
+    \mathbf{x}_t
+    =
+    \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
+    +
+    \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},
+    \qquad
+    \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\]
+\qedcompact
 \end{compactproof}
 
-This expression reveals the competition between the information contained in the original RTI field and the progressively increasing Gaussian perturbation. For sufficiently large diffusion times, the signal component vanishes and the distribution approaches the Gaussian prior used to initialize the generation process.
+By showing that the forward process can be solved analytically, the proof above also provides a practical way to generate noisy samples at any diffusion time. The same result can be obtained by iteratively applying the discrete transition kernel, but the closed-form expression is more efficient and avoids the accumulation of numerical errors.
 
 This mechanism is illustrated Figure~\ref{fig:diff1d} in
 one dimension by a bimodal distribution: its two modes progressively

@@ -1,0 +1,100 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+\makeatletter
+\def\@currname{proofstyle}
+\def\@currext{sty}
+\input{../BDRPReportTemplate/proofstyle.sty}
+\makeatother
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\begin{document}
+
+\section*{Fast proof draft}
+
+\subsection{Learning the Reverse Process Through the Score}
+
+While the forward process is known analytically, the reverse evolution that transforms Gaussian noise back into realistic samples is generally intractable. A central result established by ANDERSON1982313 and exploited by Song2021SDE is that the reverse-time dynamics of the diffusion process is itself governed by a stochastic differential equation,
+
+\begin{equation}
+d\mathbf{x}
+=
+\left[
+\mathbf{f}(\mathbf{x},t)
+-
+g(t)^2
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\right]dt
++
+g(t),d\bar{\mathbf{w}},
+\end{equation}
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea} Set $\rho$ as the density of the forward process where $\rho_0 = p_0$ and $\rho_T = p_T \simeq \mathcal{N}(\mathbf{0},\mathbf{I})$. Then let's set $\nu_t = \rho_{T-t}$ as the density of the reverse process. The goal is to find the SDE that governs $\nu_t$.
+\proofstep{Fokker-Planck} The Fokker-Planck equation
+\begin{equation}
+\partial_t \rho = -\nabla_{\mathbf{x}} \cdot (\rho) + \frac{1}{2} \nabla_{\mathbf{x}} \cdot (g^2 \nabla_{\mathbf{x}} \rho)
+\end{equation}
+describes the evolution of the density $\rho$ of a stochastic process governed by the SDE $d\mathbf{x} = dt + g d\mathbf{w}$. By substituting $\nu_t = \rho_{T-t}$, we can derive the Fokker-Planck equation for the reverse process:
+\begin{equation}
+\partial_t \nu = -\nabla_{\mathbf{x}} \cdot (\nu) + \frac{1}{2} \nabla_{\mathbf{x}} \cdot (g^2 \nabla_{\mathbf{x}} \nu) - g^2 \nabla_{\mathbf{x}} \cdot (\nu \nabla_{\mathbf{x}} \log \nu).
+\end{equation}  
+\end{compactproof}
+
+where $(d\bar{\mathbf{w}})$ denotes a reverse-time Wiener process and
+
+\begin{equation}
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\end{equation}
+
+is the score function of the perturbed distribution at time (t).
+
+The score corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
+
+A neural network parameterized by $(\theta)$
+\begin{equation}
+    p_{\theta}(\mathbf{x}_{0:T})
+    =
+    p(\mathbf{x}_T)
+    \prod_{t=1}^{T}
+    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t)
+\end{equation}
+
+In the score-based formulation, the network learns the score $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ of the noisy
+distribution,
+
+\begin{equation}
+    \mathbf{s}_{\theta}(\mathbf{x}_t,t)
+    \approx
+    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t),
+\end{equation}
+
+which points toward regions of higher probability density at each noise level.
+In practice, an equivalent and commonly used parameterization trains a network
+$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
+sample. A simplified training objective is
+
+\begin{equation}
+    \mathcal{L}_{\mathrm{simple}}(\theta)
+    =
+    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+        \right\|_2^2
+    \right].
+\end{equation}
+
+\end{document}
