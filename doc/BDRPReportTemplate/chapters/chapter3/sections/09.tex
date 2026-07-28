@@ -237,16 +237,71 @@ g(t)^2
 g(t),d\bar{\mathbf{w}},
 \end{equation}
 
-where $(d\bar{\mathbf{w}})$ denotes a reverse-time Wiener process and
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea} Associate the forward process with a Fokker-Planck equation and then derive the reverse-time SDE from it.
+\proofstep{Step 1} Consider the forward SDE
+\begin{equation*}
+d\mathbf{x}
+=
+\mathbf{f}(\mathbf{x},t)dt
++
+g(t)d\mathbf{w},
+\end{equation*}
+where $\mathbf{w}$ is a Wiener process. The corresponding Fokker-Planck equation describes the evolution of the probability density $p_t(\mathbf{x})$ of $\mathbf{x}$ at time $t$:
+\begin{equation*}
+\frac{\partial p_t(\mathbf{x})}{\partial t}
+=
+-\nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},t)p_t(\mathbf{x})\right]
++
+\frac{1}{2}g(t)^2\nabla_{\mathbf{x}}^2p_t(\mathbf{x}).
+\end{equation*}
+Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{T-t}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(T-t)$:
+\begin{align*}
+    \partial q_t(\mathbf{x})
+    &=
+    -\partial p_{T-t}(\mathbf{x})\\
+    &=
+    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},T-t)p_{T-t}(\mathbf{x})\right]
+    -
+    \frac{1}{2}g(T-t)^2\nabla_{\mathbf{x}}^2p_{T-t}(\mathbf{x})\\
+    &=
+    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)q_t(\mathbf{x})\right]
+    -
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
+    &=
+    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})}\right)q_t(\mathbf{x})\right]
+    -
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).  \\
+    &=
+    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    -
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}) \quad 
+    {\scriptstyle \text{with:} \frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})} = \nabla_{\mathbf{x}}\log q_t(\mathbf{x}) } \\
+    &= 
+    - \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    +
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).
+\end{align*}
 
-\begin{equation}
-\nabla_{\mathbf{x}}
-\log p_t(\mathbf{x})
-\end{equation}
+The last line is the Fokker-Planck equation corresponding to the reverse-time SDE
+\begin{equation*}
+d\mathbf{y}
+=
+\left[
+\mathbf{f}(\mathbf{y},\tau)
+-
+g(\tau)^2
+\nabla_{\mathbf{y}}
+\log q_t(\mathbf{y})
+\right]dt
++
+g(\tau)d\bar{\mathbf{w}},
+\end{equation*}
+where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
 
-is the score function of the perturbed distribution at time (t).
+\end{compactproof}
 
-The score corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
+The score $\mathbf{s}(\mathbf{x},t) = \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
 
 A neural network parameterized by $(\theta)$
 \begin{equation}
