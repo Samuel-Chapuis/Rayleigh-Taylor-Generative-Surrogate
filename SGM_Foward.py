@@ -37,8 +37,11 @@ class Config:
     # VP-SDE continu
     beta_min: float = 0.1
     beta_max: float = 20.0
-    eps_time: float = 1e-3
-    sampling_steps: int = 1000 # Présent que pour la génération d'images, non utilisé pour l'entrainement
+    eps_time: float = 1e-2
+    sampling_steps: int = 256 # Present uniquement pour la generation
+    prediction_type: str = "v"
+    sampler: str = "heun"
+    clip_denoised: bool = True
     time_emb_dim: int = 128
 
     # U-Net commun avec le workflow DDPM
@@ -72,6 +75,7 @@ def build_sgm(config):
         beta_min=config.beta_min,
         beta_max=config.beta_max,
         eps_time=config.eps_time,
+        prediction_type=config.prediction_type,
         device=config.device,
         image_chw=config.image_chw,
     )
@@ -118,7 +122,15 @@ def main(config=None):
     sgm.load_state_dict(torch.load(config.store_path, map_location=config.device, weights_only=True))
     sgm.eval()
     visualizer = ImageVisualizer(output_dir="outputs/img")
-    visualizer.show_images(sgm.sample(device=config.device), "SGM generated images")
+    visualizer.show_images(
+        sgm.sample(
+            device=config.device,
+            n_steps=config.sampling_steps,
+            solver=config.sampler,
+            clip_denoised=config.clip_denoised,
+        ),
+        "SGM generated images",
+    )
     return sgm
 
 

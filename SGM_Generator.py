@@ -56,6 +56,7 @@ def build_sgm_from_config(config, device):
         beta_min=config.get("beta_min", 0.1),
         beta_max=config.get("beta_max", 20.0),
         eps_time=config.get("eps_time", 1e-3),
+        prediction_type=config.get("prediction_type", "epsilon"),
         device=device,
         image_chw=image_chw,
     )
@@ -76,7 +77,15 @@ def load_trained_sgm(config, device):
     return sgm
 
 
-def generate_sgm_dataset(sgm, device=None, n_samples=8, batch_size=128, n_steps=None):
+def generate_sgm_dataset(
+    sgm,
+    device=None,
+    n_samples=8,
+    batch_size=128,
+    n_steps=None,
+    solver="heun",
+    clip_denoised=True,
+):
     """Genere ``n_samples`` images par lots et retourne un tenseur CPU."""
     if device is None:
         device = sgm.device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,6 +108,8 @@ def generate_sgm_dataset(sgm, device=None, n_samples=8, batch_size=128, n_steps=
             n_samples=current_batch_size,
             device=device,
             n_steps=n_steps,
+            solver=solver,
+            clip_denoised=clip_denoised,
         )
         samples.append(batch.cpu())
         remaining -= current_batch_size
@@ -109,17 +120,29 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     config = load_generation_config()
     sampling_steps = config.get("sampling_steps", 1000)
+    solver = config.get("sampler", "heun")
+    clip_denoised = config.get("clip_denoised", True)
 
     sgm = load_trained_sgm(config, device)
     generated_dataset = generate_sgm_dataset(
-        sgm, device=device, n_samples=DATA_SIZE, n_steps=sampling_steps
+        sgm,
+        device=device,
+        n_samples=DATA_SIZE,
+        n_steps=sampling_steps,
+        solver=solver,
+        clip_denoised=clip_denoised,
     )
 
     # Reference utile pour comparer l'effet du reseau appris.
     noise_model = build_sgm_from_config(config, device)
     noise_model.eval()
     noise_dataset = generate_sgm_dataset(
-        noise_model, device=device, n_samples=DATA_SIZE, n_steps=sampling_steps
+        noise_model,
+        device=device,
+        n_samples=DATA_SIZE,
+        n_steps=sampling_steps,
+        solver=solver,
+        clip_denoised=clip_denoised,
     )
 
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)

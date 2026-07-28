@@ -124,15 +124,21 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
 
 
 def _sgm_epsilon_loss(sgm, batch, mse, device):
-    """Loss de denoising score matching pour un VP-SDE continu."""
+    """Loss stable de denoising score matching pour un VP-SDE continu.
+
+    En mode ``v``, la cible reste de variance bornee lorsque sigma(t) tend
+    vers zero. Cela evite d'entrainer directement une quantite de score dont
+    l'echelle diverge comme 1 / sigma(t).
+    """
     x0 = batch[0].to(device)
     n = x0.shape[0]
     t = torch.rand(n, device=device, dtype=x0.dtype)
     t = sgm.eps_time + (1.0 - sgm.eps_time) * t
     eps = torch.randn_like(x0)
     xt = sgm(x0, t, eps)
-    eps_pred = sgm.predict_epsilon(xt, t)
-    return mse(eps_pred, eps)
+    prediction = sgm.network(xt, t)
+    target = sgm.prediction_target(x0, t, eps)
+    return mse(prediction, target)
 
 
 def evaluate_sgm_loss(sgm, loader, device):
