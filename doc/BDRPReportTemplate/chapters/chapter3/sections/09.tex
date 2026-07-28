@@ -1,0 +1,436 @@
+\section{Introduction to score-based diffusion}
+
+\subsection{From individual simulations to a probability distribution}
+
+Machine learning approaches can broadly be divided into supervised and unsupervised methods. In supervised learning, the objective is to learn a mapping between an input and a target output provided through labeled examples. Typical applications include regression and classification tasks, where each sample is associated with a known quantity of interest.
+
+The objective of the present work is fundamentally different. Given a collection of Direct Numerical Simulations (DNS) of Rayleigh--Taylor instability (RTI), no unique target field is associated with a given realization. Instead, the goal is to learn the statistical structure of the dataset itself and to generate new physically plausible density fields. This places the problem within the framework of unsupervised generative modeling, where the objective is to approximate the probability distribution from which the observed simulations are drawn.
+
+Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or equivalently a vector containing the coefficients of one of the reduced representations introduced in Chapter~2.
+
+\begin{equation}
+    \mathcal{D}=\left\{\mathbf{x}_0^{(i)}\right\}_{i=1}^{N}
+\end{equation}
+
+is regarded as a finite collection of samples drawn from an unknown data
+distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective is therefore not to reconstruct one particular DNS realization, but to
+learn the \emph{the probability distribution} of the simulated RTI
+fields. In other words, the model should map the space of admissible density fields to a probability measure that captures the properties of the dataset.
+The learned model, denoted by $p_{\theta}(\mathbf{x}_0)$, should approximate the
+unknown distribution according to
+
+\begin{equation}
+    p_{\theta}(\mathbf{x}_0)\approx
+    p_{\mathrm{data}}(\mathbf{x}_0).
+\end{equation}
+
+Once trained, it must be possible to draw new samples
+$\widetilde{\mathbf{x}}_0\sim p_{\theta}$ that are not copies of the training
+fields, while preserving their relevant statistical and physical properties.
+For RTI, these properties include the morphology of bubbles and spikes, the
+location and thickness of the mixing layer, the distribution of density values,
+and the organization of structures across spatial scales. Thus, the quality of
+the surrogate cannot be assessed from the visual fidelity of a single generated
+field alone; it must also be evaluated by statistical comparison of reference density fields and generated samples.
+
+Directly estimating $p_{\mathrm{data}}$ is challenging because it belongs
+to a high-dimensional space and the available number of DNS realizations is limited.
+Diffusion model current this difficulty by defining a foward process that gradually transforms the complex dataset into a simple Gaussian distribution. The model then learns to reverse this process, to recover samples from the original distribution.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{One-dimensional illustrative example}
+
+Before considering RTI fields, it is useful to look at the same mechanism in
+one dimension, where the whole probability distribution can be plotted. Let's use a toy dataset sampled from a
+mixture of two Gaussian distributions,
+
+\begin{equation}
+    p_{\mathrm{data}}(x_0)
+    =
+    \sum_{k=1}^{2}
+    \pi_k\,
+    \mathcal{N}(\mu_k,\sigma_k^2),
+\end{equation}
+
+with modes centered around $\mu_1=-4$ and $\mu_2=4$. This distribution is
+simple enough to visualize, but it already contains the main difficulty faced
+by a generative model: the data are not concentrated around a single average
+state. The model must instead represent two separated regions of high
+probability, as illustrated in Figure~\ref{fig:diffusion_1d_dataset}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.70\textwidth]{figures/ch3/diffusion_1d_dataset.png}
+    \caption{One-dimensional toy distribution used to illustrate diffusion.
+    The histogram represents samples drawn from a bimodal Gaussian mixture,
+    while the curve shows the corresponding probability density.}
+    \label{fig:diffusion_1d_dataset}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Forward diffusion process}
+
+Following the unified framework introduced by \citep{Song2021SDE}, diffusion models can be interpreted as stochastic processes that progressively transform the data distribution into a simple tractable distribution. Let
+
+\begin{equation}
+\mathbf{x}_0 \sim p_{\mathrm{data}}
+\end{equation}
+
+
+denote a sample drawn from the unknown distribution of RTI density fields. The forward diffusion process is defined as a continuous-time stochastic differential equation (SDE)
+
+\begin{equation}
+d\mathbf{x}
+=
+\mathbf{f}(\mathbf{x},t)dt
++
+g(t)d\mathbf{w}
+\end{equation}
+
+where $(t\in[0,T])$, $(\mathbf{w})$ denotes a standard Wiener process, $(\mathbf{f})$ is a drift coefficient and $(g)$ controls the intensity of the injected noise \citep{Song2021SDE}.
+
+The objective of this process is to progressively destroy the structure present in the data. As time increases, the probability distribution $(p_t(\mathbf{x}))$ evolves from the complex data distribution $(p_{\mathrm{data}})$ toward a simple prior distribution that is chosen as a standard Gaussian,
+
+\begin{equation}
+p_T(\mathbf{x})
+\approx
+\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+
+Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by \citep{Ho2020DDPM}. In this case, the forward process can be written as
+
+\begin{equation}
+d\mathbf{x}
+=
+-\frac{1}{2}\beta(t)\mathbf{x},dt
++
+\sqrt{\beta(t)},d\mathbf{w},
+\end{equation}
+
+where $(\beta(t))$ controls the noise schedule.
+
+The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s$, the noisy sample at any diffusion time can be obtained directly through
+
+\begin{equation}
+\mathbf{x}_t
+=
+\sqrt{\bar{\alpha}_t},\mathbf{x}_0
++
+\sqrt{1-\bar{\alpha}_t},
+\boldsymbol{\epsilon},
+\qquad
+\boldsymbol{\epsilon}
+\sim
+\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+
+\begin{compactproof}[title={Example: closed-form noising law}]
+\proofstep{Idea} Starting from the discrete Gaussian transition, one repeatedly
+substitutes the previous state and uses the stability of Gaussian variables under
+independent affine combinations. For two consecutive steps,
+\[
+\mathbf{x}_t
+=
+\sqrt{\alpha_t\alpha_{t-1}}\,\mathbf{x}_{t-2}
++\sqrt{\alpha_t(1-\alpha_{t-1})}\,\boldsymbol{\epsilon}_{t-1}
++\sqrt{1-\alpha_t}\,\boldsymbol{\epsilon}_{t}.
+\]
+Since the two noise terms are independent and centered, their sum is again
+Gaussian with covariance
+\[
+\alpha_t(1-\alpha_{t-1})\mathbf{I}
++(1-\alpha_t)\mathbf{I}
+=
+(1-\alpha_t\alpha_{t-1})\mathbf{I}.
+\]
+Iterating this argument yields the compact marginal expression above with
+\(\bar{\alpha}_t=\prod_{s=1}^{t}\alpha_s\). \qedcompact
+\end{compactproof}
+
+This expression reveals the competition between the information contained in the original RTI field and the progressively increasing Gaussian perturbation. For sufficiently large diffusion times, the signal component vanishes and the distribution approaches the Gaussian prior used to initialize the generation process.
+
+This mechanism is illustrated Figure~\ref{fig:diff1d} in
+one dimension by a bimodal distribution: its two modes progressively
+merge until the samples become approximately Gaussian. The same principle
+applies to RTI fields, although their probability distribution lies in a much
+higher-dimensional space and cannot be represented by a simple histogram.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch3/diffusion_1d_forward.png}
+    \caption{Forward diffusion in one dimension. Left: evolution of the noisy
+    marginal density $p_T(\mathbf{x})$ for several diffusion times. Right: trajectories
+    of individual samples during the Markov noising process.}
+    \label{fig:diff1d}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Learning the Reverse Process Through the Score}
+
+While the forward process is known analytically, the reverse evolution that transforms Gaussian noise back into realistic samples is generally intractable. A central result established by \citep{ANDERSON1982313} and exploited by \citep{Song2021SDE} is that the reverse-time dynamics of the diffusion process is itself governed by a stochastic differential equation,
+
+\begin{equation}
+d\mathbf{x}
+=
+\left[
+\mathbf{f}(\mathbf{x},t)
+-
+g(t)^2
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\right]dt
++
+g(t),d\bar{\mathbf{w}},
+\end{equation}
+
+where $(d\bar{\mathbf{w}})$ denotes a reverse-time Wiener process and
+
+\begin{equation}
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\end{equation}
+
+is the score function of the perturbed distribution at time (t).
+
+The score corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
+
+A neural network parameterized by $(\theta)$
+\begin{equation}
+    p_{\theta}(\mathbf{x}_{0:T})
+    =
+    p(\mathbf{x}_T)
+    \prod_{t=1}^{T}
+    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t)
+\end{equation}
+
+In the score-based formulation, the network learns the score $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ of the noisy
+distribution,
+
+\begin{equation}
+    \mathbf{s}_{\theta}(\mathbf{x}_t,t)
+    \approx
+    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t),
+\end{equation}
+
+which points toward regions of higher probability density at each noise level.
+In practice, an equivalent and commonly used parameterization trains a network
+$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
+sample. A simplified training objective is
+
+\begin{equation}
+    \mathcal{L}_{\mathrm{simple}}(\theta)
+    =
+    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+        \right\|_2^2
+    \right].
+\end{equation}
+
+Because the model is trained over all noise levels, it learns a sequence of
+local denoising directions rather than an explicit analytical expression for
+the complex RTI distribution. Repeated application of these directions
+transports samples from the Gaussian prior toward the regions occupied by the
+DNS data. The resulting ensemble of generated fields provides an approximation
+of the distribution sought in this work.
+
+In the one-dimensional setting, figure \ref{fig:diffusion_1d_reverse_score} shows the score can be represented as arrows along
+the $x$ axis. These arrows point toward regions where the noisy density is
+larger. Near the end of the forward process, the density is almost Gaussian and
+the score mainly points back toward the origin. At lower noise levels, the
+score separates the samples toward the two modes of the data distribution. The
+reverse generative process can therefore be interpreted as a gradual
+specialization: an initially structureless Gaussian sample is first brought
+back to the high-probability region, then assigned to one of the modes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch3/diffusion_1d_reverse_score.png}
+    \caption{Score-based reverse process in the one-dimensional example. Left:
+    score directions for several noise levels. Right: reverse denoising viewed
+    as the transformation of the Gaussian prior back into the bimodal data
+    distribution.}
+    \label{fig:diffusion_1d_reverse_score}
+\end{figure}
+
+\begin{equation}
+\mathbf{s}*{\theta}(\mathbf{x},t)
+\approx
+\nabla*{\mathbf{x}}
+\log p_t(\mathbf{x}).
+\end{equation}
+
+Since the exact score is unknown, it is estimated through denoising score matching. For the variance-preserving formulation adopted in this work, the score can be related to the Gaussian perturbation used during the forward process,
+% \citep{Vincent2011,Song2019}
+
+
+\begin{equation}
+\nabla_{\mathbf{x}_t}
+\log p(\mathbf{x}_t|\mathbf{x}_0)
+=
+-
+\frac{
+\boldsymbol{\epsilon}
+}{
+\sqrt{1-\bar{\alpha}_t}
+}.
+\end{equation}
+
+This relation motivates the widely used noise-prediction parameterization introduced by \citet{Ho2020DDPM}, where the neural network predicts the perturbation $(\boldsymbol{\epsilon})$ added to the clean sample. The corresponding training objective is,
+
+\begin{equation}
+\mathcal{L}(\theta)
+=
+\mathbb{E}_{\mathbf{x}*0,t,\boldsymbol{\epsilon}}
+\left[
+\left|
+\boldsymbol{\epsilon}
+-
+\boldsymbol{\epsilon}*{\theta}
+(\mathbf{x}_t,t)
+\right|_2^2
+\right].
+\end{equation}
+
+After training, the estimated score is used to numerically integrate the reverse-time dynamics from an initial Gaussian sample
+
+\begin{equation}
+\mathbf{x}_T
+\sim
+\mathcal{N}(\mathbf{0},\mathbf{I}),
+\end{equation}
+
+thereby transporting the probability mass from the simple Gaussian prior toward the complex distribution of RTI density fields. The generated samples can therefore be interpreted as approximate realizations drawn from the learned distribution $(p_{\theta}(\mathbf{x}))$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Conditional diffusion models}
+
+The unconditional formulation above learns a marginal distribution
+$p_{\theta}(\mathbf{x}_0)$ and generates samples from Gaussian noise alone.
+Many practical settings instead require a \emph{conditional} model, where one
+wants to sample from a distribution constrained by external information
+$\mathbf{c}$. The objective then becomes
+
+\begin{equation}
+    p_{\theta}(\mathbf{x}_0 \mid \mathbf{c}).
+\end{equation}
+
+The conditioning variable may be a discrete label, a low-dimensional physical
+parameter, or another structured signal. In the simple scalar example used in
+the exploratory notebooks, $\mathbf{c}$ is a class label selecting one of two
+signal families. In the wavelet setting that will be used in Chapter~4,
+$\mathbf{c}$ is instead a coarse approximation coefficient field, while the
+variable to be generated is the associated fine-scale detail field.
+
+Figure~\ref{fig:conditional_diffusion_0d_forward} illustrates this idea on a
+zero-dimensional toy problem. The marginal dataset is a mixture of several
+Gaussian components, but each sample also carries a label $y\in\{0,1\}$. The
+forward diffusion process still corrupts the scalar value $x_0$ with Gaussian
+noise until the two conditional marginals become almost indistinguishable in
+the noisy variable $x_t$. The crucial point is that the label is not diffused:
+it remains available to the reverse model as side information.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/ch3/conditional_diffusion_0d_forward.png}
+    \caption{Forward diffusion in a scalar conditional example. The initial distribution is split into two label-conditioned families. After sufficient noising, the two marginals collapse toward the same Gaussian-like distribution in $x_t$, while the label remains available as conditioning information.}
+    \label{fig:conditional_diffusion_0d_forward}
+\end{figure}
+
+At the level of the forward process, nothing changes fundamentally: the target
+variable is still progressively noised according to the same Markov chain. The
+difference appears in the learned reverse model, which now predicts the noise
+or the score using both the current noisy sample and the condition,
+
+\begin{equation}
+    \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t,\mathbf{c})
+    \approx
+    \boldsymbol{\epsilon}.
+\end{equation}
+
+The corresponding training objective becomes
+
+\begin{equation}
+    \mathcal{L}_{\mathrm{cond}}(\theta)
+    =
+    \mathbb{E}_{\mathbf{x}_0,\mathbf{c},t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t,\mathbf{c})
+        \right\|_2^2
+    \right].
+\end{equation}
+
+This modification is conceptually simple but important. In an unconditional
+model, the network must simultaneously infer the global organization and the
+small-scale variability of the data. In a conditional model, part of this
+uncertainty is removed by the condition. The model therefore learns a family of
+conditional distributions rather than a single global distribution. When the
+condition captures the low-frequency organization of the signal, the diffusion
+model can focus its capacity on the residual variability compatible with that
+coarse structure.
+
+The practical effect is shown in
+Figure~\ref{fig:conditional_diffusion_0d_generation}. A conditional network can
+generate samples from the two label-conditioned distributions by changing only
+the conditioning input. Without this information, an unconditional model would
+only learn the marginal mixture and would not provide direct control over which
+family is sampled. The conditioning therefore changes the learned reverse
+transition from a single denoising field to a collection of denoising fields
+indexed by $\mathbf{c}$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch3/conditional_diffusion_0d_generation.png}
+    \caption{Conditional generation in the scalar toy example. Left: generated samples reproduce the two target conditional distributions when the label is provided to the model. Right: reverse trajectories starting from Gaussian noise separate according to the prescribed condition.}
+    \label{fig:conditional_diffusion_0d_generation}
+\end{figure}
+
+This coarse-to-fine factorization is especially relevant for multi-scale
+physical fields. For a wavelet decomposition of a signal or image, one may
+seek to model
+
+\begin{equation}
+    p(\mathbf{x})
+    =
+    p(\mathbf{c}_A,\mathbf{c}_D)
+    =
+    p(\mathbf{c}_A)\,p(\mathbf{c}_D\mid\mathbf{c}_A),
+\end{equation}
+
+where $\mathbf{c}_A$ denotes approximation coefficients and $\mathbf{c}_D$
+detail coefficients. In a deeper cascade, this factorization can be iterated
+across scales, for example
+
+\begin{equation}
+    p(Ca_3,Ch_3,Ch_2,Ch_1)
+    =
+    p(Ca_3)\,p(Ch_3\mid Ca_3)\,p(Ch_2\mid Ca_2)\,p(Ch_1\mid Ca_1),
+\end{equation}
+
+which is precisely the logic explored in the multi-level wavelet notebooks.
+The conceptual gain is that the model no longer needs to generate all scales at
+once: coarse content is generated first, then progressively refined by
+conditional detail models.
+
+This decomposition does not make the problem trivial. Its usefulness depends on
+how informative the condition really is, on whether the chosen architecture can
+exploit it effectively, and on whether the coefficient normalization preserves
+a reasonable balance between coarse and fine scales. Nevertheless, conditional
+diffusion provides the theoretical bridge between the standard DDPM introduced
+in this chapter and the wavelet-based methodology described in the next one.
+
+This background chapter introduced the physical, representational, and
+algorithmic foundations of the work. The next chapter builds on these elements
+to describe the dataset preparation, the implemented training pipelines, and
+the conditional wavelet framework used during the internship.

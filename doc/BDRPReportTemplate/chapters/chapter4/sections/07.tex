@@ -1,0 +1,18 @@
+\section{Implementation Contributions}
+
+The implementation work conducted during the internship produced several
+experimental building blocks: a configurable DDPM training script, a reusable
+diffusion library, data loaders for preprocessed tensors, logging utilities,
+visualization routines, checkpoint saving, and the first version of a
+wavelet-conditioned diffusion pipeline. These elements made it possible to
+test the direct image-space baseline and to explore the wavelet formulation.
+
+However, the current software state is still exploratory. In particular, the
+wavelet-based pipeline does not yet provide sufficiently robust or competitive
+results, and some parts of the repository remain closer to research prototypes
+than to a reusable package. For this reason, this work should not yet be
+presented as a finalized software contribution. At this stage, the main
+contribution is methodological and experimental: identifying what works for the
+baseline, where the wavelet approach fails, and which parts of the pipeline
+need to be stabilized before a clean external release would be meaningful.
+

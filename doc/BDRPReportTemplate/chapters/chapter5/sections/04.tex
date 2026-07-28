@@ -1,0 +1,141 @@
+\section{Physical metrics}
+
+\subsection{Line-wise density statistics}
+
+Chapter~3 highlighted the importance of the vertical organization of RTI
+fields: the mixing region develops along the gravity direction, and the
+position of the interface is one of the main physical signatures of the flow.
+To preserve this information while reducing the dimensionality of the analysis, 
+it is possible to compares the fields line by line (because of the horizontal periodicity).
+
+Let $\rho(t,x,y)$ denote a validation field and $\varrho(t,x,y)$ a field from a
+compared dataset, where $t$ indexes the images, $x$ the vertical coordinate and
+$y$ the horizontal coordinate. For each image and each line, the mean density
+along the periodic direction is first computed as
+
+\begin{equation}
+    m_{\rho}(t,x)
+    =
+    \frac{1}{N_y}
+    \sum_{y=1}^{N_y}\rho(t,x,y),
+    \qquad
+    m_{\varrho}(t,x)
+    =
+    \frac{1}{N_y}
+    \sum_{y=1}^{N_y}\varrho(t,x,y).
+\end{equation}
+
+The temporal mean profile of each line is then defined by
+
+\begin{equation}
+    \widetilde{\rho}_l(x)
+    =
+    \frac{1}{N_t}\sum_{t=1}^{N_t}m_{\rho}(t,x),
+    \qquad
+    \widetilde{\varrho}_l(x)
+    =
+    \frac{1}{N_t}\sum_{t=1}^{N_t}m_{\varrho}(t,x).
+\end{equation}
+
+This quantity represents the mean vertical density organization of the dataset.
+It is directly related to the average position and thickness of the mixing
+layer.
+
+The temporal variability of each line is described by the standard deviation
+
+\begin{equation}
+    \sigma_{\rho,l}(x)
+    =
+    \sqrt{
+        \frac{1}{N_t}
+        \sum_{t=1}^{N_t}
+        \left(
+            m_{\rho}(t,x)-\widetilde{\rho}_l(x)
+        \right)^2
+    },
+\end{equation}
+
+and similarly for $\sigma_{\varrho,l}(x)$. This profile measures how strongly
+the mean value of a given line fluctuates across the dataset.
+
+The distances used in the notebook are normalized $L^2$ distances between these
+profiles:
+
+\begin{equation}
+    d_{\mu}(\rho,\varrho)
+    =
+    \frac{1}{N_x}
+    \left\|
+        \widetilde{\rho}_l
+        -
+        \widetilde{\varrho}_l
+    \right\|_2,
+    \qquad
+    d_{\sigma}(\rho,\varrho)
+    =
+    \frac{1}{N_x}
+    \left\|
+        \sigma_{\rho,l}
+        -
+        \sigma_{\varrho,l}
+    \right\|_2.
+\end{equation}
+
+These metrics are simple but physically informative: they test whether the
+generated ensemble reproduces the average vertical density profile and the
+amplitude of its fluctuations.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]{figures/ch4/skewnorm_joyplot.png}
+    \caption{Line-wise density statistics extracted from the validation,
+    generated and noise datasets. The skew-normal fits emphasize the vertical
+    organization of the fields and the contrast between physical samples and
+    pure noise.}
+    \label{fig:ch4_line_statistics}
+\end{figure}
+
+\subsection{Fluctuation 'energy' spectrum}
+
+The term 'energy spectrum' is used here in a loose sense to describe the distribution of fluctuations across spatial scales. It is not a true physical energy spectrum, but it hase to be seen as the signale energy (it would have been equal to a real energy spectrum if the density field was a velocity field). The first physical metric introduced above captures the mean vertical organization of the fields, but it does not provide any information about the distribution of fluctuations across scales. Starting from a dataset converted to a tensor of shape
+$(t,x,y)$, the fluctuation field is defined in the notebook by subtracting the
+global mean and taking its magnitude,
+
+\begin{equation}
+    \delta \rho(t,x,y)
+    =
+    \left|
+        \rho(t,x,y) - \overline{\rho}
+    \right|.
+\end{equation}
+
+A discrete Fourier transform is then applied, and the energy spectrum is
+computed as
+
+\begin{equation}
+    E_{\rho}
+    =
+    \left|
+        \mathcal{F}(\delta\rho)
+    \right|^2.
+\end{equation}
+
+In the baseline, a one-dimensional transform is applied along one
+spatial direction before reusing the same line-wise statistical machinery as
+above. The resulting quantities therefore compare the average spectral content
+and its variability across the dataset. Even though this construction is not a
+full isotropic turbulence spectrum, it provides a first indication of whether
+the generated fluctuations occupy approximately the correct range of spatial
+scales.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]{figures/ch4/skewnorm_joyplot_energy_spectrum.png}
+    \caption{Same comparison applied to the fluctuation energy spectrum. The
+    generated samples remain much closer to the validation set than pure noise,
+    but the spectral variability is still harder to match than the mean line
+    profile.}
+    \label{fig:ch4_energy_spectrum}
+\end{figure}
+
+

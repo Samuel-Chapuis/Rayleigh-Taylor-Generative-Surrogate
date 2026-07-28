@@ -1,0 +1,47 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{proofstyle}[2026/07/28 Compact proof boxes]
+
+\RequirePackage{xcolor}
+\RequirePackage{amssymb}
+\RequirePackage{tcolorbox}
+\tcbuselibrary{breakable,skins}
+
+\definecolor{proofgrayback}{RGB}{246,246,246}
+\definecolor{proofgrayframe}{RGB}{185,185,185}
+\definecolor{proofgraytitleback}{RGB}{220,220,220}
+
+\newtcolorbox{compactproof}[1][]{
+  enhanced,
+  breakable,
+  colback=proofgrayback,
+  colframe=proofgrayback,
+  colbacktitle=proofgraytitleback,
+  coltitle=black,
+  fonttitle=\bfseries,
+  title={Proof},
+  boxrule=0pt,
+  borderline north={0.45pt}{0pt}{proofgrayframe},
+  borderline west={0.45pt}{0pt}{proofgrayframe},
+  borderline east={0.45pt}{0pt}{proofgrayframe},
+  arc=0pt,
+  outer arc=0pt,
+  toptitle=0pt,
+  bottomtitle=0pt,
+  left=6pt,
+  right=6pt,
+  top=5pt,
+  bottom=5pt,
+  before skip=0.8em,
+  after skip=0.8em,
+  parskip=0.25em,
+  before upper={
+    \setlength{\abovedisplayskip}{0.35em}
+    \setlength{\belowdisplayskip}{0.35em}
+    \setlength{\abovedisplayshortskip}{0.25em}
+    \setlength{\belowdisplayshortskip}{0.25em}
+  },
+  #1
+}
+
+\newcommand{\proofstep}[1]{\textit{#1.}\ }
+\newcommand{\qedcompact}{\hfill$\square$}

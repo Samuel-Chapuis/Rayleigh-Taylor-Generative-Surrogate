@@ -18,6 +18,7 @@
 \usepackage{setspace}
 \usepackage{transparent}
 \usepackage{tcolorbox}
+\usepackage{proofstyle}
 \usepackage{float}
 \usepackage{natbib}
 \usepackage{amsmath}
@@ -281,15 +282,15 @@ Year 2025 -- 2026
 
 \pagenumbering{arabic}
 
-\include{Chapter1}
-\include{Chapter2}
-\include{Chapter3}
-\include{Chapter4}
-\include{Chapter5}
-\include{Chapter6}
+\include{chapters/chapter1/main}
+\include{chapters/chapter2/main}
+\include{chapters/chapter3/main}
+\include{chapters/chapter4/main}
+\include{chapters/chapter5/main}
+\include{chapters/chapter6/main}
 
 \appendix
-\include{Appendix1}
+\include{chapters/chapterappendix/main}
 
 \bibliographystyle{plainnat}
 \bibliography{Thesis}

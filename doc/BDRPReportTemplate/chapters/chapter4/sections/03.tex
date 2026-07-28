@@ -1,0 +1,72 @@
+\section{Baseline Image-space Diffusion Pipeline}
+
+The baseline model is trained directly on preprocessed two-dimensional RTI density fields. This pipeline is used as the reference against which the wavelet-based approach is compared.
+
+The baseline implementation is organized around the script
+\texttt{\_to\_move\_2D/diffusion.py} and the reusable library
+\texttt{lib/diffusion\_lib}. The script plays the role of an experiment driver:
+it defines the configuration, selects the computing device, loads the processed
+RTI tensors, checks that the dataset shape is consistent with the model
+configuration, initializes the DDPM and U-Net, launches the training loop when
+required, and finally reloads the best checkpoint for visualization and
+sampling.
+
+The library separates the main components of the diffusion pipeline. The
+\texttt{data\_loader} module loads the already preprocessed training,
+validation, and test tensors, converts them to floating-point images, and
+normalizes them in the interval $[-1,1]$. The \texttt{DDPM} module implements
+the forward noising process
+$x_t=\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon$, the learned
+reverse denoising step, and the sampling procedure that starts from Gaussian
+noise. The \texttt{UNet} module provides the time-conditioned convolutional
+network used to predict the injected noise. The \texttt{training\_loop} module
+contains the training logic: for each batch, a random diffusion time is sampled,
+Gaussian noise is added to the clean image, the U-Net predicts this noise, and
+the parameters are updated by minimizing the mean squared error between true
+and predicted noise. Validation loss is used to select and save the best model
+checkpoint.
+
+The denoising network is a two-dimensional U-Net that receives a noisy density
+field $\mathbf{x}_t$ together with the corresponding diffusion timestep $t$ and
+predicts the injected Gaussian perturbation
+$\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$. This architecture is adapted
+to RTI fields because the encoder captures large-scale organization whereas the
+decoder and skip connections preserve localized structures near the mixing
+layer. In the implementation used here, the input has shape $(1,64,64)$, the
+network contains three resolution levels, and the timestep is encoded through
+a sinusoidal embedding injected at each scale.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{figures/ch4/Unet2.drawio.png}
+    \caption{Baseline U-Net denoising architecture used for image-space diffusion. The noisy field is processed jointly with a time embedding in order to predict the noise added by the forward process.}
+    \label{fig:baseline_unet}
+\end{figure}
+
+At a high level, the baseline procedure can be summarized as follows:
+\begin{algorithm}[H]
+\caption{Baseline DDPM training and sampling procedure}
+\begin{algorithmic}
+\STATE Load processed RTI density fields and build training and validation loaders.
+\STATE Normalize each image to the interval $[-1,1]$.
+\STATE Initialize a DDPM with a time-conditioned U-Net and a linear noise schedule.
+\FOR{each training epoch}
+    \FOR{each batch $x_0$}
+        \STATE Sample a random time step $t$ and Gaussian noise $\epsilon$.
+        \STATE Build the noisy field $x_t$ using the forward diffusion equation.
+        \STATE Predict $\epsilon_\theta(x_t,t)$ with the U-Net.
+        \STATE Minimize $\|\epsilon-\epsilon_\theta(x_t,t)\|_2^2$.
+    \ENDFOR
+    \STATE Compute validation loss and save the checkpoint if it improves.
+\ENDFOR
+\STATE Reload the best checkpoint and generate samples by iterative reverse diffusion.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{figures/ch4/training_loop2.drawio.png}
+    \caption{Baseline DDPM training loop. A random timestep and Gaussian perturbation are sampled for each batch, and the U-Net is trained to predict the injected noise.}
+    \label{fig:baseline_training_loop}
+\end{figure}
+

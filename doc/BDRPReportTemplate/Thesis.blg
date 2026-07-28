@@ -1,18 +1,18 @@
 This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: Thesis.aux
-A level-1 auxiliary file: Chapter1.aux
-A level-1 auxiliary file: Chapter2.aux
-A level-1 auxiliary file: Chapter3.aux
-A level-1 auxiliary file: Chapter4.aux
-A level-1 auxiliary file: Chapter5.aux
-A level-1 auxiliary file: Chapter6.aux
-A level-1 auxiliary file: Appendix1.aux
+A level-1 auxiliary file: chapters/chapter1/main.aux
+A level-1 auxiliary file: chapters/chapter2/main.aux
+A level-1 auxiliary file: chapters/chapter3/main.aux
+A level-1 auxiliary file: chapters/chapter4/main.aux
+A level-1 auxiliary file: chapters/chapter5/main.aux
+A level-1 auxiliary file: chapters/chapter6/main.aux
+A level-1 auxiliary file: chapters/chapterappendix/main.aux
 The style file: plainnat.bst
 Database file #1: Thesis.bib
 You've used 9 entries,
             2773 wiz_defined-function locations,
-            668 strings with 6382 characters,
+            668 strings with 6486 characters,
 and the built_in function-call counts, 3619 in all, are:
 = -- 327
 > -- 168

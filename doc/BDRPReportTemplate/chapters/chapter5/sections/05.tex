@@ -1,0 +1,69 @@
+\section{Baseline results}
+
+\subsection{PhyFID and FID comparison}
+
+The notebook compares several datasets on 1000 images: a held-out part of the
+validation set, a training subset, the generated DDPM samples, pure-noise
+samples produced by an untrained model, and an unrelated MNIST dataset used as
+a negative control. The obtained scores are reported in
+Table~\ref{tab:fid_phyfid_baseline}.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \hline
+        Comparison & PhyFID & FID Inception \\
+        \hline
+        val vs val & 0.021 & 0.0013 \\
+        val vs train & 0.023 & 0.0008 \\
+        val vs generated & 0.132 & 0.134 \\
+        val vs noise & 6.04 & 42.05 \\
+        val vs MNIST & 4.26 & 14.27 \\
+        \hline
+    \end{tabular}
+    \caption{Comparison of validation, training, generated, noise and MNIST
+    datasets using PhyFID and classical FID on 1000 images. Lower values are
+    better.}
+    \label{tab:fid_phyfid_baseline}
+\end{table}
+
+Several conclusions can be drawn from these values. First, the two reference
+comparisons `val vs val` and `val vs train` give very low distances. This is
+expected and confirms that both metrics behave consistently when comparing
+datasets drawn from the same RTI distribution.
+
+Second, the generated dataset remains significantly closer to the validation
+set than pure noise or MNIST. In PhyFID space, the score for `val vs generated`
+is approximately two orders of magnitude smaller than `val vs noise`
+($0.1315$ versus $6.0399$). The same qualitative trend is observed with the
+classical FID, where `val vs generated` remains small compared with
+`val vs noise` and `val vs MNIST`.
+
+These results indicate that the baseline DDPM has learned non-trivial
+statistical information about the RTI fields. The generated samples are clearly
+not random images and it is therefore reasonable to continue the evaluation with 
+other architectures and metrics.
+
+\subsection{Line profile and spectral indicators}
+
+The profiles and spectra extracted from the validation, generated and noise datasets are shown in Figures~\ref{fig:ch4_line_statistics} and
+\ref{fig:ch4_energy_spectrum}. The corresponding distances are,
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \hline
+        Comparison & mean & fluctuation energy spectrum \\
+        \hline
+        val vs val & 0 & 0 \\
+        val vs generated & 0.49 & 0.298 \\
+        val vs noise & 13.1 & 1.66 \\
+        val vs MNIST & 10.7 & 0.735 \\
+        \hline
+    \end{tabular}
+    \caption{Comparison of validation, generated, noise and MNIST datasets using line-wise mean profile and fluctuation energy spectrum distances on 1000 images. Lower values are better.}
+    \label{tab:line_profile_spectrum_baseline}
+\end{table}
+
+The results confirm the conclusions drawn from the feature-space metrics. The generated samples are much closer to the validation set than pure noise or MNIST, both in terms of mean vertical profile and fluctuation energy spectrum with proximately two orders of magnitude.
+

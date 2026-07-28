@@ -1,0 +1,90 @@
+
+﻿\chapter{Conclusion and Perspectives}
+\label{chap:conclusion}
+
+The objective of this work was to investigate diffusion-based generative
+surrogate models for two-dimensional Rayleigh--Taylor instability fields
+obtained from Direct Numerical Simulations. More specifically, the study aimed
+to confront two strategies: a classical diffusion model trained directly in
+physical space, and wavelet-based diffusion models designed to exploit the
+multi-scale structure of the instability. This comparison was motivated by the
+high computational cost of DNS, the limited size of the available dataset, and
+the strongly hierarchical nature of RTI flows.
+
+The first part of the report introduced the physical and numerical framework of
+the problem. Rayleigh--Taylor instability was presented as a non-linear and
+multi-scale hydrodynamic instability characterized by the growth of bubbles,
+spikes, sharp density gradients, and turbulent mixing structures. These
+features make DNS particularly valuable, but also expensive. As a consequence,
+the resulting datasets remain relatively small compared with those usually used
+to train modern generative models. This limitation motivated the search for
+representations and learning strategies adapted to structured physical fields.
+
+Fourier and wavelet decompositions were then discussed as possible ways to
+analyze and reduce the dimensional complexity of RTI density fields. Fourier
+representations are natural for periodic flows and spectral analysis, but their
+global basis functions are less adapted to localized gradients and intermittent
+structures. Wavelet decompositions, on the other hand, provide a
+multi-resolution representation localized both in space and scale. This makes
+them attractive for RTI fields, where large coherent structures coexist with
+localized small-scale fluctuations.
+
+A first diffusion pipeline was implemented directly in image space. The model
+was trained on preprocessed density fields using physically consistent data
+augmentations, namely horizontal cyclic translations and horizontal
+reflections. The generated samples showed that the baseline DDPM was able to
+learn a non-trivial approximation of the RTI data distribution. Qualitatively,
+the generated fields recovered the main vertical organization of the mixing
+zone and reproduced bubble-and-spike-like structures. Quantitatively, the
+generated dataset remained much closer to the validation set than pure noise or
+unrelated images. In particular, the PhyFID score between validation and
+generated samples was approximately $0.132$, compared with $6.04$ for pure
+noise. The physical metrics based on line-wise density profiles and fluctuation
+spectra confirmed the same trend.
+
+The second pipeline introduced wavelet coefficients into the generative
+process. In this formulation, the density field is decomposed into a coarse
+approximation and detail coefficients, and the diffusion model is trained to
+generate fine-scale information conditioned on the large-scale structure. This
+approach introduces an explicit multi-resolution inductive bias and provides a
+more interpretable separation between the different spatial scales of the
+problem. The obtained results show that the model can learn relationships
+between approximation and detail coefficients, and that the wavelet framework
+offers a meaningful way to analyze where reconstruction errors occur.
+
+However, the current wavelet-based diffusion model does not yet outperform the
+classical image-space baseline. The reconstructed fields remain rougher and
+contain more visible artifacts, especially in the generated detail
+coefficients. This result is important because it shows that introducing a
+physically motivated representation is not sufficient by itself: the diffusion
+architecture, the conditioning mechanism, the normalization of coefficient
+channels, and the choice of wavelet level must all be carefully adapted to the
+statistical structure of the transformed data. At the present stage, the direct
+diffusion model therefore provides the best generation quality, while the
+wavelet approach remains a promising but incomplete direction.
+
+Several perspectives naturally follow from this work. First, the wavelet-based
+pipeline should be evaluated with the same quantitative metrics as the
+baseline, including PhyFID, line-wise density statistics, and fluctuation
+spectra. This would make it possible to determine precisely which physical
+properties are degraded or preserved by the wavelet formulation. Second,
+alternative wavelet families and decomposition levels should be investigated,
+since they directly control the separation between coarse and fine scales.
+Third, the conditioning strategy could be improved, for example by using
+multi-level conditioning or by generating the wavelet scales progressively from
+coarse to fine. Finally, larger and more diverse DNS datasets would help assess
+the generalization capabilities of both approaches and reduce the risk of
+overfitting.
+
+Overall, this work demonstrates that diffusion models are a relevant framework
+for learning generative surrogate models of Rayleigh--Taylor instability
+fields. The classical DDPM baseline already captures meaningful statistical and
+physical information from a limited DNS dataset. The wavelet-based formulation,
+although not yet competitive in its current implementation, opens an
+interesting path toward more interpretable and scale-aware generative models
+for turbulent physical systems.
+
+
+\input{chapters/chapter6/sections/01}
+\input{chapters/chapter6/sections/02}
+\input{chapters/chapter6/sections/03}

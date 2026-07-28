@@ -1,0 +1,45 @@
+\section{Wavelet-based results and comparison with baseline diffusion}
+
+At this stage, the evaluation of the wavelet-based diffusion model remains
+primarily qualitative. The generated coefficient fields shown in
+Figures~\ref{fig:ch5_wavelet_coefficients} and
+\ref{fig:ch5_wavelet_reconstruction} demonstrate that the conditional
+diffusion framework is capable of learning non-trivial relationships between
+the coarse approximation and the associated detail coefficients. The wavelet
+representation also makes it easier to localize the origin of reconstruction
+errors because the approximation and detail channels are analyzed separately.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/ch5/wavelet_cascade_coefficients_comparison.png}
+    \caption{Comparison of final wavelet coefficient maps at level $j=1$ for the cascade model. For each example, the reference coefficients and the cascade-generated coefficients are shown for the approximation channel $c_A^1$ and the three detail channels $c_H^1$, $c_V^1$, and $c_D^1$.}
+    \label{fig:ch5_wavelet_coefficients}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{figures/ch5/wavelet_cascade_reconstruction_comparison.png}
+    \caption{RTI fields reconstructed from the final cascade wavelet coefficients. For each example, the reference field, the cascade-generated field, and the absolute pointwise difference are shown.}
+    \label{fig:ch5_wavelet_reconstruction}
+\end{figure}
+
+The reconstructed density fields nevertheless reveal several limitations. While
+the large-scale organization imposed by the approximation coefficients is
+generally preserved, the synthesized detail coefficients often introduce
+artifacts and yield reconstructions that remain visibly rougher than the
+reference DNS fields. In qualitative comparison, the direct image-space
+baseline currently produces smoother samples that are visually closer to the
+target distribution.
+
+This comparison must, however, be interpreted with care. Unlike the baseline,
+the wavelet formulation has not yet been evaluated with the full set of
+quantitative metrics introduced in this chapter. At present, the evidence is
+therefore sufficient to conclude that the wavelet pipeline captures meaningful
+coarse-to-fine dependencies, but not yet sufficient to claim competitive
+generative quality with respect to the baseline DDPM.
+
+\textbf{TODO:} Evaluate the wavelet-based model with the same metrics as the
+baseline: PhyFID, FID, line-wise statistics, and fluctuation spectra. Add
+qualitative comparisons of reference, baseline, wavelet reconstruction, and
+generated fields.
+

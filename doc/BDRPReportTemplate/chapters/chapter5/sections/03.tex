@@ -1,0 +1,79 @@
+\section{Feature-space metrics}
+
+\subsection{Fr\'echet distance in a learned feature space}
+
+Let $\rho=\{\rho_i\}_{i=1}^{n}$ be a reference dataset and
+$\varrho=\{\varrho_i\}_{i=1}^{m}$ a generated dataset. A feature extractor
+$\psi$ maps each image to a vector representation,
+
+\begin{equation}
+    \mathbf{z}_i = \psi(\rho_i),
+    \qquad
+    \widetilde{\mathbf{z}}_i = \psi(\varrho_i).
+\end{equation}
+
+The two sets of features are then approximated by Gaussian distributions with
+means $\boldsymbol{\mu}_{\rho}$ and $\boldsymbol{\mu}_{\varrho}$, and
+covariances $\mathbf{\Sigma}_{\rho}$ and $\mathbf{\Sigma}_{\varrho}$. The
+Fr\'echet distance between these two Gaussian approximations is
+
+\begin{equation}
+    d_F(\rho,\varrho)
+    =
+    \left\|
+    \boldsymbol{\mu}_{\rho}
+    -
+    \boldsymbol{\mu}_{\varrho}
+    \right\|_2^2
+    +
+    \mathrm{Tr}\!\left(
+        \mathbf{\Sigma}_{\rho}
+        +
+        \mathbf{\Sigma}_{\varrho}
+        -
+        2\left(\mathbf{\Sigma}_{\rho}\mathbf{\Sigma}_{\varrho}\right)^{1/2}
+    \right).
+\end{equation}
+
+Low values indicate that the two datasets occupy nearby regions of feature
+space and have similar second-order statistics. This metric does not compare
+images pixel by pixel; instead, it compares the distributions of datasets after
+projection onto a more compact representation.
+
+\subsection{Classical FID and PhyFID}
+
+Two choices of feature extractor are considered in this work.
+
+The first one is the classical FID formulation, in which $\psi$ is an
+Inception-style image encoder. This provides a generic image-generation
+baseline and makes it possible to check whether the generated RTI fields are
+distinguishable from completely unrelated datasets or from pure noise in a
+standard visual feature space.
+
+The second one is the \emph{PhyFID} introduced for this project. Instead of
+using features learned on natural images, PhyFID relies on a convolutional
+autoencoder trained directly on RTI fields. The encoder part of this network
+defines the mapping $\psi$, while the decoder is used only during the
+reconstruction training stage. After training, each dataset is encoded into a
+feature space adapted to the statistics of the considered physical domain.
+
+In practice, the PhyFID pipeline implemented in
+\texttt{lib/PhyFID/} proceeds as follows:
+
+\begin{itemize}
+    \item the training images are normalized to the interval $[0,1]$ and
+    converted to tensors of shape $(N,C,H,W)$;
+    \item a convolutional autoencoder is trained by minimizing a reconstruction
+    mean squared error;
+    \item the encoder output is used as a domain-specific feature vector;
+    \item the Fr\'echet distance is finally computed between the feature
+    distributions of the reference and generated datasets.
+\end{itemize}
+
+This construction is especially relevant here because the characteristic
+structures of RTI fields differ strongly from the objects encountered in
+standard computer vision datasets. Using a feature extractor trained on the
+same family of simulations should therefore provide a more meaningful notion of
+similarity for this application.
+
+

@@ -1,0 +1,15 @@
+\section{Spectral and Multi-resolution Representations}
+
+Fourier methods are natural for periodic flows and turbulence analysis because they describe a field in terms of global frequency modes. They are particularly useful for energy-spectrum analysis and pseudo-spectral solvers. However, global basis functions are less adapted to localized structures and sharp gradients.
+
+Wavelet methods provide a complementary representation localized in both space and scale. This property is useful for RTI fields, where large coherent structures coexist with localized small-scale details. The multi-resolution structure also makes wavelets attractive for compression, denoising, and scale-aware learning.
+
+Wavelet representations are especially relevant for this project because they
+combine spatial localization with scale localization. Mallat's work presents
+wavelet decompositions as a multi-resolution signal representation able to
+separate coarse structures from localized details \citep{Mallat2009}. This
+property is directly connected to RTI fields, where large interface
+deformations coexist with sharper gradients and smaller mixing structures. In
+contrast with purely Fourier representations, wavelets therefore offer a
+natural way to introduce scale-aware information into the generative model.
+

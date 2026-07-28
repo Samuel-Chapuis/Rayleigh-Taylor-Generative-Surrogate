@@ -1,0 +1,33 @@
+\section{Experimental Objectives}
+
+The experiments compare the direct image-space diffusion model with the wavelet-based diffusion model. The evaluation focuses on visual realism, convergence behavior, statistical similarity to validation data, preservation of vertical density profiles, and reproduction of scale-dependent fluctuation spectra.
+
+The objective of the baseline diffusion model introduced in Chapter~3 is not to
+reconstruct one specific DNS realization, but to generate new samples whose
+distribution is close to that of the reference RTI dataset. Consequently, the
+evaluation must be carried out at the level of \emph{ensembles} rather than on
+individual images only.
+
+In standard image generation tasks, this comparison is often performed with
+feature-based distances such as the Fr\'echet Inception Distance (FID). Such
+metrics are useful because they compare the statistics of two datasets in a
+learned feature space. However, in the present context, the generated objects
+are not natural images but scalar density fields arising from a physical
+problem. It is therefore useful to complement generic perceptual metrics with
+quantities that remain directly interpretable in terms of RTI structure.
+
+For this reason, the evaluation adopted in this work combines two families of
+metrics:
+
+\begin{itemize}
+    \item feature-based distribution distances, namely a classical
+    Inception-based FID and a domain-adapted PhyFID;
+    \item physically motivated one-dimensional summaries derived from the
+    density fields, including line-wise mean profiles and fluctuation energy
+    spectra.
+\end{itemize}
+
+This chapter presents the definition of these metrics and discusses the first
+results obtained on the baseline DDPM.
+
+
