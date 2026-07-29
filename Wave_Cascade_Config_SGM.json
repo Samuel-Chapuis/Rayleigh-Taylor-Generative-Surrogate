@@ -1,0 +1,56 @@
+{
+  "levels": [1, 2, 3],
+
+  "model": {
+    "seed": 0,
+    "store_path_dataset": "data/RT64",
+    "experiment_name": "RT64",
+
+    "time_emb_dim": 128,
+    "beta_min": 0.1,
+    "beta_max": 20.0,
+    "eps_time": 0.01,
+    "sampling_steps": 256,
+    "prediction_type": "v",
+    "sampler": "heun",
+
+    "prior_channels": 1,
+    "target_channels": 3,
+    "unet_depth": 3,
+    "unet_blocks_per_level": 3,
+    "unet_base_channels": 32,
+
+    "model_dir": "saved_model/cascade_sgm",
+    "log_dir": "outputs/logs/cascade_sgm",
+    "image_dir": "outputs/img/wave_cascade_sgm"
+  },
+
+  "train": {
+    "enabled": false,
+    "batch_size": 128,
+    "n_epochs": 100,
+    "lr": 0.0002,
+    "weight_decay": 0.000001,
+    "grad_clip": 1.0,
+    "preview_samples": 8
+  },
+
+  "generate": {
+    "enabled": true,
+    "dataset": "validation",
+    "batch_size": 64,
+    "n_samples": 64,
+    "wavelet": "db1",
+    "border_mode": "periodization",
+    "output_dir": "outputs/generated/cascade_sgm",
+    "initial_ca_source": "dataset",
+    "initial_ca_config_path": "outputs/model/RT64_sgm_config.json",
+    "initial_ca_checkpoint_path": ""
+  },
+
+  "level_overrides": {
+    "1": {},
+    "2": {},
+    "3": {}
+  }
+}

@@ -248,3 +248,95 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
         logger.log_experiment_end("Wavelet conditional training finished")
 
     return loss_list
+
+
+def wave_sgm_loss(sgm, batch, mse, device):
+    """Stable v/epsilon denoising loss for conditional wavelet SGM."""
+    prior, details = split_wave_batch(batch, device, sgm.prior_channels)
+    n = details.shape[0]
+    t = torch.rand(n, device=device, dtype=details.dtype)
+    t = sgm.eps_time + (1.0 - sgm.eps_time) * t
+    eps = torch.randn_like(details)
+    noisy_details = sgm(details, t, eps)
+    prediction = sgm.network(torch.cat((prior, noisy_details), dim=1), t)
+    target = sgm.prediction_target(details, t, eps)
+    return mse(prediction, target)
+
+
+def wave_sgm_evaluate_loss(sgm, loader, device):
+    """Evaluate conditional SGM loss without updating the model."""
+    mse = nn.MSELoss()
+    was_training = sgm.training
+    sgm.eval()
+    total_loss = 0.0
+    n_total = 0
+    with torch.no_grad():
+        for batch in loader:
+            loss = wave_sgm_loss(sgm, batch, mse, device)
+            batch_size = len(batch[0])
+            total_loss += loss.item() * batch_size
+            n_total += batch_size
+    if was_training:
+        sgm.train()
+    return total_loss / max(n_total, 1)
+
+
+def wave_sgm_training_loop(
+    sgm,
+    loader,
+    n_epochs,
+    optim,
+    device,
+    store_path,
+    logger=None,
+    val_loader=None,
+    grad_clip=None,
+):
+    """Train a conditional wavelet SGM and keep the best validation checkpoint."""
+    mse = nn.MSELoss()
+    best_loss = float("inf")
+    store_path = Path(store_path)
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if logger:
+        logger.info(f"Wavelet SGM training started for {n_epochs} epochs")
+
+    for epoch in tqdm(range(n_epochs), desc="Wavelet SGM training", colour="#00ff00"):
+        sgm.train()
+        weighted_loss = 0.0
+        n_total = 0
+        for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}", colour="#005500"):
+            loss = wave_sgm_loss(sgm, batch, mse, device)
+            optim.zero_grad(set_to_none=True)
+            loss.backward()
+            if grad_clip is not None:
+                torch.nn.utils.clip_grad_norm_(sgm.parameters(), grad_clip)
+            optim.step()
+
+            batch_size = len(batch[0])
+            weighted_loss += loss.item() * batch_size
+            n_total += batch_size
+
+        train_loss = weighted_loss / max(n_total, 1)
+        val_loss = wave_sgm_evaluate_loss(sgm, val_loader, device) if val_loader is not None else None
+        selection_loss = train_loss if val_loss is None else val_loss
+        stored = selection_loss < best_loss
+        if stored:
+            best_loss = selection_loss
+            torch.save(sgm.state_dict(), store_path)
+
+        log_string = f"Wavelet SGM train loss at epoch {epoch + 1}: {train_loss:.6f}"
+        if val_loss is not None:
+            log_string += f" | Val loss: {val_loss:.6f}"
+        if stored:
+            log_string += " --> Best model stored"
+        print(log_string)
+        if logger:
+            metrics = {"train_loss": train_loss, "best_loss": best_loss, "stored": stored}
+            if val_loss is not None:
+                metrics["val_loss"] = val_loss
+            logger.log_epoch(epoch + 1, metrics)
+            logger.info(log_string)
+
+    if logger:
+        logger.log_experiment_end("Wavelet SGM training finished")
