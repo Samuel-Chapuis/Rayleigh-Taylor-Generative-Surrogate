@@ -20,24 +20,6 @@
 
 \section*{Fast proof draft}
 
-\subsection{Learning the Reverse Process Through the Score}
-
-While the forward process is known analytically, the reverse evolution that transforms Gaussian noise back into realistic samples is generally intractable. A central result established by ANDERSON1982313 and exploited by Song2021SDE is that the reverse-time dynamics of the diffusion process is itself governed by a stochastic differential equation,
-
-\begin{equation}
-d\mathbf{x}
-=
-\left[
-\mathbf{f}(\mathbf{x},t)
--
-g(t)^2
-\nabla_{\mathbf{x}}
-\log p_t(\mathbf{x})
-\right]dt
-+
-g(t),d\bar{\mathbf{w}},
-\end{equation}
-
 \begin{compactproof}[title={Proof}]
 \proofstep{Idea} Associate the forward process with a Fokker-Planck equation and then derive the reverse-time SDE from it.
 \proofstep{Step 1} Consider the forward SDE
@@ -56,30 +38,30 @@ where $\mathbf{w}$ is a Wiener process. The corresponding Fokker-Planck equation
 +
 \frac{1}{2}g(t)^2\nabla_{\mathbf{x}}^2p_t(\mathbf{x}).
 \end{equation*}
-Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{T-t}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(T-t)$:
+Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{\tau}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(\tau)$:
 \begin{align*}
     \partial q_t(\mathbf{x})
     &=
-    -\partial p_{T-t}(\mathbf{x})\\
+    -\partial p_{\tau}(\mathbf{x})\\
     &=
-    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},T-t)p_{T-t}(\mathbf{x})\right]
+    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)p_{\tau}(\mathbf{x})\right]
     -
-    \frac{1}{2}g(T-t)^2\nabla_{\mathbf{x}}^2p_{T-t}(\mathbf{x})\\
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2p_{\tau}(\mathbf{x})\\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)q_t(\mathbf{x})\right]
-    -
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
+    +
+    \left(-1+\frac{1}{2}\right)g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})}\right)q_t(\mathbf{x})\right]
-    -
+    +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).  \\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
-    -
+    +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}) \quad 
     {\scriptstyle \text{with:} \frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})} = \nabla_{\mathbf{x}}\log q_t(\mathbf{x}) } \\
     &= 
-    - \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    - \nabla_{\mathbf{x}}\cdot\left[\left(-\mathbf{f}(\mathbf{x},\tau)+g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
     +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).
 \end{align*}
@@ -98,46 +80,8 @@ g(\tau)^2
 +
 g(\tau)d\bar{\mathbf{w}},
 \end{equation*}
-where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$. 
+where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
 
 \end{compactproof}
-
-The score $\mathbf{s}(\mathbf{x},t) = \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
-
-A neural network parameterized by $(\theta)$
-\begin{equation}
-    p_{\theta}(\mathbf{x}_{0:T})
-    =
-    p(\mathbf{x}_T)
-    \prod_{t=1}^{T}
-    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t)
-\end{equation}
-
-In the score-based formulation, the network learns the score $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ of the noisy
-distribution,
-
-\begin{equation}
-    \mathbf{s}_{\theta}(\mathbf{x}_t,t)
-    \approx
-    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t),
-\end{equation}
-
-which points toward regions of higher probability density at each noise level.
-In practice, an equivalent and commonly used parameterization trains a network
-$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
-sample. A simplified training objective is
-
-\begin{equation}
-    \mathcal{L}_{\mathrm{simple}}(\theta)
-    =
-    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
-    \left[
-        \left\|
-        \boldsymbol{\epsilon}
-        -
-        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
-        \right\|_2^2
-    \right].
-\end{equation}
 
 \end{document}

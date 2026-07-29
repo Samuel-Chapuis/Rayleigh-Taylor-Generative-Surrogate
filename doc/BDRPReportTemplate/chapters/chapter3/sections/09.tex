@@ -75,7 +75,7 @@ probability, as illustrated in Figure~\ref{fig:diffusion_1d_dataset}.
 Following the unified framework introduced by \citep{Song2021SDE}, diffusion models can be interpreted as stochastic processes that progressively transform the data distribution into a simple tractable distribution. Let
 
 \begin{equation}
-\mathbf{x}_0 \sim p_{\mathrm{data}}
+\mathbf{x}_0 \sim p_{\mathrm{data}}(\mathbf{x}_0)
 \end{equation}
 
 
@@ -89,14 +89,21 @@ d\mathbf{x}
 g(t)d\mathbf{w}
 \end{equation}
 
-where $(t\in[0,T])$, $(\mathbf{w})$ denotes a standard Wiener process, $(\mathbf{f})$ is a drift coefficient and $(g)$ controls the intensity of the injected noise \citep{Song2021SDE}.
+où $t\in[0,T]$, $\mathbf{w}$ désigne un processus de Wiener standard, et
+\[
+\mathbf{f}:\mathbb{R}^{d}\times[0,T]\to\mathbb{R}^{d}
+\quad\text{et}\quad
+g:[0,T]\to\mathbb{R}_{+}
+\]
+sont respectivement le coefficient de dérive et le coefficient de diffusion,
+qui contrôle l'intensité du bruit injecté \citep{Song2021SDE}.
 
 The objective of this process is to progressively destroy the structure present in the data. As time increases, the probability distribution $(p_t(\mathbf{x}))$ evolves from the complex data distribution $(p_{\mathrm{data}})$ toward a simple prior distribution that is chosen as a standard Gaussian,
 
 \begin{equation}
 p_T(\mathbf{x})
 \approx
-\mathcal{N}(\mathbf{0},\mathbf{I}).
+\mathcal{N}(\mathbf{0},\mathbf{I})
 \end{equation}
 
 Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by \citep{Ho2020DDPM}. In this case, the forward process can be written as
@@ -104,9 +111,9 @@ Several choices of forward SDEs are possible. In this work, the implementation i
 \begin{equation}
 d\mathbf{x}
 =
--\frac{1}{2}\beta(t)\mathbf{x},dt
+-\frac{1}{2}\beta(t)\mathbf{x}\,dt
 +
-\sqrt{\beta(t)},d\mathbf{w},
+\sqrt{\beta(t)}\,d\mathbf{w}
 \end{equation}
 
 where $(\beta(t))$ controls the noise schedule.
@@ -116,14 +123,14 @@ The discrete implementation used during training relies on a finite number of ti
 \begin{equation}
 \mathbf{x}_t
 =
-\sqrt{\bar{\alpha}_t},\mathbf{x}_0
+\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
 +
-\sqrt{1-\bar{\alpha}_t},
-\boldsymbol{\epsilon},
+\sqrt{1-\bar{\alpha}_t}\,
+\boldsymbol{\epsilon}
 \qquad
 \boldsymbol{\epsilon}
 \sim
-\mathcal{N}(\mathbf{0},\mathbf{I}).
+\mathcal{N}(\mathbf{0},\mathbf{I})
 \end{equation}
 
 \begin{compactproof}[title={Proof}]
@@ -234,7 +241,7 @@ g(t)^2
 \log p_t(\mathbf{x})
 \right]dt
 +
-g(t),d\bar{\mathbf{w}},
+g(t)d\bar{\mathbf{w}}, \quad {\scriptstyle \text{where $\bar{\mathbf{w}}$ is a reverse-time Wiener process.}}
 \end{equation}
 
 \begin{compactproof}[title={Proof}]
@@ -255,30 +262,30 @@ where $\mathbf{w}$ is a Wiener process. The corresponding Fokker-Planck equation
 +
 \frac{1}{2}g(t)^2\nabla_{\mathbf{x}}^2p_t(\mathbf{x}).
 \end{equation*}
-Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{T-t}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(T-t)$:
+Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{\tau}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(\tau)$:
 \begin{align*}
     \partial q_t(\mathbf{x})
     &=
-    -\partial p_{T-t}(\mathbf{x})\\
+    -\partial p_{\tau}(\mathbf{x})\\
     &=
-    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},T-t)p_{T-t}(\mathbf{x})\right]
+    \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)p_{\tau}(\mathbf{x})\right]
     -
-    \frac{1}{2}g(T-t)^2\nabla_{\mathbf{x}}^2p_{T-t}(\mathbf{x})\\
+    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2p_{\tau}(\mathbf{x})\\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)q_t(\mathbf{x})\right]
-    -
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
+    +
+    \left(-1+\frac{1}{2}\right)g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})}\right)q_t(\mathbf{x})\right]
-    -
+    +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).  \\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
-    -
+    +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}) \quad 
     {\scriptstyle \text{with:} \frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})} = \nabla_{\mathbf{x}}\log q_t(\mathbf{x}) } \\
     &= 
-    - \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    - \nabla_{\mathbf{x}}\cdot\left[\left(-\mathbf{f}(\mathbf{x},\tau)+g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
     +
     \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).
 \end{align*}
@@ -301,7 +308,7 @@ where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can repla
 
 \end{compactproof}
 
-The score $\mathbf{s}(\mathbf{x},t) = \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
+The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
 
 A neural network parameterized by $(\theta)$
 \begin{equation}
