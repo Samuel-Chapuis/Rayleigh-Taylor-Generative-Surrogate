@@ -20,6 +20,173 @@
 
 \section*{Fast proof draft}
 
+\subsection{Forward diffusion process}
+
+Following the unified framework introduced by diffusion models can be interpreted as stochastic processes that progressively transform the data distribution into a simple tractable distribution. Let
+
+\begin{equation}
+\mathbf{x}_0 \sim p_{\mathrm{data}}(\mathbf{x}_0)
+\end{equation}
+
+
+denote a sample drawn from the unknown distribution of RTI density fields. The forward diffusion process is defined as a continuous-time stochastic differential equation (SDE)
+
+\begin{equation}
+d\mathbf{x}
+=
+\mathbf{f}(\mathbf{x},t)dt
++
+g(t)d\mathbf{w}
+\end{equation}
+
+où $t\in[0,T]$, $\mathbf{w}$ désigne un processus de Wiener standard, et
+\[
+\mathbf{f}:\mathbb{R}^{d}\times[0,T]\to\mathbb{R}^{d}
+\quad\text{et}\quad
+g:[0,T]\to\mathbb{R}_{+}
+\]
+sont respectivement le coefficient de dérive et le coefficient de diffusion,
+qui contrôle l'intensité du bruit injecté 
+
+The objective of this process is to progressively destroy the structure present in the data. As time increases, the probability distribution $(p_t(\mathbf{x}))$ evolves from the complex data distribution $(p_{\mathrm{data}})$ toward a simple prior distribution that is chosen as a standard Gaussian,
+
+\begin{equation}
+p_T(\mathbf{x})
+\approx
+\mathcal{N}(\mathbf{0},\mathbf{I})
+\end{equation}
+
+Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by In this case, the forward process can be written as
+
+\begin{equation}
+d\mathbf{x}
+=
+-\frac{1}{2}\beta(t)\mathbf{x}\,dt
++
+\sqrt{\beta(t)}\,d\mathbf{w}
+\end{equation}
+
+where $(\beta(t))$ controls the noise schedule.
+
+The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\sqrt{e^{-\frac{1}{2}\int_0^t \beta(s) ds}}$, the noisy sample at any diffusion time can be obtained directly through
+
+\begin{equation}
+\mathbf{x}_t
+=
+\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
++
+\sqrt{1-\bar{\alpha}_t}\,
+\boldsymbol{\epsilon}
+\qquad
+\boldsymbol{\epsilon}
+\sim
+\mathcal{N}(\mathbf{0},\mathbf{I})
+\label{eq:x_t}
+\end{equation}
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea} Integrate $d\mathbf{x}$ without the diffusion term to get the
+deterministic part, then add the stochastic contribution.
+
+\proofstep{Linear ODE} With $d\mathbf{w}=0$, the deterministic dynamics is
+\[
+    \frac{d\mathbf{x}}{dt}
+    =
+    -\frac{1}{2}\beta(t)\mathbf{x}.
+\]
+Its solution is
+\[
+    \mathbf{x}(t)
+    =
+    \mathbf{x}_0
+    \, e^{
+        -\frac{1}{2}\int_0^t \beta(s)\,ds}.
+\]
+Thus one may define
+\[
+    \alpha_t
+    = e^{
+        -\frac{1}{2}\int_0^t \beta(s)\,ds},
+    \qquad
+    \mathbf{x}(t)=\alpha_t\mathbf{x}_0.
+\]
+
+\proofstep{Stochastic term} For the stochastic part, set
+$\mathbf{y}(t)=\alpha_t^{-1}\mathbf{x}(t)$. Since $\alpha_t$ is deterministic,
+Ito's product rule gives
+\[
+    d\mathbf{y}
+    =
+    \alpha_t^{-1}d\mathbf{x}
+    +
+    \mathbf{x}\,d(\alpha_t^{-1}).
+\]
+Substituting the SDE and the derivative of $\alpha_t^{-1}$ cancels the drift,
+which yields
+\[
+    d\mathbf{y}
+    =
+    \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}.
+\]
+
+Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and multiply by $\alpha_t$:
+\begin{align*}
+    \int_{0}^{t} dy &= \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w} \\
+    \Rightarrow x(t) &= \alpha_t \, x_0 + \alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}
+\end{align*}
+
+\proofstep{Distribution} The integral of the stochastic term is a Gaussian random variable with mean zero and variance
+\begin{align*}
+    \text{Var}\left(\alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}\right)
+    &= \alpha_t^2 \int_{0}^{t} (\alpha_s^{-1}\sqrt{\beta(s)})^2 ds \\
+    &= \alpha_t^2 \int_{0}^{t} \alpha_s^{-2} \beta(s) ds \\
+    &= \alpha_t^2 \left( \frac{1}{\alpha_t^2} -1 \right) \\
+    &= 1 - \alpha_t^2
+\end{align*}
+
+
+\proofstep{Conclusion} By combining the deterministic and stochastic parts, we obtain the final expression for $\mathbf{x}_t$ seting $\bar{\alpha}_t = \alpha_t^2$:
+\begin{equation*}
+\boxed{
+    \mathbf{x}_t
+    =
+    \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
+    +
+    \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},
+    \qquad
+    \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+}
+\end{equation*}
+\qedcompact
+\end{compactproof}
+
+By showing that the forward process can be solved analytically, the proof above also provides a practical way to generate noisy samples at any diffusion time. The same result can be obtained by iteratively applying the discrete transition kernel, but the closed-form expression is more efficient and avoids the accumulation of numerical errors.
+
+This mechanism is illustrated Figure~\ref{fig:diff1d} in
+one dimension by a bimodal distribution: its two modes progressively
+merge until the samples become approximately Gaussian. The same principle
+applies to RTI fields, although their probability distribution lies in a much
+higher-dimensional space and cannot be represented by a simple histogram.
+
+
+\subsection{Learning the Reverse Process Through the Score}
+
+While the forward process is known analytically, the reverse evolution that transforms Gaussian noise back into realistic samples is generally intractable. A central result established by and exploited by is that the reverse-time dynamics of the diffusion process is itself governed by a stochastic differential equation,
+
+\begin{equation}
+d\mathbf{x}
+=
+\left[
+\mathbf{f}(\mathbf{x},t)
+-
+g(t)^2
+\nabla_{\mathbf{x}}
+\log p_t(\mathbf{x})
+\right]dt
++
+g(t)d\bar{\mathbf{w}}, \quad {\scriptstyle \text{where $\bar{\mathbf{w}}$ is a reverse-time Wiener process.}}
+\end{equation}
+
 \begin{compactproof}[title={Proof}]
 \proofstep{Idea} Associate the forward process with a Fokker-Planck equation and then derive the reverse-time SDE from it.
 \proofstep{Step 1} Consider the forward SDE
@@ -67,7 +234,9 @@ Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x}
 \end{align*}
 
 The last line is the Fokker-Planck equation corresponding to the reverse-time SDE
+
 \begin{equation*}
+\boxed{
 d\mathbf{y}
 =
 \left[
@@ -78,10 +247,370 @@ g(\tau)^2
 \log q_t(\mathbf{y})
 \right]dt
 +
-g(\tau)d\bar{\mathbf{w}},
+g(\tau)d\bar{\mathbf{w}}
+}
 \end{equation*}
+
 where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
 
 \end{compactproof}
+
+The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. It is now required to estimate the score with only a finite number of samples $(\mathbf{x}_{0},\mathbf{x}_{t})$ drawn from the forward diffusion process. Considering $\mathbf{x}_{t} = \alpha_{t}\mathbf{x}_{0} + \sigma_{t}\boldsymbol{\epsilon}$, with $\sigma_{t}=1-\alpha_{t}$ and $\boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$ as shown in the the equation \ref{eq:x_t}. It is possible to rewrite the score as
+
+\begin{equation}
+    \mathbf{s}_{\theta}(\mathbf{x}_t,t)
+    \approx
+    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+    =
+    \mathbb{E}[
+        \nabla_{\mathbf{x}_t}\log p(\mathbf{x}_t|\mathbf{x}_0)
+        \mid
+        \mathbf{x}_t
+    ]
+\end{equation}
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea}
+Show that the marginal score $\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)$, which is required to define the reverse-time diffusion process, can be written as the conditional expectation of the transition score
+$\nabla_{\mathbf{x}_t}\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)$.
+Since the transition distribution is chosen explicitly, its score can be computed and used as a training target.
+
+\proofstep{Step 1}
+Let $p_0(\mathbf{x}_0)$ denote the data distribution and let
+$p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)$ denote the transition density of the forward diffusion process. The marginal density at time $t$ is
+\begin{equation*}
+p_t(\mathbf{x}_t)
+=
+\int
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{equation*}
+
+Taking the gradient with respect to $\mathbf{x}_t$ gives
+\begin{align*}
+\nabla_{\mathbf{x}_t}p_t(\mathbf{x}_t)
+&=
+\nabla_{\mathbf{x}_t}
+\int
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0
+\\
+&=
+\int
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{align*}
+
+Dividing by $p_t(\mathbf{x}_t)$ yields
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\frac{
+\nabla_{\mathbf{x}_t}p_t(\mathbf{x}_t)
+}{
+p_t(\mathbf{x}_t)
+}
+\\
+&=
+\int
+\frac{
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{align*}
+
+Using
+\begin{equation*}
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+=
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0),
+\end{equation*}
+we obtain
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\int
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\frac{
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}
+\,d\mathbf{x}_0.
+\end{align*}
+
+By Bayes' rule,
+\begin{equation*}
+p_{0\mid t}(\mathbf{x}_0\mid \mathbf{x}_t)
+=
+\frac{
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}.
+\end{equation*}
+
+Therefore,
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\int
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_{0\mid t}(\mathbf{x}_0\mid \mathbf{x}_t)
+\,d\mathbf{x}_0
+\\
+&=
+\mathbb{E}_{\mathbf{x}_0\sim
+p_{0\mid t}(\cdot\mid\mathbf{x}_t)}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\right]
+\\
+&=
+\mathbb{E}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\,\middle|\,
+\mathbf{x}_t
+\right].
+\end{align*}
+
+Hence,
+\begin{equation*}
+\boxed{
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+=
+\mathbb{E}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\,\middle|\,
+\mathbf{x}_t
+\right].
+}
+\end{equation*}
+\end{compactproof}
+
+
+
+
+Consider now a Gaussian forward perturbation kernel with mean $\alpha_t\mathbf{x}_0$ and variance $\sigma_t^2\mathbf{I}$, where $\alpha_t=\bar{\alpha}_t^2$ and $\sigma_t = \sqrt{1 - \bar{\alpha}_t^2}$ are known functions of time from equation \eqref{eq:x_t}. The forward process can be written as
+\begin{equation*}
+\mathbf{x}_t
+=
+\alpha_t\mathbf{x}_0
++
+\sigma_t\boldsymbol{\epsilon},
+\qquad
+\boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation*}
+Leading to the transition density
+\begin{equation}
+    \nabla_{\mathbf{x}_t}
+    \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+    =
+    -\frac{\boldsymbol{\epsilon}}{\sigma_t},
+\end{equation}
+
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea}
+Compute the logarithm of the Gaussian transition density and take its gradient with respect to $\mathbf{x}_t$.
+Conditionally on $\mathbf{x}_0=\mathbf{x}_0$, one has
+\begin{equation*}
+p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+\mathcal{N}
+\left(
+\mathbf{x}_t;
+\alpha_t\mathbf{x}_0,
+\sigma_t^2\mathbf{I}
+\right).
+\end{equation*}
+
+Its logarithm is, up to a term independent of $\mathbf{x}_t$,
+\begin{equation*}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{1}{2\sigma_t^2}
+\left\|
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+\right\|^2
++
+C(t,\mathbf{x}_0).
+\end{equation*}
+
+Consequently,
+\begin{align*}
+&\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+}{
+\sigma_t^2
+}
+\\
+\Rightarrow\qquad
+&
+\boxed{
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{\boldsymbol{\epsilon}}{\sigma_t}
+}
+\qquad
+{\scriptstyle
+\text{since }
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+=
+\sigma_t\boldsymbol{\epsilon}.
+}
+\end{align*}
+
+\end{compactproof}
+
+The transition score is therefore explicitly known during training, since both the clean sample $\mathbf{x}_0$ and the sampled noise $\boldsymbol{\epsilon}$ are known.
+
+\proofstep{Step 3}
+Let $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ be a neural network trained by minimizing the denoising score-matching objective
+\begin{equation*}
+\mathcal{L}_{\mathrm{DSM}}(\theta)
+=
+\mathbb{E}
+\left[
+\left\|
+\mathbf{s}_{\theta}(\mathbf{X}_t,t)
+-
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}
+(\mathbf{X}_t\mid\mathbf{X}_0)
+\right\|^2
+\right].
+\end{equation*}
+
+For a fixed value $\mathbf{X}_t=\mathbf{x}_t$, the minimizer of a quadratic regression loss is the conditional expectation of the target. Therefore,
+\begin{align*}
+\mathbf{s}_{\theta^\star}(\mathbf{x}_t,t)
+&=
+\mathbb{E}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}
+(\mathbf{x}_t\mid\mathbf{X}_0)
+\,\middle|\,
+\mathbf{X}_t=\mathbf{x}_t
+\right]
+\\
+&=
+\nabla_{\mathbf{x}_t}
+\log p_t(\mathbf{x}_t).
+\end{align*}
+
+Thus, although the network is trained using the analytically known conditional score, its optimal prediction is the marginal score required by the reverse-time SDE:
+\begin{equation*}
+\boxed{
+\mathbf{s}_{\theta^\star}(\mathbf{x}_t,t)
+=
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t).
+}
+\end{equation*}
+
+In the Gaussian case, the loss can equivalently be written as
+\begin{equation*}
+\mathcal{L}_{\mathrm{DSM}}(\theta)
+=
+\mathbb{E}
+\left[
+\left\|
+\mathbf{s}_{\theta}(\mathbf{X}_t,t)
++
+\frac{\boldsymbol{\epsilon}}{\sigma_t}
+\right\|^2
+\right].
+\end{equation*}
+
+Equivalently, defining a noise-prediction network
+$\boldsymbol{\epsilon}_{\theta}$ by
+\begin{equation*}
+\mathbf{s}_{\theta}(\mathbf{x}_t,t)
+=
+-\frac{
+\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+}{
+\sigma_t
+},
+\end{equation*}
+score prediction becomes equivalent, up to a time-dependent weighting, to the standard noise-prediction objective
+\begin{equation*}
+\mathbb{E}
+\left[
+\left\|
+\boldsymbol{\epsilon}
+-
+\boldsymbol{\epsilon}_{\theta}(\mathbf{X}_t,t)
+\right\|^2
+\right].
+\end{equation*}
+
+The identity is therefore the mathematical justification for replacing the unknown marginal score
+$\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)$
+with a supervised target obtained from the known forward perturbation kernel.
+
+
+
+
+
+
+which points toward regions of higher probability density at each noise level.
+In practice, an equivalent and commonly used parameterization trains a network
+$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
+sample. A simplified training objective is
+
+\begin{equation}
+    \mathcal{L}_{\mathrm{simple}}(\theta)
+    =
+    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
+    \left[
+        \left\|
+        \boldsymbol{\epsilon}
+        -
+        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+        \right\|_2^2
+    \right].
+\end{equation}
+
+Because the model is trained over all noise levels, it learns a sequence of
+local denoising directions rather than an explicit analytical expression for
+the complex RTI distribution. Repeated application of these directions
+transports samples from the Gaussian prior toward the regions occupied by the
+DNS data. The resulting ensemble of generated fields provides an approximation
+of the distribution sought in this work.
+
+In the one-dimensional setting, figure shows the score can be represented as arrows along
+the $x$ axis. These arrows point toward regions where the noisy density is
+larger. Near the end of the forward process, the density is almost Gaussian and
+the score mainly points back toward the origin. At lower noise levels, the
+score separates the samples toward the two modes of the data distribution. The
+reverse generative process can therefore be interpreted as a gradual
+specialization: an initially structureless Gaussian sample is first brought
+back to the high-probability region, then assigned to one of the modes.
 
 \end{document}

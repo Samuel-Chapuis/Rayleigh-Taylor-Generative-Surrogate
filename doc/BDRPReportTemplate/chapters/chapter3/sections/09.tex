@@ -131,6 +131,7 @@ The discrete implementation used during training relies on a finite number of ti
 \boldsymbol{\epsilon}
 \sim
 \mathcal{N}(\mathbf{0},\mathbf{I})
+\label{eq:x_t}
 \end{equation}
 
 \begin{compactproof}[title={Proof}]
@@ -195,7 +196,8 @@ Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and mult
 
 
 \proofstep{Conclusion} By combining the deterministic and stochastic parts, we obtain the final expression for $\mathbf{x}_t$ seting $\bar{\alpha}_t = \alpha_t^2$:
-\[
+\begin{equation*}
+\boxed{
     \mathbf{x}_t
     =
     \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
@@ -203,7 +205,8 @@ Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and mult
     \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},
     \qquad
     \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
-\]
+}
+\end{equation*}
 \qedcompact
 \end{compactproof}
 
@@ -291,7 +294,9 @@ Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x}
 \end{align*}
 
 The last line is the Fokker-Planck equation corresponding to the reverse-time SDE
+
 \begin{equation*}
+\boxed{
 d\mathbf{y}
 =
 \left[
@@ -302,31 +307,247 @@ g(\tau)^2
 \log q_t(\mathbf{y})
 \right]dt
 +
-g(\tau)d\bar{\mathbf{w}},
+g(\tau)d\bar{\mathbf{w}}
+}
 \end{equation*}
+
 where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
 
 \end{compactproof}
 
-The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. Consequently, learning the reverse process reduces to estimating the score function at every noise level.
-
-A neural network parameterized by $(\theta)$
-\begin{equation}
-    p_{\theta}(\mathbf{x}_{0:T})
-    =
-    p(\mathbf{x}_T)
-    \prod_{t=1}^{T}
-    p_{\theta}(\mathbf{x}_{t-1}\mid\mathbf{x}_t)
-\end{equation}
-
-In the score-based formulation, the network learns the score $\mathbf{s}_{\theta}(\mathbf{x}_t,t)$ of the noisy
-distribution,
+The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. It is now required to estimate the score with only a finite number of samples $(\mathbf{x}_{0},\mathbf{x}_{t})$ drawn from the forward diffusion process. Considering $\mathbf{x}_{t} = \alpha_{t}\mathbf{x}_{0} + \sigma_{t}\boldsymbol{\epsilon}$, with $\sigma_{t}=1-\alpha_{t}$ and $\boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$ as shown in the the equation \ref{eq:x_t}. It is possible to rewrite the score as
 
 \begin{equation}
     \mathbf{s}_{\theta}(\mathbf{x}_t,t)
     \approx
-    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t),
+    \nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+    =
+    \mathbb{E}[
+        \nabla_{\mathbf{x}_t}\log p(\mathbf{x}_t|\mathbf{x}_0)
+        \mid
+        \mathbf{x}_t
+    ]
 \end{equation}
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea}
+Show that the marginal score $\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)$, which is required to define the reverse-time diffusion process, can be written as the conditional expectation of the transition score
+$\nabla_{\mathbf{x}_t}\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)$.
+Since the transition distribution is chosen explicitly, its score can be computed and used as a training target.
+
+\proofstep{Step 1}
+Let $p_0(\mathbf{x}_0)$ denote the data distribution and let
+$p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)$ denote the transition density of the forward diffusion process. The marginal density at time $t$ is
+\begin{equation*}
+p_t(\mathbf{x}_t)
+=
+\int
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{equation*}
+
+Taking the gradient with respect to $\mathbf{x}_t$ gives
+\begin{align*}
+\nabla_{\mathbf{x}_t}p_t(\mathbf{x}_t)
+&=
+\nabla_{\mathbf{x}_t}
+\int
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0
+\\
+&=
+\int
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{align*}
+
+Dividing by $p_t(\mathbf{x}_t)$ yields
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\frac{
+\nabla_{\mathbf{x}_t}p_t(\mathbf{x}_t)
+}{
+p_t(\mathbf{x}_t)
+}
+\\
+&=
+\int
+\frac{
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}
+p_0(\mathbf{x}_0)
+\,d\mathbf{x}_0.
+\end{align*}
+
+Using
+\begin{equation*}
+\nabla_{\mathbf{x}_t}
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+=
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0),
+\end{equation*}
+we obtain
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\int
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\frac{
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}
+\,d\mathbf{x}_0.
+\end{align*}
+
+By Bayes' rule,
+\begin{equation*}
+p_{0\mid t}(\mathbf{x}_0\mid \mathbf{x}_t)
+=
+\frac{
+p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_0(\mathbf{x}_0)
+}{
+p_t(\mathbf{x}_t)
+}.
+\end{equation*}
+
+Therefore,
+\begin{align*}
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+&=
+\int
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+p_{0\mid t}(\mathbf{x}_0\mid \mathbf{x}_t)
+\,d\mathbf{x}_0
+\\
+&=
+\mathbb{E}_{\mathbf{x}_0\sim
+p_{0\mid t}(\cdot\mid\mathbf{x}_t)}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\right]
+\\
+&=
+\mathbb{E}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\,\middle|\,
+\mathbf{x}_t
+\right].
+\end{align*}
+
+Hence,
+\begin{equation*}
+\boxed{
+\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)
+=
+\mathbb{E}
+\left[
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid \mathbf{x}_0)
+\,\middle|\,
+\mathbf{x}_t
+\right].
+}
+\end{equation*}
+\end{compactproof}
+
+
+
+
+Consider now a Gaussian forward perturbation kernel with mean $\alpha_t\mathbf{x}_0$ and variance $\sigma_t^2\mathbf{I}$, where $\alpha_t=\bar{\alpha}_t^2$ and $\sigma_t = \sqrt{1 - \bar{\alpha}_t^2}$ are known functions of time from equation \eqref{eq:x_t}. The forward process can be written as
+\begin{equation*}
+\mathbf{x}_t
+=
+\alpha_t\mathbf{x}_0
++
+\sigma_t\boldsymbol{\epsilon},
+\qquad
+\boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation*}
+Leading to the transition density
+\begin{equation}
+    \nabla_{\mathbf{x}_t}
+    \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+    =
+    -\frac{\boldsymbol{\epsilon}}{\sigma_t},
+\end{equation}
+
+
+\begin{compactproof}[title={Proof}]
+\proofstep{Idea}
+Compute the logarithm of the Gaussian transition density and take its gradient with respect to $\mathbf{x}_t$.
+Conditionally on $\mathbf{x}_0=\mathbf{x}_0$, one has
+\begin{equation*}
+p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+\mathcal{N}
+\left(
+\mathbf{x}_t;
+\alpha_t\mathbf{x}_0,
+\sigma_t^2\mathbf{I}
+\right).
+\end{equation*}
+
+Its logarithm is, up to a term independent of $\mathbf{x}_t$,
+\begin{equation*}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{1}{2\sigma_t^2}
+\left\|
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+\right\|^2
++
+C(t,\mathbf{x}_0).
+\end{equation*}
+
+Consequently,
+\begin{align*}
+&\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+}{
+\sigma_t^2
+}
+\\
+\Rightarrow\qquad
+&
+\boxed{
+\nabla_{\mathbf{x}_t}
+\log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
+=
+-\frac{\boldsymbol{\epsilon}}{\sigma_t}
+}
+\qquad
+{\scriptstyle
+\text{since }
+\mathbf{x}_t-\alpha_t\mathbf{x}_0
+=
+\sigma_t\boldsymbol{\epsilon}.
+}
+\end{align*}
+
+\end{compactproof}
+
+
 
 which points toward regions of higher probability density at each noise level.
 In practice, an equivalent and commonly used parameterization trains a network
