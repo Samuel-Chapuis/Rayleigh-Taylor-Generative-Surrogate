@@ -764,6 +764,132 @@ introduced by \citet{Ho2020DDPM},
 % score field becomes increasingly structured and separates trajectories toward
 % the different modes of the data distribution.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Sampling from the learned reverse process}
+\label{subsec:sampling_reverse_process}
+
+The training objective above provides an approximation of the score
+$\nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ for every diffusion time. It does
+not, however, directly generate a new density field. Once the network has been
+trained, sampling consists in replacing the unknown score in the reverse
+process by its neural approximation and solving the resulting stochastic
+differential equation numerically.
+
+To remain consistent with the time reversal introduced in the previous proof,
+let $ \tau = T - t$ and so $ \mathbf{y}_t = \mathbf{x}_{T-t} $ and $ q_t(\mathbf{y}) = p_{T-t}(\mathbf{y}) $. The reverse process is then written with a time variable increasing from $ t = 0 $ to $ t = T $:
+\begin{equation}
+    d\mathbf{y}
+    =
+    \left[
+        -\mathbf{f}(\mathbf{y},T-t)
+        +g(T-t)^2
+        \nabla_{\mathbf{y}}\log p_{T-t}(\mathbf{y})
+    \right]dt
+    +
+    g(T-t)d\overline{\mathbf{w}}.
+    \label{eq:reverse_sde_increasing_time}
+\end{equation}
+At the beginning of the reverse process, we have $ \mathbf{y}_0=\mathbf{x}_T \sim p_T \approx \mathcal{N}(\mathbf{0},\mathbf{I}) $ and if Equation~\eqref{eq:reverse_sde_increasing_time} were solved using the exact
+score, its terminal random variable would satisfy $ \mathbf{y}_T\sim p_0=p_{\mathrm{data}} $.
+In practice, the exact score is replaced by the learned approximation
+$\mathbf{s}_{\theta}$, which gives
+\begin{equation}
+    d\mathbf{y}
+    =
+    \mathbf{b}_{\theta}(\mathbf{y},t)dt
+    +g(T-t)d\overline{\mathbf{w}},
+    \label{eq:learned_reverse_sde_sampling}
+\end{equation}
+\vspace{-5pt}
+\begin{equation*}
+    \text{with,} \quad
+    \mathbf{b}_{\theta}(\mathbf{y},t)
+    =
+    -\mathbf{f}(\mathbf{y},T-t)
+    +g(T-t)^2
+    \mathbf{s}_{\theta}(\mathbf{y},T-t).
+    \label{eq:learned_reverse_drift_sampling}
+\end{equation*}
+Using the noise-prediction parameterization
+$\mathbf{s}_{\theta}(\mathbf{x}_t,t)
+=-\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)/\sigma_t$, the drift can
+also be evaluated directly from the output of the trained network.
+
+Equation~\eqref{eq:learned_reverse_sde_sampling} generally has no closed-form
+solution because its drift depends on the nonlinear neural network. A temporal
+grid
+\begin{equation}
+    0=t_0<t_1<\cdots<t_N=T,
+    \qquad
+    \Delta t_n=t_{n+1}-t_n,
+\end{equation}
+is therefore introduced. The Wiener increment over one time step is sampled as
+\begin{equation}
+    \Delta\overline{\mathbf{w}}_n
+    =
+    \sqrt{\Delta t_n}\,\mathbf{z}_n,
+    \qquad
+    \mathbf{z}_n\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+A direct Euler--Maruyama discretization would give
+\begin{equation}
+    \mathbf{y}_{n+1}
+    =
+    \mathbf{y}_n
+    +\Delta t_n\mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+    +g(T-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:euler_maruyama_sampling}
+\end{equation}
+This expression makes the role of the trained network explicit: at each noise
+level, the score estimate modifies the drift of the reverse diffusion and
+therefore determines the direction in which the current noisy sample evolves.
+The Gaussian term preserves the stochastic nature of the reverse process.
+
+In this work, the integration is performed using a predictor--corrector scheme
+of Heun type. First, an Euler prediction is computed,
+\begin{equation}
+    \widetilde{\mathbf{y}}_{n+1}
+    =
+    \mathbf{y}_n
+    +\Delta t_n\mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+    +g(T-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:heun_sampling_predictor}
+\end{equation}
+The drift is then evaluated again at the predicted state, and the two drift
+estimates are averaged,
+\begin{equation}
+\begin{aligned}
+    \mathbf{y}_{n+1}
+    ={}&
+    \mathbf{y}_n
+    +\frac{\Delta t_n}{2}
+    \left[
+        \mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+        +
+        \mathbf{b}_{\theta}
+        (\widetilde{\mathbf{y}}_{n+1},t_{n+1})
+    \right]
+    \\
+    &+
+    g(T-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:heun_sampling_corrector}
+\end{aligned}
+\end{equation}
+The same Gaussian realization $\mathbf{z}_n$ is used in the prediction and
+correction. Compared with Euler--Maruyama, the Heun correction accounts for the
+variation of the learned drift over the time step, at the cost of a second
+evaluation of the neural network.
+
+Starting from $\mathbf{y}_0\sim\mathcal{N}(\mathbf{0},\mathbf{I})$ and
+repeating these updates for $n=0,\ldots,N-1$ produces the final state
+$\mathbf{y}_N$. Since $\mathbf{y}_N$ approximates a sample from $p_0$, it is
+interpreted as a newly generated RTI density field. Repeating the procedure
+with independent initial Gaussian samples and independent Wiener increments
+produces an ensemble whose distribution approximates
+$p_{\mathrm{data}}$.
+
 This behavior is illustrated in
 Figure~\ref{fig:diffusion_1d_reverse_score}. In the one-dimensional example, the
 score is represented by arrows along the $x$ axis. At each diffusion time, the

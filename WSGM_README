@@ -1,9 +1,9 @@
 # Cascade wavelet SGM
 
-Ce document decrit l'utilisation de `Wave_Cascade_SGM_Foward_and_Generator.py`.
+Ce document decrit l'utilisation de `WSGM_Foward_and_Generator.py`.
 Le script gere deux familles de modeles independantes :
 
-1. un DDPM inconditionnel qui genere le coefficient d'approximation `cA` coarse ;
+1. un SGM inconditionnel qui genere le coefficient d'approximation `cA` coarse ;
 2. des SGM conditionnels qui generent les details `[cH, cV, cD]` a chaque niveau.
 
 La generation reconstruit ensuite l'image par transformees inverses `pywt.idwt2`.
@@ -32,12 +32,12 @@ canal 3 : cD
 ```
 
 Les statistiques de normalisation des modeles conditionnels sont calculees sur
-le split `training`, puis reutilisees pour la validation. Le DDPM coarse peut
+le split `training`, puis reutilisees pour la validation. Le SGM coarse peut
 normaliser `cA` avec `coarse.normalize_ca`.
 
 ## Configuration
 
-Le fichier utilise par defaut est `Wave_Cascade_Config_SGM.json`.
+Le fichier utilise par defaut est `WSGM_Config.json`.
 
 ### `levels`
 
@@ -61,7 +61,7 @@ Parametres des SGM conditionnels sur les details wavelet.
 - `beta_min`, `beta_max` : parametres du VP-SDE.
 - `eps_time` : temps minimal utilise pendant l'entrainement et l'integration.
 - `sampling_steps` : nombre de pas du solveur SGM a la generation. Il ne
-  s'agit pas d'un nombre de pas DDPM d'entrainement.
+  s'agit pas d'un nombre de pas discret d'entrainement.
 - `prediction_type` : cible du reseau, normalement `v` ; `epsilon` est aussi
   supporte.
 - `sampler` : solveur de generation, actuellement `euler` ou `heun`.
@@ -74,29 +74,35 @@ Parametres des SGM conditionnels sur les details wavelet.
 
 ### `coarse`
 
-Parametres independants du DDPM inconditionnel qui apprend `cA`.
+Parametres independants du SGM inconditionnel qui apprend `cA`.
 
 - `enabled` : active ou desactive toute la partie coarse.
 - `wavelet_level` : niveau du coefficient `cA`, normalement `3`.
-- `seed` : graine du coarse DDPM.
+- `seed` : graine du coarse SGM.
 - `store_path_dataset` : racine du dataset coarse.
 - `batch_size`, `n_epochs`, `lr` : parametres d'entrainement.
 - `normalize_ca` : normalisation de `cA` a partir des statistiques du train.
-- `do_train` : entraine effectivement le DDPM si `true`. Peut etre mis a
+- `do_train` : entraine effectivement le SGM si `true`. Peut etre mis a
   `false` pour utiliser uniquement `input_path`.
 - `input_path` : checkpoint charge avant une reprise ou une inference coarse.
 - `store_path` : checkpoint coarse sauvegarde apres selection du meilleur modele.
 - `log_path`, `csv_path` : fichiers de log coarse.
 - `config_path` : configuration sauvegardee avec les statistiques et
   l'architecture necessaires a la generation.
-- `time_emb_dim`, `n_steps`, `min_beta`, `max_beta` : parametres propres au
-  DDPM coarse. `n_steps` peut donc etre different de `model.sampling_steps`.
+- `time_emb_dim`, `beta_min`, `beta_max`, `eps_time` : parametres propres au
+  VP-SDE coarse.
+- `sampling_steps`, `sampler`, `prediction_type`, `clip_denoised` : parametres
+  du solveur et de la parametrisation SGM coarse. Ils sont independants des
+  memes parametres des SGM conditionnels.
 - `image_channels`, `unet_depth`, `unet_blocks_per_level`,
   `unet_base_channels`, `unet_out_channels` : architecture coarse.
 - `preview_samples` : nombre d'echantillons coarse sauvegardes apres entrainement.
 
-Le DDPM coarse utilise une prediction du bruit epsilon et le schedule discret
-de `lib/wavelet_diffusion_lib/DDPM.py`.
+Le SGM coarse utilise la loss stable `v`/`epsilon` de
+`lib/diffusion_lib/training_loop.py` et le solveur probability-flow ODE de
+`lib/diffusion_lib/SGM.py`. `clip_denoised` est desactive par defaut car les
+coefficients wavelet normalises ne sont pas necessairement bornes dans
+`[-1, 1]`.
 
 ### `train`
 
@@ -124,10 +130,10 @@ parametres d'optimisation viennent de `train`.
 - `output_dir` : dossier des tenseurs generes.
 - `initial_ca_source` : source du coefficient coarse initial. Valeurs possibles :
   - `dataset` : utilise le vrai `cA` du split ; aucun modele coarse n'est requis ;
-  - `coarse_ddpm` : utilise le DDPM defini dans la section `coarse` ;
+  - `coarse_sgm` : utilise le SGM defini dans la section `coarse` ;
   - `generated` : utilise un ancien modele SGM inconditionnel externe.
-- `coarse_config_path` : configuration sauvegardee du DDPM coarse lorsque la
-  source est `coarse_ddpm`.
+- `coarse_config_path` : configuration sauvegardee du SGM coarse lorsque la
+  source est `coarse_sgm`.
 - `coarse_checkpoint_path` : checkpoint coarse optionnel qui surcharge le
   chemin contenu dans `coarse_config_path`.
 - `initial_ca_config_path` : configuration d'un ancien SGM inconditionnel
@@ -135,7 +141,7 @@ parametres d'optimisation viennent de `train`.
 - `initial_ca_checkpoint_path` : checkpoint externe optionnel qui surcharge sa
   configuration.
 
-Le mode `coarse_ddpm` lit encore le fichier `j{level}_{dataset}.pt` pour
+Le mode `coarse_sgm` lit encore le fichier `j{level}_{dataset}.pt` pour
   connaitre la resolution et le nombre d'echantillons. Le checkpoint coarse est
   utilise uniquement pour produire les valeurs de `cA`.
 
@@ -160,7 +166,7 @@ les niveaux wavelet, par exemple :
 ```
 
 Cela permet notamment de reprendre un modele different pour chaque niveau.
-Les overrides concernent les SGM conditionnels, pas le DDPM coarse.
+Les overrides concernent les SGM conditionnels, pas le SGM coarse.
 
 ## Cas d'utilisation
 
@@ -198,14 +204,16 @@ Les overrides concernent les SGM conditionnels, pas le DDPM coarse.
 ```json
 "coarse": {
   "enabled": true,
-  "n_steps": 1000
+  "sampling_steps": 256,
+  "prediction_type": "v",
+  "sampler": "heun"
 },
 "train": {
   "enabled": true
 },
 "generate": {
   "enabled": true,
-  "initial_ca_source": "coarse_ddpm"
+  "initial_ca_source": "coarse_sgm"
 }
 ```
 
@@ -226,7 +234,7 @@ reprise bit-a-bit interrompue au milieu d'une epoque.
 ## Execution
 
 ```bash
-python Wave_Cascade_SGM_Foward_and_Generator.py
+python WSGM_Foward_and_Generator.py
 ```
 
 Les chemins relatifs sont resolus depuis le repertoire du projet contenant le
@@ -243,7 +251,7 @@ log_dir/wave_j{level}_RT64.log
 log_dir/wave_j{level}_RT64.csv
 ```
 
-Pour le coarse DDPM :
+Pour le coarse SGM :
 
 ```text
 coarse.store_path

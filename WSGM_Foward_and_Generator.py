@@ -19,15 +19,14 @@ os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 from lib.diffusion_lib.SGM import SGM
 from lib.diffusion_lib.UNet import UNet
-from lib.wavelet_diffusion_lib.DDPM import DDPM
 from lib.wavelet_diffusion_lib.ConditionalSGM import WaveletConditionalSGM
 from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
 from lib.wavelet_diffusion_lib.Logger import Logger
 from lib.wavelet_diffusion_lib.training_loop import (
     split_wave_batch,
-    training_loop,
     wave_sgm_training_loop,
 )
+from lib.diffusion_lib.training_loop import sgm_training_loop
 from lib.wavelet_diffusion_lib.data_loader import wavelet_approximation_data_loader
 from lib.wavelet_diffusion_lib.utils import get_best_device
 from lib.wavelet_diffusion_lib.wavelet_utils import (
@@ -39,7 +38,7 @@ from lib.wavelet_diffusion_lib.wavelet_utils import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-RUN_CONFIG_PATH = PROJECT_ROOT / "Wave_Cascade_Config_SGM.json"
+RUN_CONFIG_PATH = PROJECT_ROOT / "WSGM_Config.json"
 
 
 @dataclass
@@ -102,7 +101,7 @@ class LevelConfig:
 
 @dataclass
 class CoarseConfig:
-    """Configuration indépendante du DDPM inconditionnel sur cA."""
+    """Configuration indépendante du SGM inconditionnel sur cA."""
 
     wavelet_level: int
     device: torch.device
@@ -111,6 +110,8 @@ class CoarseConfig:
     batch_size: int = 128
     n_epochs: int = 100
     lr: float = 1e-3
+    weight_decay: float = 1e-6
+    grad_clip: float | None = 1.0
     normalize_ca: bool = True
     do_train: bool = True
     input_path: str = ""
@@ -119,9 +120,13 @@ class CoarseConfig:
     csv_path: str = "outputs/logs/cascade_sgm/coarse_cA3_RT64.csv"
     config_path: str = "outputs/saved_models/cascade_sgm/coarse_cA3_RT64_config.json"
     time_emb_dim: int = 100
-    n_steps: int = 1000
-    min_beta: float = 1e-4
-    max_beta: float = 0.02
+    beta_min: float = 0.1
+    beta_max: float = 20.0
+    eps_time: float = 1e-2
+    sampling_steps: int = 256
+    prediction_type: str = "v"
+    sampler: str = "heun"
+    clip_denoised: bool = False
     image_channels: int = 1
     unet_depth: int = 3
     unet_blocks_per_level: int = 3
@@ -210,9 +215,9 @@ def build_coarse_loaders(config: CoarseConfig):
     return train_loader, val_loader, mean, std
 
 
-def build_coarse_ddpm(config: CoarseConfig, image_chw: tuple[int, int, int]) -> DDPM:
+def build_coarse_sgm(config: CoarseConfig, image_chw: tuple[int, int, int]) -> SGM:
     network = UNet(
-        n_steps=config.n_steps,
+        n_steps=1000,
         time_emb_dim=config.time_emb_dim,
         size=image_chw[1],
         in_channels=image_chw[0],
@@ -220,15 +225,21 @@ def build_coarse_ddpm(config: CoarseConfig, image_chw: tuple[int, int, int]) -> 
         depth=config.unet_depth,
         blocks_per_level=config.unet_blocks_per_level,
         base_channels=config.unet_base_channels,
+        continuous_time=True,
     )
-    return DDPM(
-        network, n_steps=config.n_steps, min_beta=config.min_beta,
-        max_beta=config.max_beta, device=config.device, image_chw=image_chw,
+    return SGM(
+        network,
+        beta_min=config.beta_min,
+        beta_max=config.beta_max,
+        eps_time=config.eps_time,
+        prediction_type=config.prediction_type,
+        device=config.device,
+        image_chw=image_chw,
     ).to(config.device)
 
 
 def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
-    """Entraîne le DDPM coarse, indépendamment des niveaux SGM conditionnels."""
+    """Entraîne le SGM coarse, indépendamment des niveaux conditionnels."""
     train_loader, val_loader, ca_mean, ca_std = build_coarse_loaders(config)
     first_images, _ = next(iter(train_loader))
     image_chw = tuple(first_images.shape[1:])
@@ -238,15 +249,19 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
     for path in (config.store_path, config.log_path, config.config_path):
         absolute_path(path).parent.mkdir(parents=True, exist_ok=True)
     experiment = {
-        "kind": "unconditional_coarse_ddpm",
+        "kind": "unconditional_coarse_sgm",
         "seed": config.seed, "store_path_dataset": config.store_path_dataset,
         "wavelet_level": config.wavelet_level, "normalize_ca": config.normalize_ca,
         "ca_mean": None if ca_mean is None else ca_mean.item(),
         "ca_std": None if ca_std is None else ca_std.item(),
         "batch_size": config.batch_size, "n_epochs": config.n_epochs, "lr": config.lr,
+        "weight_decay": config.weight_decay, "grad_clip": config.grad_clip,
         "store_path": config.store_path, "input_path": config.input_path,
-        "time_emb_dim": config.time_emb_dim, "n_steps": config.n_steps,
-        "min_beta": config.min_beta, "max_beta": config.max_beta,
+        "time_emb_dim": config.time_emb_dim, "beta_min": config.beta_min,
+        "beta_max": config.beta_max, "eps_time": config.eps_time,
+        "sampling_steps": config.sampling_steps,
+        "prediction_type": config.prediction_type, "sampler": config.sampler,
+        "clip_denoised": config.clip_denoised,
         "image_chw": image_chw, "unet_depth": config.unet_depth,
         "unet_blocks_per_level": config.unet_blocks_per_level,
         "unet_base_channels": config.unet_base_channels,
@@ -256,18 +271,18 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
     logger.log_experiment_start(experiment)
     logger.save_config(experiment, absolute_path(config.config_path))
 
-    ddpm = build_coarse_ddpm(config, image_chw)
+    sgm = build_coarse_sgm(config, image_chw)
     if config.input_path:
         checkpoint = absolute_path(config.input_path)
         if not checkpoint.exists():
             raise FileNotFoundError(f"Checkpoint coarse introuvable: {checkpoint}")
-        ddpm.load_state_dict(torch.load(checkpoint, map_location=config.device, weights_only=True))
-    optimizer = AdamW(ddpm.parameters(), lr=config.lr)
+        sgm.load_state_dict(torch.load(checkpoint, map_location=config.device, weights_only=True))
+    optimizer = AdamW(sgm.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     if config.do_train:
-        training_loop(
-            ddpm, train_loader, config.n_epochs, optimizer, config.device,
+        sgm_training_loop(
+            sgm, train_loader, config.n_epochs, optimizer, config.device,
             store_path=absolute_path(config.store_path), logger=logger,
-            val_loader=val_loader,
+            val_loader=val_loader, grad_clip=config.grad_clip,
         )
     checkpoint = absolute_path(config.store_path)
     if not config.do_train and config.input_path:
@@ -278,14 +293,18 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
         )
 
     if preview_samples > 0:
-        ddpm.load_state_dict(torch.load(checkpoint, map_location=config.device, weights_only=True))
-        ddpm.eval()
+        sgm.load_state_dict(torch.load(checkpoint, map_location=config.device, weights_only=True))
+        sgm.eval()
         with torch.no_grad():
-            generated = ddpm.sample(n_samples=preview_samples, device=config.device).cpu()
+            generated = sgm.sample(
+                n_samples=preview_samples, device=config.device,
+                n_steps=config.sampling_steps, solver=config.sampler,
+                clip_denoised=config.clip_denoised,
+            ).cpu()
         if config.normalize_ca and ca_mean is not None and ca_std is not None:
             generated = generated * ca_std + ca_mean
         torch.save(generated, absolute_path(config.store_path).with_suffix(".preview.pt"))
-    logger.log_experiment_end("Coarse DDPM training finished")
+    logger.log_experiment_end("Coarse SGM training finished")
 
 
 def build_sgm(config: LevelConfig | dict[str, Any], image_hw, coeff_mean, coeff_std, device):
@@ -442,28 +461,35 @@ def generate_unconditional_ca(saved: dict[str, Any], device: torch.device, n_sam
     return samples
 
 
-def generate_coarse_ddpm(saved: dict[str, Any], device: torch.device, n_samples: int) -> torch.Tensor:
-    """Génère cA avec le DDPM coarse entraîné par cette cascade."""
+def generate_coarse_sgm(saved: dict[str, Any], device: torch.device, n_samples: int) -> torch.Tensor:
+    """Génère cA avec le SGM coarse entraîné par cette cascade."""
     image_chw = tuple(saved["image_chw"])
     config = type("SavedCoarseConfig", (), {
-        "n_steps": int(saved["n_steps"]),
         "time_emb_dim": int(saved.get("time_emb_dim", 100)),
         "unet_out_channels": saved.get("unet_out_channels"),
         "unet_depth": int(saved.get("unet_depth", 3)),
         "unet_blocks_per_level": int(saved.get("unet_blocks_per_level", 3)),
         "unet_base_channels": int(saved.get("unet_base_channels", 10)),
-        "min_beta": float(saved.get("min_beta", 1e-4)),
-        "max_beta": float(saved.get("max_beta", 0.02)),
+        "beta_min": float(saved.get("beta_min", 0.1)),
+        "beta_max": float(saved.get("beta_max", 20.0)),
+        "eps_time": float(saved.get("eps_time", 1e-2)),
+        "prediction_type": saved.get("prediction_type", "v"),
         "device": device,
     })()
-    model = build_coarse_ddpm(config, image_chw)
+    model = build_coarse_sgm(config, image_chw)
     checkpoint = absolute_path(saved["store_path"])
     if not checkpoint.exists():
         raise FileNotFoundError(f"Checkpoint coarse introuvable: {checkpoint}")
     model.load_state_dict(torch.load(checkpoint, map_location=device, weights_only=True))
     model.eval()
     with torch.no_grad():
-        samples = model.sample(n_samples=n_samples, device=device).cpu()
+        samples = model.sample(
+            n_samples=n_samples,
+            device=device,
+            n_steps=int(saved.get("sampling_steps", 256)),
+            solver=saved.get("sampler", "heun"),
+            clip_denoised=bool(saved.get("clip_denoised", False)),
+        ).cpu()
     if saved.get("normalize_ca", False):
         samples = samples * float(saved["ca_std"]) + float(saved["ca_mean"])
     return samples
@@ -524,7 +550,7 @@ def generate_cascade(run_config, device):
     )
     count = min(len(coarse_data), int(n_samples)) if n_samples is not None else min(len(coarse_data), batch_size)
     current_ca = coarse_data[:count, :1].float()
-    if initial_source == "coarse_ddpm":
+    if initial_source == "coarse_sgm":
         coarse_config_path = absolute_path(
             generation.get("coarse_config_path", make_coarse_config(run_config, device).config_path)
         )
@@ -532,7 +558,7 @@ def generate_cascade(run_config, device):
             coarse_saved = json.load(file)
         if generation.get("coarse_checkpoint_path"):
             coarse_saved["store_path"] = generation["coarse_checkpoint_path"]
-        current_ca = generate_coarse_ddpm(coarse_saved, device, count)
+        current_ca = generate_coarse_sgm(coarse_saved, device, count)
     elif initial_source == "generated":
         config_path = absolute_path(generation["initial_ca_config_path"])
         with config_path.open("r", encoding="utf-8") as file:
@@ -541,7 +567,7 @@ def generate_cascade(run_config, device):
             initial_config["store_path"] = generation["initial_ca_checkpoint_path"]
         current_ca = generate_unconditional_ca(initial_config, device, count)
     elif initial_source != "dataset":
-        raise ValueError("initial_ca_source doit valoir 'dataset', 'coarse_ddpm' ou 'generated'.")
+        raise ValueError("initial_ca_source doit valoir 'dataset', 'coarse_sgm' ou 'generated'.")
     if tuple(current_ca.shape) != tuple(coarse_data[:count, :1].shape):
         raise ValueError("Le modele cA produit une resolution incompatible avec la cascade.")
     torch.save(current_ca, output_dir / f"j{levels[0]}_initial_cA.pt")

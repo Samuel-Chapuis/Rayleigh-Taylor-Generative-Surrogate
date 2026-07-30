@@ -173,18 +173,20 @@ def sgm_training_loop(
 ):
     """Entraine un SGM VP-SDE par minibatches et sauvegarde le meilleur modele."""
     mse = nn.MSELoss()
-    best_loss = float("inf")
+    start_epoch = logger.last_epoch() if logger else 0
+    best_loss = logger.min_numeric_column("best_loss") if logger else float("inf")
     loss_list = []
     Path(store_path).parent.mkdir(parents=True, exist_ok=True)
 
     if logger:
         logger.info(f"SGM training started for {n_epochs} epochs")
 
-    for epoch in tqdm(range(n_epochs), desc="SGM training", colour="#00ff00"):
+    end_epoch = start_epoch + n_epochs
+    for epoch in tqdm(range(start_epoch, end_epoch), desc="SGM training", colour="#00ff00"):
         sgm.train()
         weighted_loss = 0.0
         n_total = 0
-        for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}", colour="#005500"):
+        for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{end_epoch}", colour="#005500"):
             loss = _sgm_epsilon_loss(sgm, batch, mse, device)
             optim.zero_grad(set_to_none=True)
             loss.backward()
