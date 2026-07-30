@@ -86,6 +86,37 @@ class Logger:
 		"""Journalise la fin d'une experience."""
 		self.info(message)
 
+	def last_epoch(self) -> int:
+		"""Retourne le dernier index d'epoque present dans le CSV."""
+		if not self._csv_header_written:
+			return 0
+
+		last = 0
+		with self.csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+			reader = csv.DictReader(csv_file)
+			for row in reader:
+				try:
+					last = max(last, int(float(row.get("epoch", 0))))
+				except (TypeError, ValueError):
+					continue
+		return last
+
+	def min_numeric_column(self, column: str, default: float = float("inf")) -> float:
+		"""Retourne le minimum numerique d'une colonne du CSV existant."""
+		if not self._csv_header_written:
+			return default
+
+		best = default
+		with self.csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+			reader = csv.DictReader(csv_file)
+			for row in reader:
+				try:
+					value = float(row[column])
+				except (KeyError, TypeError, ValueError):
+					continue
+				best = min(best, value)
+		return best
+
 	def _append_csv_row(self, row: Mapping[str, Any]) -> None:
 		"""Ajoute une ligne au CSV en etendant l'en-tete si necessaire."""
 		fieldnames = self._csv_fieldnames or list(row.keys())
