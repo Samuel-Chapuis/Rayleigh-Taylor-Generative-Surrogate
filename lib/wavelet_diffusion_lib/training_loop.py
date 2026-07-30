@@ -67,15 +67,17 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
         list[float]: Historique des pertes calculées à chaque itération.
     """
     mse = nn.MSELoss()
-    best_loss = float("inf")
+    start_epoch = logger.last_epoch() if logger else 0
+    best_loss = logger.min_numeric_column("best_loss") if logger else float("inf")
     loss_list = []
 
     if logger:
         logger.info(f"Training started for {n_epochs} epochs")
 
-    for epoch in tqdm(range(n_epochs), desc=f"Training progress", colour="#00ff00"):
+    end_epoch = start_epoch + n_epochs
+    for epoch in tqdm(range(start_epoch, end_epoch), desc=f"Training progress", colour="#00ff00"):
         epoch_loss = 0.0
-        for step, batch in enumerate(tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}", colour="#005500")):
+        for step, batch in enumerate(tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{end_epoch}", colour="#005500")):
             ddpm.train()
             loss = _ddpm_noise_prediction_loss(ddpm, batch, mse, device)
             loss_value = loss.item()
