@@ -104,6 +104,11 @@ Le SGM coarse utilise la loss stable `v`/`epsilon` de
 coefficients wavelet normalises ne sont pas necessairement bornes dans
 `[-1, 1]`.
 
+Le script enregistre aussi `ca_min` et `ca_max`, mesures sur le split coarse
+`training`, puis projette les sorties coarse denormalisees dans cet intervalle
+avant de les transmettre au premier modele conditionnel. Cette projection
+evite de fournir aux conditionneurs des `cA` hors support.
+
 ### `train`
 
 Parametres d'entrainement des SGM conditionnels.

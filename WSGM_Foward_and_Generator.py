@@ -243,6 +243,8 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
     train_loader, val_loader, ca_mean, ca_std = build_coarse_loaders(config)
     first_images, _ = next(iter(train_loader))
     image_chw = tuple(first_images.shape[1:])
+    ca_min = train_loader.dataset.images.min().item()
+    ca_max = train_loader.dataset.images.max().item()
     if image_chw[0] != config.image_channels or image_chw[1] != image_chw[2]:
         raise ValueError(f"Forme cA incompatible avec le U-Net: {image_chw}")
 
@@ -254,6 +256,7 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
         "wavelet_level": config.wavelet_level, "normalize_ca": config.normalize_ca,
         "ca_mean": None if ca_mean is None else ca_mean.item(),
         "ca_std": None if ca_std is None else ca_std.item(),
+        "ca_min": ca_min, "ca_max": ca_max,
         "batch_size": config.batch_size, "n_epochs": config.n_epochs, "lr": config.lr,
         "weight_decay": config.weight_decay, "grad_clip": config.grad_clip,
         "store_path": config.store_path, "input_path": config.input_path,
@@ -303,6 +306,7 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
             ).cpu()
         if config.normalize_ca and ca_mean is not None and ca_std is not None:
             generated = generated * ca_std + ca_mean
+        generated = generated.clamp(ca_min, ca_max)
         torch.save(generated, absolute_path(config.store_path).with_suffix(".preview.pt"))
     logger.log_experiment_end("Coarse SGM training finished")
 
@@ -458,6 +462,8 @@ def generate_unconditional_ca(saved: dict[str, Any], device: torch.device, n_sam
         ).cpu()
     if saved.get("normalize_ca", False):
         samples = samples * float(saved["ca_std"]) + float(saved["ca_mean"])
+    if "ca_min" in saved and "ca_max" in saved:
+        samples = samples.clamp(float(saved["ca_min"]), float(saved["ca_max"]))
     return samples
 
 
@@ -568,6 +574,10 @@ def generate_cascade(run_config, device):
         current_ca = generate_unconditional_ca(initial_config, device, count)
     elif initial_source != "dataset":
         raise ValueError("initial_ca_source doit valoir 'dataset', 'coarse_sgm' ou 'generated'.")
+    # Safety net for legacy coarse configs without ca_min/ca_max. The detail
+    # models were trained on the physical support of the dataset cA.
+    ca_reference = coarse_data[:count, :1]
+    current_ca = current_ca.clamp(ca_reference.min(), ca_reference.max())
     if tuple(current_ca.shape) != tuple(coarse_data[:count, :1].shape):
         raise ValueError("Le modele cA produit une resolution incompatible avec la cascade.")
     torch.save(current_ca, output_dir / f"j{levels[0]}_initial_cA.pt")
