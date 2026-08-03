@@ -115,10 +115,10 @@ class CoarseConfig:
     normalize_ca: bool = True
     do_train: bool = True
     input_path: str = ""
-    store_path: str = "outputs/saved_models/cascade_sgm/coarse_cA3_RT64.pt"
-    log_path: str = "outputs/logs/cascade_sgm/coarse_cA3_RT64.log"
-    csv_path: str = "outputs/logs/cascade_sgm/coarse_cA3_RT64.csv"
-    config_path: str = "outputs/saved_models/cascade_sgm/coarse_cA3_RT64_config.json"
+    store_path: str = "outputs/saved_models/cascade_sgm/coarse_cA2_RT64.pt"
+    log_path: str = "outputs/logs/cascade_sgm/coarse_cA2_RT64.log"
+    csv_path: str = "outputs/logs/cascade_sgm/coarse_cA2_RT64.csv"
+    config_path: str = "outputs/saved_models/cascade_sgm/coarse_cA2_RT64_config.json"
     time_emb_dim: int = 100
     beta_min: float = 0.1
     beta_max: float = 20.0

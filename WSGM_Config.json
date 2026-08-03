@@ -1,5 +1,5 @@
 {
-  "levels": [1, 2, 3],
+  "levels": [1, 2],
 
   "model": {
     "seed": 0,
@@ -27,7 +27,7 @@
 
   "coarse": {
     "enabled": true,
-    "wavelet_level": 3,
+    "wavelet_level": 2,
     "seed": 0,
     "store_path_dataset": "data/RT64",
     "batch_size": 128,
@@ -38,10 +38,10 @@
     "normalize_ca": true,
     "do_train": true,
     "input_path": "",
-    "store_path": "outputs/saved_models/cascade_sgm/coarse_cA3_RT64.pt",
-    "log_path": "outputs/logs/cascade_sgm/coarse_cA3_RT64.log",
-    "csv_path": "outputs/logs/cascade_sgm/coarse_cA3_RT64.csv",
-    "config_path": "outputs/saved_models/cascade_sgm/coarse_cA3_RT64_config.json",
+    "store_path": "outputs/saved_models/cascade_sgm/coarse_cA2_RT64.pt",
+    "log_path": "outputs/logs/cascade_sgm/coarse_cA2_RT64.log",
+    "csv_path": "outputs/logs/cascade_sgm/coarse_cA2_RT64.csv",
+    "config_path": "outputs/saved_models/cascade_sgm/coarse_cA2_RT64_config.json",
     "time_emb_dim": 128,
     "beta_min": 0.1,
     "beta_max": 20.0,
@@ -76,8 +76,8 @@
     "wavelet": "db1",
     "border_mode": "periodization",
     "output_dir": "outputs/generated/cascade_sgm",
-    "initial_ca_source": "dataset",
-    "coarse_config_path": "outputs/saved_models/cascade_sgm/coarse_cA3_RT64_config.json",
+    "initial_ca_source": "coarse_sgm",
+    "coarse_config_path": "outputs/saved_models/cascade_sgm/coarse_cA2_RT64_config.json",
     "coarse_checkpoint_path": "",
     "initial_ca_config_path": "outputs/model/RT64_sgm_config.json",
     "initial_ca_checkpoint_path": ""
@@ -85,7 +85,6 @@
 
   "level_overrides": {
     "1": {},
-    "2": {},
-    "3": {}
+    "2": {}
   }
 }
