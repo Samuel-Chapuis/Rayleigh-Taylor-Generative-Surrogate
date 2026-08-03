@@ -54,7 +54,7 @@ Furthermore, spectral filtering techniques make it possible to separate structur
 
 Despite their numerous advantages, Fourier representations also exhibit important limitations when dealing with localized or non-smooth structures. Since Fourier basis functions extend over the entire spatial domain, local modifications of the signal affect all spectral coefficients simultaneously. As a consequence, sharp gradients and localized discontinuities generally require a large number of Fourier modes to be accurately reconstructed.
 
-This limitation is closely related to the Gibbs phenomenon, which appears when truncated Fourier series are used to approximate signals containing discontinuities or strong localized variations. Near sharp interfaces, oscillatory artifacts emerge and persist even when increasing the number of retained modes.
+This limitation is closely related to the Gibbs phenomenon, which appears when truncated Fourier series are used to approximate signals containing discontinuities or strong localized variations. Near sharp interfaces, oscillatory artifacts emerge and persist even when increasing the number of retained modes, as shown in Figure~\ref{fig:gibbs}.
 
 \begin{figure}[htbp]
 \centering
@@ -68,5 +68,4 @@ Although RTI density fields are not strictly discontinuous, they contain steep d
 In addition, Fourier decompositions provide limited spatial localization information. While they accurately describe the global frequency content of the flow, they do not directly indicate where specific structures are located in physical space. This limitation becomes particularly important for turbulent RTI fields, where coherent structures and mixing regions evolve dynamically and remain strongly localized.
 
 These observations motivate the investigation of multi-resolution approaches capable of simultaneously representing both scale-dependent information and spatial localization properties.
-
 

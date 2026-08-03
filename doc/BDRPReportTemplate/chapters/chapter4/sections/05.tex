@@ -1,4 +1,4 @@
-\section{Motivation}
+\section{Wavelet-based Diffusion Pipeline}
 
 The diffusion model presented in Chapter~3 operates directly on the density
 fields in physical space. While this setting already provides a meaningful
@@ -34,6 +34,8 @@ resolution of the latent variable by approximately $2^j$ in each spatial
 direction, so the generative model begins from a more compact prior while
 still preserving the hierarchical structure needed to reconstruct the full
 field.
+This direct-versus-wavelet organization is summarized in
+Figure~\ref{fig:ch5_wavelet_diffusion_scheme}.
 
 \begin{figure}[H]
     \centering
@@ -41,8 +43,6 @@ field.
     \caption{Comparison between direct diffusion and wavelet-based diffusion. In the wavelet case, the prior is defined on a lower-resolution latent representation before the inverse wavelet transform reconstructs the full field.}
     \label{fig:ch5_wavelet_diffusion_scheme}
 \end{figure}
-
-
 
 
 

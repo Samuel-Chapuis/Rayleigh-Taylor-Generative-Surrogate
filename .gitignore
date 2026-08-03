@@ -12,6 +12,7 @@ models/*
 saved_models/
 saved_models/*
 exemples/nt_toolbox/*
+ressources/
 
 exemples/datasets/
 exemples/generated_data/

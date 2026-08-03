@@ -7,66 +7,128 @@ The baseline implementation is organized around the script
 \texttt{lib/diffusion\_lib}. The script plays the role of an experiment driver:
 it defines the configuration, selects the computing device, loads the processed
 RTI tensors, checks that the dataset shape is consistent with the model
-configuration, initializes the DDPM and U-Net, launches the training loop when
+configuration, initializes the SGM and U-Net, launches the training loop when
 required, and finally reloads the best checkpoint for visualization and
 sampling.
 
 The library separates the main components of the diffusion pipeline. The
 \texttt{data\_loader} module loads the already preprocessed training,
 validation, and test tensors, converts them to floating-point images, and
-normalizes them in the interval $[-1,1]$. The \texttt{DDPM} module implements
-the forward noising process
-$x_t=\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon$, the learned
-reverse denoising step, and the sampling procedure that starts from Gaussian
-noise. The \texttt{UNet} module provides the time-conditioned convolutional
-network used to predict the injected noise. The \texttt{training\_loop} module
-contains the training logic: for each batch, a random diffusion time is sampled,
-Gaussian noise is added to the clean image, the U-Net predicts this noise, and
-the parameters are updated by minimizing the mean squared error between true
-and predicted noise. Validation loss is used to select and save the best model
-checkpoint.
+normalizes them in the interval $[-1,1]$. The \texttt{SGM} module implements a
+continuous VP-SDE with affine $\beta(t)$, exact marginal noising, score
+reconstruction, and probability-flow ODE sampling using Heun by default. The \texttt{UNet} module
+provides the time-conditioned convolutional network used to predict either the
+Gaussian perturbation or, in the current default configuration, the
+$\mathbf{v}$-parameterization. The \texttt{training\_loop} module contains the
+training logic: for each batch, a continuous diffusion time is sampled,
+Gaussian noise is added using the exact VP marginal, the U-Net predicts the
+chosen SGM target, and the parameters are updated by minimizing the mean
+squared error between true and predicted targets. Validation loss is used to
+select and save the best model checkpoint.
 
-The denoising network is a two-dimensional U-Net that receives a noisy density
-field $\mathbf{x}_t$ together with the corresponding diffusion timestep $t$ and
-predicts the injected Gaussian perturbation
-$\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$. This architecture is adapted
-to RTI fields because the encoder captures large-scale organization whereas the
-decoder and skip connections preserve localized structures near the mixing
-layer. In the implementation used here, the input has shape $(1,64,64)$, the
-network contains three resolution levels, and the timestep is encoded through
-a sinusoidal embedding injected at each scale.
+The score network is a two-dimensional U-Net that receives a noisy density
+field $\mathbf{x}_t$ together with the corresponding continuous diffusion time
+$t$ and predicts the target required by the selected SGM parameterization. With
+the default $\mathbf{v}$-parameterization used in \texttt{SGM.py}, the target is
+\[
+\mathbf{v}
+=
+\sqrt{\bar{\alpha}(t)}\,\boldsymbol{\epsilon}
+-
+\sqrt{1-\bar{\alpha}(t)}\,\mathbf{x}_0.
+\]
+The implementation then reconstructs
+$\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$ from the network output and
+converts it into a score estimate
+$\mathbf{s}_{\theta}(\mathbf{x}_t,t)=-\boldsymbol{\epsilon}_{\theta}/\sigma(t)$.
+This architecture is adapted to RTI fields because the encoder captures
+large-scale organization whereas the decoder and skip connections preserve
+localized structures near the mixing layer. In the implementation used here,
+the input has shape $(1,64,64)$, the network contains three resolution levels,
+and the timestep is encoded through a sinusoidal embedding injected at each
+scale. The corresponding architecture is shown in Figure~\ref{fig:baseline_unet}.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.82\textwidth]{figures/ch4/Unet2.drawio.png}
-    \caption{Baseline U-Net denoising architecture used for image-space diffusion. The noisy field is processed jointly with a time embedding in order to predict the noise added by the forward process.}
+    \caption{Baseline U-Net score architecture used for image-space SGM. The noisy field is processed jointly with a continuous time embedding in order to predict the selected score-model target.}
     \label{fig:baseline_unet}
 \end{figure}
 
-At a high level, the baseline procedure can be summarized as follows:
+At a high level, the baseline training procedure can be summarized as follows;
+the same data flow is represented graphically in
+Figure~\ref{fig:baseline_training_loop}.
 \begin{algorithm}[H]
-\caption{Baseline DDPM training and sampling procedure}
+\caption{Baseline SGM training procedure}
 \begin{algorithmic}
 \STATE Load processed RTI density fields and build training and validation loaders.
 \STATE Normalize each image to the interval $[-1,1]$.
-\STATE Initialize a DDPM with a time-conditioned U-Net and a linear noise schedule.
+\STATE Initialize an SGM with a time-conditioned U-Net and an affine VP-SDE noise schedule.
 \FOR{each training epoch}
     \FOR{each batch $x_0$}
-        \STATE Sample a random time step $t$ and Gaussian noise $\epsilon$.
-        \STATE Build the noisy field $x_t$ using the forward diffusion equation.
-        \STATE Predict $\epsilon_\theta(x_t,t)$ with the U-Net.
-        \STATE Minimize $\|\epsilon-\epsilon_\theta(x_t,t)\|_2^2$.
+        \STATE Sample a continuous time $t\in[0,1]$ and Gaussian noise $\epsilon$.
+        \STATE Compute $\bar{\alpha}(t)=\exp(-\int_0^t\beta(s)\,ds)$ and $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$.
+        \STATE Build the noisy field $x_t=\sqrt{\bar{\alpha}(t)}x_0+\sigma(t)\epsilon$.
+        \STATE Build the target $y_t=\epsilon$ for \texttt{epsilon}-prediction or $y_t=\sqrt{\bar{\alpha}(t)}\epsilon-\sigma(t)x_0$ for \texttt{v}-prediction.
+        \STATE Predict $\hat{y}_\theta(x_t,t)$ with the U-Net.
+        \STATE Minimize $\|y_t-\hat{y}_\theta(x_t,t)\|_2^2$.
     \ENDFOR
     \STATE Compute validation loss and save the checkpoint if it improves.
 \ENDFOR
-\STATE Reload the best checkpoint and generate samples by iterative reverse diffusion.
+\end{algorithmic}
+\end{algorithm}
+
+Once the score network has been trained, generation is performed by starting
+from a Gaussian prior at $t=1$ and integrating the deterministic
+probability-flow ODE backward to a small terminal time
+$\varepsilon_{\mathrm{time}}$. This is the deterministic counterpart of the
+reverse SDE discussed in the score-based formulation and avoids injecting an
+additional Brownian increment at every sampling step.
+
+\begin{algorithm}[H]
+\caption{Baseline SGM sampling procedure}
+\begin{algorithmic}
+\STATE Reload the best SGM checkpoint and set the U-Net to evaluation mode.
+\STATE Sample $x_1\sim\mathcal{N}(0,I)$ with the target image shape.
+\STATE Choose $N$ integration steps, $\Delta t=-(1-\varepsilon_{\mathrm{time}})/N$, and a solver, Heun by default.
+\FOR{$i=0,\ldots,N-1$}
+    \STATE Set $t_i=1+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
+    \STATE Reconstruct $\hat{\epsilon}_\theta(x_{t_i},t_i)$ from the network output.
+    \STATE Compute the score
+    $s_\theta(x_{t_i},t_i)=-\hat{\epsilon}_\theta(x_{t_i},t_i)/\sigma(t_i)$.
+    \STATE Compute the probability-flow drift
+    \[
+        F_\theta(x_{t_i},t_i)
+        =
+        -\frac{1}{2}\beta(t_i)x_{t_i}
+        -\frac{1}{2}\beta(t_i)s_\theta(x_{t_i},t_i).
+    \]
+    \STATE Predictor step: $\tilde{x}=x_{t_i}+\Delta t\,F_\theta(x_{t_i},t_i)$.
+    \IF{Heun solver is used}
+        \STATE Compute $F_\theta(\tilde{x},t_{i+1})$ and set
+        \[
+            x_{t_{i+1}}
+            =
+            x_{t_i}
+            +
+            \frac{\Delta t}{2}
+            \left[
+            F_\theta(x_{t_i},t_i)
+            +
+            F_\theta(\tilde{x},t_{i+1})
+            \right].
+        \]
+    \ELSE
+        \STATE Set $x_{t_{i+1}}=\tilde{x}$.
+    \ENDIF
+\ENDFOR
+\STATE Clamp the final sample to $[-1,1]$.
 \end{algorithmic}
 \end{algorithm}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.82\textwidth]{figures/ch4/training_loop2.drawio.png}
-    \caption{Baseline DDPM training loop. A random timestep and Gaussian perturbation are sampled for each batch, and the U-Net is trained to predict the injected noise.}
+    \caption{Baseline SGM training loop. A continuous diffusion time and Gaussian perturbation are sampled for each batch, and the U-Net is trained on the selected score-model target.}
     \label{fig:baseline_training_loop}
 \end{figure}
-

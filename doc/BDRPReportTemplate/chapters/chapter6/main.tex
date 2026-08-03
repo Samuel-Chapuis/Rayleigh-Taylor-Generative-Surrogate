@@ -32,7 +32,7 @@ localized small-scale fluctuations.
 A first diffusion pipeline was implemented directly in image space. The model
 was trained on preprocessed density fields using physically consistent data
 augmentations, namely horizontal cyclic translations and horizontal
-reflections. The generated samples showed that the baseline DDPM was able to
+reflections. The generated samples showed that the baseline SGM was able to
 learn a non-trivial approximation of the RTI data distribution. Qualitatively,
 the generated fields recovered the main vertical organization of the mixing
 zone and reproduced bubble-and-spike-like structures. Quantitatively, the
@@ -78,7 +78,7 @@ overfitting.
 
 Overall, this work demonstrates that diffusion models are a relevant framework
 for learning generative surrogate models of Rayleigh--Taylor instability
-fields. The classical DDPM baseline already captures meaningful statistical and
+fields. The classical SGM baseline already captures meaningful statistical and
 physical information from a limited DNS dataset. The wavelet-based formulation,
 although not yet competitive in its current implementation, opens an
 interesting path toward more interpretable and scale-aware generative models

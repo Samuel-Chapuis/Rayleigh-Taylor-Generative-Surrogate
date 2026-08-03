@@ -106,7 +106,7 @@ p_T(\mathbf{x})
 \mathcal{N}(\mathbf{0},\mathbf{I})
 \end{equation}
 
-Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by \citep{Ho2020DDPM}. In this case, the forward process can be written as
+Several choices of forward SDEs are possible. In this work, the implementation is based on the continuous variance-preserving (VP) SDE used in score-based generative modeling \citep{Song2021SDE}. In this case, the forward process can be written as
 
 \begin{equation}
 d\mathbf{x}
@@ -116,16 +116,27 @@ d\mathbf{x}
 \sqrt{\beta(t)}\,d\mathbf{w}
 \end{equation}
 
-where $(\beta(t))$ controls the noise schedule.
+where $(\beta(t))$ controls the noise schedule. In the implemented SGM,
+\[
+\beta(t)=\beta_{\min}+(\beta_{\max}-\beta_{\min})t,
+\qquad t\in[0,1],
+\]
+with positive bounds satisfying $0<\beta_{\min}\leq\beta_{\max}$.
 
-The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\sqrt{e^{-\frac{1}{2}\int_0^t \beta(s) ds}}$, the noisy sample at any diffusion time can be obtained directly through
+The implementation used during training does not simulate the forward SDE by Euler--Maruyama. It samples the exact marginal distribution at a continuous time $t\in[0,1]$. Defining
+\begin{equation}
+\bar{\alpha}(t)
+=
+\exp\left(-\int_0^t \beta(s)\,ds\right),
+\end{equation}
+the noisy sample at any diffusion time can be obtained directly through
 
 \begin{equation}
 \mathbf{x}_t
 =
-\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
+\sqrt{\bar{\alpha}(t)}\,\mathbf{x}_0
 +
-\sqrt{1-\bar{\alpha}_t}\,
+\sqrt{1-\bar{\alpha}(t)}\,
 \boldsymbol{\epsilon}
 \qquad
 \boldsymbol{\epsilon}
@@ -838,8 +849,9 @@ This decomposition does not make the problem trivial. Its usefulness depends on
 how informative the condition really is, on whether the chosen architecture can
 exploit it effectively, and on whether the coefficient normalization preserves
 a reasonable balance between coarse and fine scales. Nevertheless, conditional
-diffusion provides the theoretical bridge between the standard DDPM introduced
-in this chapter and the wavelet-based methodology described in the next one.
+score-based diffusion provides the theoretical bridge between the image-space
+SGM introduced in this chapter and the wavelet-based methodology described in
+the next one.
 
 This background chapter introduced the physical, representational, and
 algorithmic foundations of the work. The next chapter builds on these elements

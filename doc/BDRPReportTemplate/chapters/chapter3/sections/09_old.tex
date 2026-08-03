@@ -106,7 +106,7 @@ p_T(\mathbf{x})
 \mathcal{N}(\mathbf{0},\mathbf{I})
 \end{equation}
 
-Several choices of forward SDEs are possible. In this work, the implementation is based on the Variance Preserving (VP) formulation, which corresponds to the continuous limit of the Denoising Diffusion Probabilistic Model (DDPM) introduced by \citep{Ho2020DDPM}. In this case, the forward process can be written as
+Several choices of forward SDEs are possible. In this work, the implementation is based on the continuous variance-preserving (VP) SDE used in score-based generative modeling \citep{Song2021SDE}. In this case, the forward process can be written as
 
 \begin{equation}
 d\mathbf{x}
@@ -616,7 +616,7 @@ Since the exact score is unknown, it is estimated through denoising score matchi
 }.
 \end{equation}
 
-This relation motivates the widely used noise-prediction parameterization introduced by \citet{Ho2020DDPM}, where the neural network predicts the perturbation $(\boldsymbol{\epsilon})$ added to the clean sample. The corresponding training objective is,
+This relation motivates the noise-prediction parameterization, where the neural network predicts the perturbation $(\boldsymbol{\epsilon})$ added to the clean sample. The corresponding training objective is,
 
 \begin{equation}
 \mathcal{L}(\theta)
@@ -761,8 +761,9 @@ This decomposition does not make the problem trivial. Its usefulness depends on
 how informative the condition really is, on whether the chosen architecture can
 exploit it effectively, and on whether the coefficient normalization preserves
 a reasonable balance between coarse and fine scales. Nevertheless, conditional
-diffusion provides the theoretical bridge between the standard DDPM introduced
-in this chapter and the wavelet-based methodology described in the next one.
+score-based diffusion provides the theoretical bridge between the image-space
+SGM introduced in this chapter and the wavelet-based methodology described in
+the next one.
 
 This background chapter introduced the physical, representational, and
 algorithmic foundations of the work. The next chapter builds on these elements

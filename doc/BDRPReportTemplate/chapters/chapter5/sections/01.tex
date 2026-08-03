@@ -1,6 +1,45 @@
 \section{Dataset Description}
 
-The dataset consists of two-dimensional density fields extracted from Direct Numerical Simulations of Rayleigh--Taylor instability. The fields contain coherent large-scale structures and smaller-scale mixing patterns, while the number of available realizations remains limited because of the computational cost of DNS.
+The reference dataset used in the experiments is the RT-CEA bi-mode dataset
+stored in HDF5 format as \texttt{RTCEA\_bimode.hdf5}. It contains
+1978 two-dimensional scalar fields representing the density extracted
+from Direct Numerical Simulations of the Rayleigh--Taylor instability. Each
+raw field is stored as a single-channel array of size \(512 \times 256\) in
+single precision. The associated label array has size \(1978 \times 8\);
+the eight recorded quantities are the Atwood number, the physical time, the
+mixing-zone size, the non-dimensional time, the non-dimensional mixing-zone
+size, the relative mixing-zone size, the phase, and the number of initial
+modes. In the present chapter, the dataset considered is the bi-mode subset,
+so the last label component identifies simulations generated from a two-mode
+initial perturbation.
 
-\textbf{TODO:} Add exact dataset details: number of simulations, number of snapshots, spatial resolution, train/validation/test split, physical parameters, mono-mode or bi-mode configuration, and storage format.
+Before being passed to the learning and evaluation pipelines, the fields are
+processed in the same way as in the augmentation notebook. First, the raw
+arrays are loaded and vertically reversed to recover the plotting convention
+used throughout the project. The density field is then normalized and cropped
+around the mixing region. Samples for which the mixing zone is not fully
+contained inside the cropped domain are discarded. The remaining fields are
+resized to \(256 \times 256\), yielding square images compatible with the
+image-space and wavelet-space diffusion models used in the experiments.
 
+Because the number of DNS snapshots is modest compared with standard image
+generation datasets, a symmetry-based augmentation is applied. For each field,
+the code keeps the original sample, applies integer horizontal translations,
+and adds the corresponding horizontally mirrored fields. The translations are
+implemented with periodic rolls along the horizontal direction, which is
+consistent with the lateral periodicity usually assumed for RTI simulations.
+The augmentation metadata are appended to the physical labels as two additional
+components: the applied horizontal translation and a binary flip indicator.
+With the implementation used here, one input field generates \(20\) labelled
+fields in total. The augmentation is therefore not intended to create new
+physical parameters; it only exploits geometric invariances of the governing
+problem to increase the number of training examples while preserving the
+underlying RTI statistics.
+
+The notebook \texttt{Augmentation.ipynb} illustrates this pipeline on a small
+slice of the dataset, namely snapshots with indices \(100\) to \(119\). This
+subset contains \(20\) original fields and becomes \(400\) fields after
+augmentation, before the subsequent normalization, cropping, and resizing
+steps. This restricted example is used only for visualization and verification
+of the preprocessing operations; the full HDF5 file is not loaded repeatedly
+when only structural information such as shapes and labels is required.

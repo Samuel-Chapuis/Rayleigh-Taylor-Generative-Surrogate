@@ -3,7 +3,7 @@
 \subsection{PhyFID and FID comparison}
 
 The notebook compares several datasets on 1000 images: a held-out part of the
-validation set, a training subset, the generated DDPM samples, pure-noise
+validation set, a training subset, the generated SGM samples, pure-noise
 samples produced by an untrained model, and an unrelated MNIST dataset used as
 a negative control. The obtained scores are reported in
 Table~\ref{tab:fid_phyfid_baseline}.
@@ -39,7 +39,7 @@ is approximately two orders of magnitude smaller than `val vs noise`
 classical FID, where `val vs generated` remains small compared with
 `val vs noise` and `val vs MNIST`.
 
-These results indicate that the baseline DDPM has learned non-trivial
+These results indicate that the baseline SGM has learned non-trivial
 statistical information about the RTI fields. The generated samples are clearly
 not random images and it is therefore reasonable to continue the evaluation with 
 other architectures and metrics.
@@ -66,4 +66,3 @@ The profiles and spectra extracted from the validation, generated and noise data
 \end{table}
 
 The results confirm the conclusions drawn from the feature-space metrics. The generated samples are much closer to the validation set than pure noise or MNIST, both in terms of mean vertical profile and fluctuation energy spectrum with proximately two orders of magnitude.
-

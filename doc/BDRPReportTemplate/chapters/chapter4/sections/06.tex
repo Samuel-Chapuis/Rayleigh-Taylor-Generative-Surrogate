@@ -1,6 +1,6 @@
-\section{Wavelet-based generative framework}
+\subsection{Wavelet-based generative framework}
 
-\subsection{Wavelet representation of RTI fields}
+\subsubsection{Wavelet representation of RTI fields}
 
 The wavelet pipeline begins with the preprocessing of the RTI dataset. The raw
 density fields are first loaded from the simulation files and preprocessed
@@ -23,7 +23,7 @@ explicit: the approximation channel plays the role of a low-frequency prior,
 while the three detail channels contain the higher-frequency content that must
 be synthesized.
 
-\subsection{Conditional diffusion on wavelet coefficients}
+\subsubsection{Conditional diffusion on wavelet coefficients}
 
 The training data are loaded from the precomputed tensors and normalized
 channel by channel using the statistics of the training split. This
@@ -31,10 +31,12 @@ normalization is important because the four wavelet channels do not share the
 same numerical scale and would otherwise contribute unevenly to the
 optimization process.
 
-The model uses a conditional DDPM structure. The input to the U-Net is composed
-of the approximation channel concatenated with the noisy detail channels. The
-network predicts the noise applied to the detail coefficients, which means that
-generation is guided by the coarse-scale information rather than being
+The model uses a conditional Wavelet Score-based Generative Model (WSGM)
+structure, following the coarse-to-fine factorization principle of
+\citet{Guth2022WSGM}. The input to the U-Net is composed of the approximation
+channel concatenated with the noisy detail channels. The network predicts the
+selected SGM target associated with the noised detail coefficients, which means
+that generation is guided by the coarse-scale information rather than being
 unconditional. In other words, the model learns how to reconstruct the missing
 fine-scale structure given the large-scale wavelet content.
 
@@ -43,21 +45,109 @@ four input channels in total, with one channel reserved for the prior
 information and three channels corresponding to the target detail maps. The
 network depth and the number of blocks per level remain modest so that training
 is compatible with the size of the available RTI dataset. The diffusion
-schedule itself follows the same principle as the baseline model, with a
-discretized Markov process controlled by a linear noise schedule between
-\texttt{min\_beta} and \texttt{max\_beta}.
+schedule itself follows the same principle as the image-space SGM, with a
+continuous VP-SDE controlled by an affine noise schedule between
+\texttt{beta\_min} and \texttt{beta\_max}.
 
-During training, the loss is again the standard mean squared error between the
-true noise and the noise predicted by the network. The model therefore learns a
-denoising function conditioned on the coarse wavelet coefficients. Once
-training is complete, the checkpoint and the preprocessing statistics are
-stored in a configuration file so that sampling can be reproduced later without
-ambiguity.
+During training, the loss is again a mean squared error between the true SGM
+target and the target predicted by the network. The model therefore learns a
+conditional score model for the wavelet detail coefficients. Once training is
+complete, the checkpoint and the preprocessing statistics are stored in a
+configuration file so that sampling can be reproduced later without ambiguity.
+The conditioning and noising structure of this loop is shown in
+Figure~\ref{fig:conditioned_training_loop}.
+
+At a given wavelet level, let $c_A$ denote the approximation channel and
+$d_0=(c_H,c_V,c_D)$ the three detail channels. The approximation channel is
+used only as a condition, whereas the VP-SDE is applied to the detail tensor.
+With the same notation as the image-space SGM, the exact conditional noising
+marginal is
+\[
+    d_t
+    =
+    \sqrt{\bar{\alpha}(t)}\,d_0
+    +
+    \sigma(t)\epsilon,
+    \qquad
+    \sigma(t)=\sqrt{1-\bar{\alpha}(t)}.
+\]
+The baseline WSGM training procedure is therefore:
+\begin{algorithm}[H]
+\caption{Conditional WSGM training procedure at wavelet level $j$}
+\begin{algorithmic}
+\STATE Load precomputed wavelet tensors $(c_A,c_H,c_V,c_D)$ for level $j$.
+\STATE Normalize each coefficient channel using training-split statistics.
+\STATE Set $d_0=(c_H,c_V,c_D)$ and keep $c_A$ fixed as the conditioning field.
+\STATE Initialize a conditional WSGM with a time-conditioned U-Net and the same affine VP-SDE schedule as the baseline SGM.
+\FOR{each training epoch}
+    \FOR{each batch $(c_A,d_0)$}
+        \STATE Sample a continuous time $t\in[\varepsilon_{\mathrm{time}},1]$ and Gaussian noise $\epsilon$ with the shape of $d_0$.
+        \STATE Compute $\bar{\alpha}(t)=\exp(-\int_0^t\beta(s)\,ds)$ and $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$.
+        \STATE Build the noisy details $d_t=\sqrt{\bar{\alpha}(t)}d_0+\sigma(t)\epsilon$.
+        \STATE Build the target $y_t=\epsilon$ for \texttt{epsilon}-prediction or $y_t=\sqrt{\bar{\alpha}(t)}\epsilon-\sigma(t)d_0$ for \texttt{v}-prediction.
+        \STATE Predict $\hat{y}_\theta(c_A,d_t,t)$ from the concatenated tensor $(c_A,d_t)$.
+        \STATE Minimize $\|y_t-\hat{y}_\theta(c_A,d_t,t)\|_2^2$.
+    \ENDFOR
+    \STATE Compute validation loss and save the checkpoint if it improves.
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+Sampling uses the same probability-flow ODE as the baseline SGM, but only in
+the detail subspace and conditionally on the fixed approximation channel. The
+score estimate is
+\[
+    s_\theta(d_t,t\mid c_A)
+    =
+    -\frac{\hat{\epsilon}_\theta(c_A,d_t,t)}{\sigma(t)}.
+\]
+The conditional WSGM sampling procedure is:
+\begin{algorithm}[H]
+\caption{Conditional WSGM sampling procedure at wavelet level $j$}
+\begin{algorithmic}
+\STATE Reload the WSGM checkpoint and the coefficient normalization statistics.
+\STATE Select or generate an approximation channel $c_A$ and normalize it.
+\STATE Sample $d_1\sim\mathcal{N}(0,I)$ with three detail channels and the spatial shape of $c_A$.
+\STATE Choose $N$ integration steps, $\Delta t=-(1-\varepsilon_{\mathrm{time}})/N$, and a solver, Heun by default.
+\FOR{$i=0,\ldots,N-1$}
+    \STATE Set $t_i=1+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
+    \STATE Reconstruct $\hat{\epsilon}_\theta(c_A,d_{t_i},t_i)$ from the network output.
+    \STATE Compute $s_\theta(d_{t_i},t_i\mid c_A)=-\hat{\epsilon}_\theta(c_A,d_{t_i},t_i)/\sigma(t_i)$.
+    \STATE Compute the conditional probability-flow drift
+    \[
+        F_\theta(d_{t_i},t_i\mid c_A)
+        =
+        -\frac{1}{2}\beta(t_i)d_{t_i}
+        -\frac{1}{2}\beta(t_i)s_\theta(d_{t_i},t_i\mid c_A).
+    \]
+    \STATE Predictor step: $\tilde{d}=d_{t_i}+\Delta t\,F_\theta(d_{t_i},t_i\mid c_A)$.
+    \IF{Heun solver is used}
+        \STATE Compute $F_\theta(\tilde{d},t_{i+1}\mid c_A)$ and set
+        \[
+            d_{t_{i+1}}
+            =
+            d_{t_i}
+            +
+            \frac{\Delta t}{2}
+            \left[
+            F_\theta(d_{t_i},t_i\mid c_A)
+            +
+            F_\theta(\tilde{d},t_{i+1}\mid c_A)
+            \right].
+        \]
+    \ELSE
+        \STATE Set $d_{t_{i+1}}=\tilde{d}$.
+    \ENDIF
+\ENDFOR
+\STATE Denormalize the generated details and concatenate them with the physical $c_A$.
+\STATE Apply the inverse discrete wavelet transform to obtain the finer-scale field.
+\end{algorithmic}
+\end{algorithm}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.88\textwidth]{figures/ch4/training_loop_conditioned.drawio.png}
-    \caption{Training loop for the conditional wavelet DDPM. The approximation coefficients are kept as conditioning information, while noise is added only to the detail channels that the network must denoise.}
+    \caption{Training loop for the conditional wavelet SGM. The approximation coefficients are kept as conditioning information, while noise is added only to the detail channels modeled by the conditional score network.}
     \label{fig:conditioned_training_loop}
 \end{figure}
 
@@ -66,7 +156,7 @@ ambiguity.
 % The generation stage loads the trained checkpoint and the associated
 % normalization parameters. A batch of wavelet coefficients is sampled from the
 % validation set and the approximation channel is extracted as a condition.
-% Starting from the conditional prior, the DDPM iteratively denoises the target
+% Starting from the conditional prior, the SGM iteratively reconstructs the target
 % detail channels and produces a synthetic coefficient tensor.
 
 % The generated coefficients are then denormalized and saved to disk. This file
@@ -80,4 +170,3 @@ ambiguity.
 % coarse-scale organization of the flow. This is a natural strategy for RTI
 % fields, where the large-scale morphology strongly constrains the admissible
 % small-scale fluctuations.
-
