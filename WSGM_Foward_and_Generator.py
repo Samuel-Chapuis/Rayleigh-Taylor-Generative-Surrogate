@@ -275,8 +275,8 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
     logger.save_config(experiment, absolute_path(config.config_path))
 
     sgm = build_coarse_sgm(config, image_chw)
-    if config.input_path:
-        checkpoint = absolute_path(config.input_path)
+    checkpoint = absolute_path(config.input_path) if config.input_path else absolute_path(config.store_path)
+    if config.input_path or (config.do_train and checkpoint.exists()):
         if not checkpoint.exists():
             raise FileNotFoundError(f"Checkpoint coarse introuvable: {checkpoint}")
         sgm.load_state_dict(torch.load(checkpoint, map_location=config.device, weights_only=True))

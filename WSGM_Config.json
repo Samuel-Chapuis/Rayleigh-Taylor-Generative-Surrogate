@@ -26,12 +26,12 @@
   },
 
   "coarse": {
-    "enabled": false,
+    "enabled": true,
     "wavelet_level": 3,
     "seed": 0,
     "store_path_dataset": "data/RT64",
     "batch_size": 128,
-    "n_epochs": 100,
+    "n_epochs": 5,
     "lr": 0.001,
     "weight_decay": 0.000001,
     "grad_clip": 1.0,
@@ -61,7 +61,7 @@
   "train": {
     "enabled": false,
     "batch_size": 128,
-    "n_epochs": 100,
+    "n_epochs": 1000,
     "lr": 0.0002,
     "weight_decay": 0.000001,
     "grad_clip": 1.0,
@@ -72,7 +72,7 @@
     "enabled": true,
     "dataset": "validation",
     "batch_size": 64,
-    "n_samples": 64,
+    "n_samples": 2048,
     "wavelet": "db1",
     "border_mode": "periodization",
     "output_dir": "outputs/generated/cascade_sgm",

@@ -4,16 +4,16 @@ from lib.diffusion_lib.Logger import Logger
 
 FEATURE = 64 # Taille de l'espace des features souvent notee d, et on prend comme taille de data pour l'entrainement d*100 ou d*200.
 
-DATA_ROOT = "data/RT28"  # ou data/MNIST
-TRAIN_PT = os.path.join(DATA_ROOT, "processed", "training.pt")
-TEST_PT = os.path.join(DATA_ROOT, "processed", "test.pt")
-VAL_PT = os.path.join(DATA_ROOT, "processed", "validation.pt")
+DATA_ROOT = "data/RT64/processed"  # ou data/MNIST
+TRAIN_PT = os.path.join(DATA_ROOT, "j3_training.pt")
+TEST_PT = os.path.join(DATA_ROOT, "j3_test.pt")
+VAL_PT = os.path.join(DATA_ROOT, "j3_validation.pt")
 
 
-PHYFID_ENCODER = "outputs/phyFID/phyfid_encoder.pt"
-PHYFID_STATS = "outputs/phyFID//phyfid_val_stats.npz"
-PHYFID_LOG = "outputs/phyFID//phyfid_training.log"
-PHYFID_CSV = "outputs/phyFID//phyfid_training.csv"
+PHYFID_ENCODER = "outputs/phyFID/coarse_phyfid_encoder.pt"
+PHYFID_STATS = "outputs/phyFID/coarse_phyfid_val_stats.npz"
+PHYFID_LOG = "outputs/phyFID/coarse_phyfid_training.log"
+PHYFID_CSV = "outputs/phyFID/coarse_phyfid_training.csv"
 
 PHYFID_EPOCHS = 600
 PHYFID_BATCH_SIZE = 128
@@ -34,5 +34,6 @@ build_phyfid_reference(
     batch_size=PHYFID_BATCH_SIZE,
     max_train_size=FEATURE*200,
     max_val_size=MAX_EVAL_SIZE,
+    channel_indices=[0],
     logger=phyfid_logger,
 )

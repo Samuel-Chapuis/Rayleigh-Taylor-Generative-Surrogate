@@ -9,6 +9,21 @@ def load_pt_dataset(path):
     return loaded
 
 
+def select_channels(images, channel_indices=None):
+    """
+    Extrait un sous-ensemble de canaux NCHW en conservant la dimension canal.
+    """
+    if channel_indices is None:
+        return images
+    images = torch.as_tensor(images)
+    if images.ndim != 4:
+        raise ValueError(
+            "La selection de canaux attend un tenseur NCHW, "
+            f"recu: {tuple(images.shape)}"
+        )
+    return images[:, channel_indices, :, :]
+
+
 def build_phyfid_reference(
     dataset_train_path,
     dataset_val_path,
@@ -19,6 +34,7 @@ def build_phyfid_reference(
     batch_size=128,
     max_train_size=1024,
     max_val_size=100,
+    channel_indices=None,
     logger=None,
 ):
     """
@@ -33,6 +49,9 @@ def build_phyfid_reference(
     print("Chargement des datasets de reference...")
     train_images = load_pt_dataset(dataset_train_path)
     val_images = load_pt_dataset(dataset_val_path)
+
+    train_images = select_channels(train_images, channel_indices)
+    val_images = select_channels(val_images, channel_indices)
 
     print("Preparation des sous-ensembles...")
     train_subset = train_images[:min(max_train_size, len(train_images))]

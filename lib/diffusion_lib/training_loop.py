@@ -174,7 +174,12 @@ def sgm_training_loop(
     """Entraine un SGM VP-SDE par minibatches et sauvegarde le meilleur modele."""
     mse = nn.MSELoss()
     start_epoch = logger.last_epoch() if logger else 0
-    best_loss = logger.min_numeric_column("best_loss") if logger else float("inf")
+    checkpoint_exists = Path(store_path).exists()
+    best_loss = (
+        logger.min_numeric_column("best_loss")
+        if logger and checkpoint_exists
+        else float("inf")
+    )
     loss_list = []
     Path(store_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -226,4 +231,10 @@ def sgm_training_loop(
 
     if logger:
         logger.log_experiment_end("SGM training finished")
+    if not Path(store_path).exists():
+        # A stale CSV can contain a lower historical loss than the current
+        # run while its checkpoint is unavailable. Keep the run usable.
+        torch.save(sgm.state_dict(), store_path)
+        if logger:
+            logger.warning("No best checkpoint was available; saved the final SGM state.")
     return loss_list
