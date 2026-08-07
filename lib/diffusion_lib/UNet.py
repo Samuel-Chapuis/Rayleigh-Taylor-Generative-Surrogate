@@ -13,7 +13,10 @@ class Block(nn.Module):
     convolutions successives séparées par une activation.
     """
 
-    def __init__(self, shape, in_c, out_c, kernel_size=3, stride=1, padding=1, activation=None, normalize=True):
+    def __init__(
+        self, shape, in_c, out_c, kernel_size=3, stride=1, padding=1,
+        activation=None, normalize=True, norm_type="layer"
+    ):
         """
         Initialise un bloc convolutionnel.
 
@@ -32,11 +35,23 @@ class Block(nn.Module):
                 activée. Par défaut True.
         """
         super(Block, self).__init__()
-        self.ln = nn.LayerNorm(shape)
+        if norm_type == "layer":
+            # Legacy path: affine parameters depend on every spatial position.
+            self.ln = nn.LayerNorm(shape)
+        elif norm_type == "group":
+            # No spatially indexed affine parameters.  The group count also
+            # handles the 4-channel conditional wavelet input exactly.
+            n_groups = min(8, in_c)
+            while in_c % n_groups != 0:
+                n_groups -= 1
+            self.norm = nn.GroupNorm(n_groups, in_c)
+        else:
+            raise ValueError("norm_type doit etre 'layer' ou 'group'.")
         self.conv1 = nn.Conv2d(in_c, out_c, kernel_size, stride, padding)
         self.conv2 = nn.Conv2d(out_c, out_c, kernel_size, stride, padding)
         self.activation = nn.SiLU() if activation is None else activation
         self.normalize = normalize
+        self.norm_type = norm_type
 
     def forward(self, x):
         """
@@ -48,7 +63,10 @@ class Block(nn.Module):
         Returns:
             torch.Tensor: Tenseur transformé par le bloc.
         """
-        out = self.ln(x) if self.normalize else x
+        if self.normalize:
+            out = self.ln(x) if self.norm_type == "layer" else self.norm(x)
+        else:
+            out = x
         out = self.conv1(out)
         out = self.activation(out)
         out = self.conv2(out)
@@ -75,6 +93,8 @@ class UNet(nn.Module):
         base_channels=10,
         channel_multipliers=None,
         continuous_time=False,
+        norm_type="layer",
+        upsample_mode="conv_transpose",
     ):
         """
         Initialise le U-Net.
@@ -113,6 +133,12 @@ class UNet(nn.Module):
             raise ValueError("UNet nécessite base_channels >= 1.")
         if out_channels < 1:
             raise ValueError("UNet nécessite out_channels >= 1.")
+        if norm_type not in {"layer", "group"}:
+            raise ValueError("norm_type doit etre 'layer' ou 'group'.")
+        if upsample_mode not in {"conv_transpose", "interpolate"}:
+            raise ValueError(
+                "upsample_mode doit etre 'conv_transpose' ou 'interpolate'."
+            )
 
         self.size = size
         self.in_channels = in_channels
@@ -122,6 +148,8 @@ class UNet(nn.Module):
         self.base_channels = base_channels
         self.continuous_time = continuous_time
         self.time_embed_dim = time_emb_dim
+        self.norm_type = norm_type
+        self.upsample_mode = upsample_mode
 
         if channel_multipliers is None:
             channel_multipliers = tuple(2 ** level for level in range(depth))
@@ -171,6 +199,7 @@ class UNet(nn.Module):
                     current_channels,
                     level_channels,
                     blocks_per_level,
+                    norm_type=norm_type,
                 )
             )
             self.downs.append(nn.Conv2d(level_channels, level_channels, 4, 2, 1))
@@ -184,6 +213,7 @@ class UNet(nn.Module):
             current_channels,
             current_channels,
             blocks_per_level,
+            norm_type=norm_type,
         )
 
         # Decodeur: chaque niveau remonte d'un facteur 2, concatene le skip de
@@ -196,7 +226,14 @@ class UNet(nn.Module):
             decoder_in_channels = 2 * skip_channels
             decoder_out_channels = self.channels[level - 1] if level > 0 else self.channels[0]
 
-            self.ups.append(nn.ConvTranspose2d(current_channels, skip_channels, 4, 2, 1))
+            if upsample_mode == "conv_transpose":
+                up = nn.ConvTranspose2d(current_channels, skip_channels, 4, 2, 1)
+            else:
+                up = nn.Sequential(
+                    nn.Upsample(scale_factor=2, mode="nearest"),
+                    nn.Conv2d(current_channels, skip_channels, 3, 1, 1),
+                )
+            self.ups.append(up)
             self.decoder_time.append(self._make_te(time_emb_dim, decoder_in_channels))
             self.decoder_blocks.append(
                 self._make_block_stack(
@@ -205,6 +242,7 @@ class UNet(nn.Module):
                     decoder_out_channels,
                     blocks_per_level,
                     final_normalize=level != 0,
+                    norm_type=norm_type,
                 )
             )
             current_channels = decoder_out_channels
@@ -257,7 +295,10 @@ class UNet(nn.Module):
 
         return out
 
-    def _make_block_stack(self, size, in_channels, out_channels, num_blocks, final_normalize=True):
+    def _make_block_stack(
+        self, size, in_channels, out_channels, num_blocks,
+        final_normalize=True, norm_type="layer"
+    ):
         """
         Construit une pile de blocs convolutionnels a resolution fixe.
 
@@ -281,6 +322,7 @@ class UNet(nn.Module):
                     current_channels,
                     out_channels,
                     normalize=normalize,
+                    norm_type=norm_type,
                 )
             )
             current_channels = out_channels

@@ -51,6 +51,10 @@ class Config:
     unet_blocks_per_level: int = 3
     unet_base_channels: int = 32
     unet_out_channels: int | None = None
+    # Keep the baseline architecture matched to the active WSGM ablation.
+    # Set both explicitly to the legacy values for loading old checkpoints.
+    norm_type: str = "group"
+    upsample_mode: str = "interpolate"
 
     def __post_init__(self):
         random.seed(self.seed)
@@ -71,6 +75,8 @@ def build_sgm(config):
         blocks_per_level=config.unet_blocks_per_level,
         base_channels=config.unet_base_channels,
         continuous_time=True,
+        norm_type=config.norm_type,
+        upsample_mode=config.upsample_mode,
     )
     return SGM(
         network,

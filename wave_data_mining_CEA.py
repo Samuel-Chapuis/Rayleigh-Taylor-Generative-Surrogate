@@ -16,7 +16,7 @@ SIMULATION_LABEL_COLUMNS = (0, 6, 7)  # Atwood, phase, number of modes.
 
 # ---------------------------------------- #
 
-def data_wavelet_transform(data, wavelet='db1', level=1):
+def data_wavelet_transform(data, wavelet='db1', level=1, mode='periodization'):
     """
     Applique la transformation en ondelettes à chaque image du dataset pour creer un dataset sous forme de coefficients d'ondelettes.
 
@@ -24,13 +24,14 @@ def data_wavelet_transform(data, wavelet='db1', level=1):
         data (numpy.ndarray): Dataset d'images de forme (N, H, W).
         wavelet (str): Type d'ondelette à utiliser.
         level (int): Niveau de décomposition.
+        mode (str): Convention de bord PyWavelets, identique à la reconstruction.
 
     Returns:
         numpy.ndarray: Dataset transformé en ondelettes de forme (N, J, C, H, W), avec J le nombre de niveaux de décomposition et C le nombre de canaux.
     """
     transformed_data = []
     for img in data:
-        coeffs = pywt.wavedec2(img, wavelet=wavelet, level=level)
+        coeffs = pywt.wavedec2(img, wavelet=wavelet, level=level, mode=mode)
         cA = coeffs[0]  # Approximation coefficients
         cH = coeffs[1][0]  # Horizontal detail coefficients
         cV = coeffs[1][1]  # Vertical detail coefficients

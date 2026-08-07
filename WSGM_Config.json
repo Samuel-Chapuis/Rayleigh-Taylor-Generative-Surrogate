@@ -19,6 +19,8 @@
     "unet_depth": 3,
     "unet_blocks_per_level": 3,
     "unet_base_channels": 32,
+    "norm_type": "group",
+    "upsample_mode": "interpolate",
 
     "model_dir": "outputs/saved_model/cascade_sgm",
     "log_dir": "outputs/logs/cascade_sgm",
@@ -56,6 +58,8 @@
     "unet_blocks_per_level": 3,
     "unet_base_channels": 32,
     "unet_out_channels": null,
+    "norm_type": "group",
+    "upsample_mode": "interpolate",
     "preview_samples": 8
   },
 

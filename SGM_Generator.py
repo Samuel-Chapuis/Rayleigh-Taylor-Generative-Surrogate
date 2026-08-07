@@ -50,6 +50,8 @@ def build_sgm_from_config(config, device):
         blocks_per_level=config.get("unet_blocks_per_level", 3),
         base_channels=config.get("unet_base_channels", 32),
         continuous_time=True,
+        norm_type=config.get("norm_type", "layer"),
+        upsample_mode=config.get("upsample_mode", "conv_transpose"),
     )
     return SGM(
         network,

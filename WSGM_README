@@ -68,6 +68,12 @@ Parametres des SGM conditionnels sur les details wavelet.
 - `prior_channels` : nombre de canaux conditionnants, normalement `1` (`cA`).
 - `target_channels` : nombre de canaux generes, normalement `3` (`cH`, `cV`, `cD`).
 - `unet_depth`, `unet_blocks_per_level`, `unet_base_channels` : architecture.
+- `norm_type` : `layer` reproduit le modèle historique ; `group` supprime les
+  paramètres affines dépendant de la position spatiale.
+- `upsample_mode` : `conv_transpose` reproduit le chemin historique ;
+  `interpolate` utilise une interpolation nearest suivie d'une convolution,
+  ce qui permet d'ablationner les artefacts périodiques associés à la montée
+  en résolution.
 - `model_dir` : checkpoints et configurations des SGM conditionnels.
 - `log_dir` : logs texte et CSV des SGM.
 - `image_dir` : sorties de diagnostic.
@@ -180,6 +186,37 @@ parametres d'optimisation viennent de `train`.
 Le mode `coarse_sgm` lit encore le fichier `j{level}_{dataset}.pt` pour
   connaitre la resolution et le nombre d'echantillons. Le checkpoint coarse est
   utilise uniquement pour produire les valeurs de `cA`.
+
+### Diagnostic d'une grille périodique
+
+Le script `diagnose_wsgm_artifacts.py` rapporte les statistiques par canal,
+les rapports d'écart-type des détails et une mesure `phase_rms` pour les classes
+de pixels modulo 2 et modulo 4. Une grille réelle doit produire une hausse de
+ce signal à une période fixe par rapport aux coefficients de validation et à un
+SGM direct traité avec le même protocole.
+
+Les tests minimaux sont exécutables sans installation supplémentaire de
+pytest :
+
+```bash
+python - <<'PY'
+import tests.test_wavelet_pipeline as tests
+for name in dir(tests):
+    if name.startswith("test_"):
+        getattr(tests, name)()
+print("all tests passed")
+PY
+```
+
+Le changement de `norm_type` ou de `upsample_mode` modifie la structure du
+checkpoint. Il faut donc réentraîner les niveaux concernés ; les anciennes
+configurations sauvegardées sans ces champs restent chargées avec le chemin
+historique pour préserver la reproductibilité.
+
+La loss de validation SGM utilise désormais une suite pseudo-aléatoire à seed
+fixe ; les tirages de `t` et du bruit sont donc identiques d'une époque à
+l'autre. Cela ne supprime pas le biais Monte-Carlo de la loss, mais évite que
+la sélection du meilleur checkpoint soit dominée par le bruit d'évaluation.
 
 ### `level_overrides`
 

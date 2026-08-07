@@ -123,7 +123,9 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     return loss_list
 
 
-def _sgm_epsilon_loss(sgm, batch, mse, device, vertical_profile_loss_weight=0.0):
+def _sgm_epsilon_loss(
+    sgm, batch, mse, device, vertical_profile_loss_weight=0.0, generator=None
+):
     """Loss stable de denoising score matching pour un VP-SDE continu.
 
     En mode ``v``, la cible reste de variance bornee lorsque sigma(t) tend
@@ -132,9 +134,9 @@ def _sgm_epsilon_loss(sgm, batch, mse, device, vertical_profile_loss_weight=0.0)
     """
     x0 = batch[0].to(device)
     n = x0.shape[0]
-    t = torch.rand(n, device=device, dtype=x0.dtype)
+    t = torch.rand(n, device=device, dtype=x0.dtype, generator=generator)
     t = sgm.eps_time + (1.0 - sgm.eps_time) * t
-    eps = torch.randn_like(x0)
+    eps = torch.randn(x0.shape, device=device, dtype=x0.dtype, generator=generator)
     xt = sgm(x0, t, eps)
     prediction = sgm.network(xt, t)
     target = sgm.prediction_target(x0, t, eps)
@@ -147,13 +149,17 @@ def _sgm_epsilon_loss(sgm, batch, mse, device, vertical_profile_loss_weight=0.0)
     return score_loss + vertical_profile_loss_weight * profile_loss
 
 
-def evaluate_sgm_loss(sgm, loader, device, vertical_profile_loss_weight=0.0):
+def evaluate_sgm_loss(
+    sgm, loader, device, vertical_profile_loss_weight=0.0, seed=12345
+):
     """Evalue la loss SGM moyenne sur un loader, sans mise a jour."""
     mse = nn.MSELoss()
     was_training = sgm.training
     sgm.eval()
     total_loss = 0.0
     n_total = 0
+    generator = torch.Generator(device=device)
+    generator.manual_seed(seed)
     with torch.no_grad():
         for batch in loader:
             loss = _sgm_epsilon_loss(
@@ -162,6 +168,7 @@ def evaluate_sgm_loss(sgm, loader, device, vertical_profile_loss_weight=0.0):
                 mse,
                 device,
                 vertical_profile_loss_weight=vertical_profile_loss_weight,
+                generator=generator,
             )
             batch_size = len(batch[0])
             total_loss += loss.item() * batch_size

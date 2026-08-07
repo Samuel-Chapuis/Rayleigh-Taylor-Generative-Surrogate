@@ -252,29 +252,33 @@ def wave_training_loop(ddpm, loader, n_epochs, optim, device, store_path, logger
     return loss_list
 
 
-def wave_sgm_loss(sgm, batch, mse, device):
+def wave_sgm_loss(sgm, batch, mse, device, generator=None):
     """Stable v/epsilon denoising loss for conditional wavelet SGM."""
     prior, details = split_wave_batch(batch, device, sgm.prior_channels)
     n = details.shape[0]
-    t = torch.rand(n, device=device, dtype=details.dtype)
+    t = torch.rand(n, device=device, dtype=details.dtype, generator=generator)
     t = sgm.eps_time + (1.0 - sgm.eps_time) * t
-    eps = torch.randn_like(details)
+    eps = torch.randn(
+        details.shape, device=device, dtype=details.dtype, generator=generator
+    )
     noisy_details = sgm(details, t, eps)
     prediction = sgm.network(torch.cat((prior, noisy_details), dim=1), t)
     target = sgm.prediction_target(details, t, eps)
     return mse(prediction, target)
 
 
-def wave_sgm_evaluate_loss(sgm, loader, device):
+def wave_sgm_evaluate_loss(sgm, loader, device, seed=12345):
     """Evaluate conditional SGM loss without updating the model."""
     mse = nn.MSELoss()
     was_training = sgm.training
     sgm.eval()
     total_loss = 0.0
     n_total = 0
+    generator = torch.Generator(device=device)
+    generator.manual_seed(seed)
     with torch.no_grad():
         for batch in loader:
-            loss = wave_sgm_loss(sgm, batch, mse, device)
+            loss = wave_sgm_loss(sgm, batch, mse, device, generator=generator)
             batch_size = len(batch[0])
             total_loss += loss.item() * batch_size
             n_total += batch_size
