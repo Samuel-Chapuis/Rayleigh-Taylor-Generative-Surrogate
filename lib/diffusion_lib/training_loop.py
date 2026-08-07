@@ -123,7 +123,7 @@ def training_loop(ddpm, loader, n_epochs, optim, device, display=None, store_pat
     return loss_list
 
 
-def _sgm_epsilon_loss(sgm, batch, mse, device):
+def _sgm_epsilon_loss(sgm, batch, mse, device, vertical_profile_loss_weight=0.0):
     """Loss stable de denoising score matching pour un VP-SDE continu.
 
     En mode ``v``, la cible reste de variance bornee lorsque sigma(t) tend
@@ -138,10 +138,16 @@ def _sgm_epsilon_loss(sgm, batch, mse, device):
     xt = sgm(x0, t, eps)
     prediction = sgm.network(xt, t)
     target = sgm.prediction_target(x0, t, eps)
-    return mse(prediction, target)
+    score_loss = mse(prediction, target)
+    if vertical_profile_loss_weight <= 0:
+        return score_loss
+
+    x0_hat = sgm.predict_x0_from_prediction(xt, t, prediction)
+    profile_loss = mse(x0_hat.mean(dim=3), x0.mean(dim=3))
+    return score_loss + vertical_profile_loss_weight * profile_loss
 
 
-def evaluate_sgm_loss(sgm, loader, device):
+def evaluate_sgm_loss(sgm, loader, device, vertical_profile_loss_weight=0.0):
     """Evalue la loss SGM moyenne sur un loader, sans mise a jour."""
     mse = nn.MSELoss()
     was_training = sgm.training
@@ -150,7 +156,13 @@ def evaluate_sgm_loss(sgm, loader, device):
     n_total = 0
     with torch.no_grad():
         for batch in loader:
-            loss = _sgm_epsilon_loss(sgm, batch, mse, device)
+            loss = _sgm_epsilon_loss(
+                sgm,
+                batch,
+                mse,
+                device,
+                vertical_profile_loss_weight=vertical_profile_loss_weight,
+            )
             batch_size = len(batch[0])
             total_loss += loss.item() * batch_size
             n_total += batch_size
@@ -170,6 +182,7 @@ def sgm_training_loop(
     logger=None,
     val_loader=None,
     grad_clip=None,
+    vertical_profile_loss_weight=0.0,
 ):
     """Entraine un SGM VP-SDE par minibatches et sauvegarde le meilleur modele."""
     mse = nn.MSELoss()
@@ -185,6 +198,8 @@ def sgm_training_loop(
 
     if logger:
         logger.info(f"SGM training started for {n_epochs} epochs")
+        if vertical_profile_loss_weight > 0:
+            logger.info(f"Vertical profile loss weight: {vertical_profile_loss_weight}")
 
     end_epoch = start_epoch + n_epochs
     for epoch in tqdm(range(start_epoch, end_epoch), desc="SGM training", colour="#00ff00"):
@@ -192,7 +207,13 @@ def sgm_training_loop(
         weighted_loss = 0.0
         n_total = 0
         for batch in tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{end_epoch}", colour="#005500"):
-            loss = _sgm_epsilon_loss(sgm, batch, mse, device)
+            loss = _sgm_epsilon_loss(
+                sgm,
+                batch,
+                mse,
+                device,
+                vertical_profile_loss_weight=vertical_profile_loss_weight,
+            )
             optim.zero_grad(set_to_none=True)
             loss.backward()
             if grad_clip is not None:
@@ -206,7 +227,15 @@ def sgm_training_loop(
             n_total += batch_size
 
         train_loss = weighted_loss / max(n_total, 1)
-        val_loss = evaluate_sgm_loss(sgm, val_loader, device) if val_loader is not None else None
+        val_loss = (
+            evaluate_sgm_loss(
+                sgm,
+                val_loader,
+                device,
+                vertical_profile_loss_weight=vertical_profile_loss_weight,
+            )
+            if val_loader is not None else None
+        )
         selection_loss = train_loss if val_loss is None else val_loss
         stored = selection_loss < best_loss
         if stored:

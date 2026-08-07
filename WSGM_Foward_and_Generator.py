@@ -112,6 +112,7 @@ class CoarseConfig:
     lr: float = 1e-3
     weight_decay: float = 1e-6
     grad_clip: float | None = 1.0
+    vertical_profile_loss_weight: float = 0.0
     normalize_ca: bool = True
     do_train: bool = True
     input_path: str = ""
@@ -259,6 +260,7 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
         "ca_min": ca_min, "ca_max": ca_max,
         "batch_size": config.batch_size, "n_epochs": config.n_epochs, "lr": config.lr,
         "weight_decay": config.weight_decay, "grad_clip": config.grad_clip,
+        "vertical_profile_loss_weight": config.vertical_profile_loss_weight,
         "store_path": config.store_path, "input_path": config.input_path,
         "time_emb_dim": config.time_emb_dim, "beta_min": config.beta_min,
         "beta_max": config.beta_max, "eps_time": config.eps_time,
@@ -286,6 +288,7 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
             sgm, train_loader, config.n_epochs, optimizer, config.device,
             store_path=absolute_path(config.store_path), logger=logger,
             val_loader=val_loader, grad_clip=config.grad_clip,
+            vertical_profile_loss_weight=config.vertical_profile_loss_weight,
         )
     checkpoint = absolute_path(config.store_path)
     if not config.do_train and config.input_path:
@@ -413,6 +416,20 @@ def load_saved_config(config: LevelConfig) -> dict[str, Any]:
     with absolute_path(config.saved_config_path).open("r", encoding="utf-8") as file:
         saved = json.load(file)
     saved["coeff_chw"] = tuple(saved["coeff_chw"])
+    return saved
+
+
+def apply_generation_runtime_overrides(saved: dict[str, Any], config: LevelConfig) -> dict[str, Any]:
+    """Applique les paramètres de génération courants sans changer le checkpoint.
+
+    Les configs sauvegardées avec les modèles contiennent les statistiques de
+    normalisation et l'architecture nécessaires au chargement. En revanche,
+    `sampling_steps` et `sampler` sont des choix d'inférence : ils doivent
+    pouvoir venir du WSGM_Config.json courant.
+    """
+    saved = dict(saved)
+    saved["sampling_steps"] = config.sampling_steps
+    saved["sampler"] = config.sampler
     return saved
 
 
@@ -584,8 +601,12 @@ def generate_cascade(run_config, device):
 
     for level in levels:
         level_config = make_level_config(run_config, level, device)
-        saved = load_saved_config(level_config)
+        saved = apply_generation_runtime_overrides(load_saved_config(level_config), level_config)
         model = load_model(saved, device)
+        print(
+            f"j{level}: sampling_steps={saved['sampling_steps']}, "
+            f"sampler={saved.get('sampler', 'heun')}"
+        )
         details = generated_details(current_ca, saved, model, device, batch_size)
         torch.save(details, output_dir / f"j{level}_generated_details.pt")
         torch.save(torch.cat((current_ca, details), dim=1), output_dir / f"j{level}_generated_coefficients.pt")

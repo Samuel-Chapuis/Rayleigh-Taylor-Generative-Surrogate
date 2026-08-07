@@ -82,6 +82,17 @@ class SGM(nn.Module):
         sigma = self.marginal_std(t)
         return sigma.reshape(-1, 1, 1, 1) * x + alpha.reshape(-1, 1, 1, 1) * prediction
 
+    def predict_x0_from_prediction(self, x, t, prediction):
+        """Reconstruit x0 depuis la sortie brute du reseau."""
+        t = t.to(device=x.device, dtype=x.dtype).reshape(-1)
+        alpha = self.alpha_bar(t).clamp_min(1e-12).sqrt().reshape(-1, 1, 1, 1)
+        sigma = self.marginal_std(t).reshape(-1, 1, 1, 1)
+        if self.prediction_type == "epsilon":
+            return (x - sigma * prediction) / alpha
+
+        # v = alpha * epsilon - sigma * x0 and x_t = alpha * x0 + sigma * epsilon.
+        return alpha * x - sigma * prediction
+
     def prediction_target(self, x0, t, eps):
         """Cible du reseau pour la parametrisation choisie."""
         if self.prediction_type == "epsilon":

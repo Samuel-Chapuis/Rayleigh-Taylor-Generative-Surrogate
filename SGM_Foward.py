@@ -28,6 +28,7 @@ class Config:
     lr: float = 2e-4
     weight_decay: float = 1e-6
     grad_clip: float | None = 1.0
+    vertical_profile_loss_weight: float = 0.0
     do_train: bool = False
     store_path: str = "outputs/model/RT64_sgm.pt"
     input_path: str = ""
@@ -38,7 +39,7 @@ class Config:
     # VP-SDE continu
     beta_min: float = 0.1
     beta_max: float = 20.0
-    eps_time: float = 1e-2
+    eps_time: float = 1e-4
     sampling_steps: int = 256 # Present uniquement pour la generation
     prediction_type: str = "v"
     sampler: str = "heun"
@@ -113,6 +114,7 @@ def main(config=None):
             sgm, loader, config.n_epochs, optimizer, config.device,
             store_path=config.store_path, logger=logger, val_loader=val_loader,
             grad_clip=config.grad_clip,
+            vertical_profile_loss_weight=config.vertical_profile_loss_weight,
         )
 
     if not os.path.exists(config.store_path):

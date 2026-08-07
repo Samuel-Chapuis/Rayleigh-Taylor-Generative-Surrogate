@@ -89,6 +89,8 @@ Parametres independants du SGM inconditionnel qui apprend `cA`.
 - `log_path`, `csv_path` : fichiers de log coarse.
 - `config_path` : configuration sauvegardee avec les statistiques et
   l'architecture necessaires a la generation.
+- `vertical_profile_loss_weight` : poids optionnel d'une penalisation de profil
+  vertical. `0` desactive cette penalisation.
 - `time_emb_dim`, `beta_min`, `beta_max`, `eps_time` : parametres propres au
   VP-SDE coarse.
 - `sampling_steps`, `sampler`, `prediction_type`, `clip_denoised` : parametres
@@ -104,10 +106,39 @@ Le SGM coarse utilise la loss stable `v`/`epsilon` de
 coefficients wavelet normalises ne sont pas necessairement bornes dans
 `[-1, 1]`.
 
+Lorsque `vertical_profile_loss_weight > 0`, la loss d'entrainement ajoute une
+contrainte faible sur la stratification verticale. Le reseau predit d'abord la
+cible SGM habituelle, puis le code reconstruit une estimation denoisee
+`x0_hat`. La penalisation compare ensuite les profils moyens horizontaux :
+
+```text
+profile_loss = MSE(mean_x(x0_hat), mean_x(x0))
+loss = score_loss + vertical_profile_loss_weight * profile_loss
+```
+
+Cette penalisation est utile lorsque le modele coarse genere des structures
+globalement plausibles mais viole le support physique vertical, par exemple des
+zones sombres dans la partie haute ou un plateau superieur trop gris. Elle ne
+remplace pas la loss de score ; elle biaise seulement le score appris vers des
+champs dont le profil vertical moyen reste compatible avec le dataset.
+
+Valeurs de depart raisonnables :
+
+```text
+0.0  : comportement historique
+0.05 : contrainte faible
+0.1  : premier essai recommande
+0.3  : contrainte forte, a surveiller si la diversite baisse
+```
+
 Le script enregistre aussi `ca_min` et `ca_max`, mesures sur le split coarse
 `training`, puis projette les sorties coarse denormalisees dans cet intervalle
 avant de les transmettre au premier modele conditionnel. Cette projection
 evite de fournir aux conditionneurs des `cA` hors support.
+
+Le meme argument `vertical_profile_loss_weight` est aussi disponible dans
+`SGM_Foward.py` pour entrainer un SGM image standard avec la meme regularisation
+de profil vertical.
 
 ### `train`
 
