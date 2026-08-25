@@ -5,6 +5,96 @@ import torch.nn.functional as F
 
 from lib.diffusion_lib.embeding import continuous_sinusoidal_embedding, sinusoidal_embedding
 
+
+class HorizontalCircularConv2d(nn.Module):
+    """Convolution with circular padding along x and zero padding along y.
+
+    The Rayleigh--Taylor domain is periodic horizontally but not vertically.
+    PyTorch's native ``padding_mode='circular'`` wraps both axes, which would
+    incorrectly couple the top and bottom boundaries.  This layer instead
+    applies the two boundary conditions explicitly before an unpadded
+    convolution.
+    """
+
+    def __init__(
+        self, in_channels, out_channels, kernel_size=3, stride=1, padding=0,
+        bias=True,
+    ):
+        super().__init__()
+        if isinstance(padding, int):
+            padding = (padding, padding)
+        if len(padding) != 2:
+            raise ValueError("padding doit etre un entier ou un couple (vertical, horizontal).")
+        self.padding_y, self.padding_x = padding
+        self.conv = nn.Conv2d(
+            in_channels, out_channels, kernel_size, stride=stride, padding=0, bias=bias,
+        )
+
+    def forward(self, x):
+        if self.padding_x:
+            x = F.pad(x, (self.padding_x, self.padding_x, 0, 0), mode="circular")
+        if self.padding_y:
+            x = F.pad(x, (0, 0, self.padding_y, self.padding_y), mode="constant", value=0.0)
+        return self.conv(x)
+
+
+def make_conv2d(
+    in_channels, out_channels, kernel_size=3, stride=1, padding=0,
+    padding_mode="zeros",
+):
+    """Build a convolution respecting the selected physical boundary condition."""
+    if padding_mode == "zeros":
+        return nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
+    if padding_mode == "horizontal_circular":
+        return HorizontalCircularConv2d(
+            in_channels, out_channels, kernel_size, stride, padding,
+        )
+    raise ValueError("padding_mode doit etre 'zeros' ou 'horizontal_circular'.")
+
+
+class BlurPool2d(nn.Module):
+    """Fixed separable [1, 2, 1]^2 low-pass filter followed by decimation.
+
+    The filter suppresses frequencies above the post-decimation Nyquist limit.
+    Horizontal padding is circular and vertical padding remains zero, matching
+    ``HorizontalCircularConv2d`` and the RT boundary conditions.
+    """
+
+    def __init__(self, channels, padding_mode="zeros"):
+        super().__init__()
+        if padding_mode not in {"zeros", "horizontal_circular"}:
+            raise ValueError("padding_mode doit etre 'zeros' ou 'horizontal_circular'.")
+        kernel_1d = torch.tensor([1.0, 2.0, 1.0])
+        kernel_2d = torch.outer(kernel_1d, kernel_1d).div_(16.0)
+        self.register_buffer("kernel", kernel_2d.reshape(1, 1, 3, 3))
+        self.channels = channels
+        self.padding_mode = padding_mode
+
+    def forward(self, x):
+        if self.padding_mode == "horizontal_circular":
+            x = F.pad(x, (1, 1, 0, 0), mode="circular")
+            x = F.pad(x, (0, 0, 1, 1), mode="constant", value=0.0)
+        else:
+            x = F.pad(x, (1, 1, 1, 1), mode="constant", value=0.0)
+        kernel = self.kernel.to(dtype=x.dtype).expand(self.channels, 1, 3, 3)
+        return F.conv2d(x, kernel, stride=2, groups=self.channels)
+
+
+class BlurPoolDownsample(nn.Module):
+    """Learn features at full resolution, low-pass them, then subsample by 2."""
+
+    def __init__(self, channels, padding_mode="zeros"):
+        super().__init__()
+        self.projection = make_conv2d(
+            channels, channels, kernel_size=3, stride=1, padding=1,
+            padding_mode=padding_mode,
+        )
+        self.blur = BlurPool2d(channels, padding_mode=padding_mode)
+
+    def forward(self, x):
+        return self.blur(self.projection(x))
+
+
 class Block(nn.Module):
     """
     Bloc convolutionnel utilisé dans le U-Net.
@@ -15,7 +105,7 @@ class Block(nn.Module):
 
     def __init__(
         self, shape, in_c, out_c, kernel_size=3, stride=1, padding=1,
-        activation=None, normalize=True, norm_type="layer"
+        activation=None, normalize=True, norm_type="layer", padding_mode="zeros"
     ):
         """
         Initialise un bloc convolutionnel.
@@ -47,8 +137,12 @@ class Block(nn.Module):
             self.norm = nn.GroupNorm(n_groups, in_c)
         else:
             raise ValueError("norm_type doit etre 'layer' ou 'group'.")
-        self.conv1 = nn.Conv2d(in_c, out_c, kernel_size, stride, padding)
-        self.conv2 = nn.Conv2d(out_c, out_c, kernel_size, stride, padding)
+        self.conv1 = make_conv2d(
+            in_c, out_c, kernel_size, stride, padding, padding_mode=padding_mode,
+        )
+        self.conv2 = make_conv2d(
+            out_c, out_c, kernel_size, stride, padding, padding_mode=padding_mode,
+        )
         self.activation = nn.SiLU() if activation is None else activation
         self.normalize = normalize
         self.norm_type = norm_type
@@ -95,6 +189,8 @@ class UNet(nn.Module):
         continuous_time=False,
         norm_type="layer",
         upsample_mode="conv_transpose",
+        padding_mode="zeros",
+        downsample_mode="stride_conv",
     ):
         """
         Initialise le U-Net.
@@ -139,6 +235,10 @@ class UNet(nn.Module):
             raise ValueError(
                 "upsample_mode doit etre 'conv_transpose' ou 'interpolate'."
             )
+        if padding_mode not in {"zeros", "horizontal_circular"}:
+            raise ValueError("padding_mode doit etre 'zeros' ou 'horizontal_circular'.")
+        if downsample_mode not in {"stride_conv", "blurpool"}:
+            raise ValueError("downsample_mode doit etre 'stride_conv' ou 'blurpool'.")
 
         self.size = size
         self.in_channels = in_channels
@@ -150,6 +250,8 @@ class UNet(nn.Module):
         self.time_embed_dim = time_emb_dim
         self.norm_type = norm_type
         self.upsample_mode = upsample_mode
+        self.padding_mode = padding_mode
+        self.downsample_mode = downsample_mode
 
         if channel_multipliers is None:
             channel_multipliers = tuple(2 ** level for level in range(depth))
@@ -164,7 +266,10 @@ class UNet(nn.Module):
         # La derniere valeur est la resolution du bottleneck apres depth descentes.
         spatial_sizes = [size]
         for _ in range(depth):
-            next_size = self._conv_size(spatial_sizes[-1], kernel_size=4, stride=2, padding=1)
+            down_kernel = 4 if downsample_mode == "stride_conv" else 3
+            next_size = self._conv_size(
+                spatial_sizes[-1], kernel_size=down_kernel, stride=2, padding=1,
+            )
             if next_size < 1:
                 raise ValueError(
                     "UNet nécessite une taille intermédiaire positive. "
@@ -200,9 +305,18 @@ class UNet(nn.Module):
                     level_channels,
                     blocks_per_level,
                     norm_type=norm_type,
+                    padding_mode=padding_mode,
                 )
             )
-            self.downs.append(nn.Conv2d(level_channels, level_channels, 4, 2, 1))
+            if downsample_mode == "stride_conv":
+                self.downs.append(
+                    make_conv2d(
+                        level_channels, level_channels, 4, 2, 1,
+                        padding_mode=padding_mode,
+                    )
+                )
+            else:
+                self.downs.append(BlurPoolDownsample(level_channels, padding_mode=padding_mode))
             current_channels = level_channels
 
         # Bottleneck a la resolution la plus basse. Il a la meme largeur que le
@@ -214,6 +328,7 @@ class UNet(nn.Module):
             current_channels,
             blocks_per_level,
             norm_type=norm_type,
+            padding_mode=padding_mode,
         )
 
         # Decodeur: chaque niveau remonte d'un facteur 2, concatene le skip de
@@ -231,7 +346,10 @@ class UNet(nn.Module):
             else:
                 up = nn.Sequential(
                     nn.Upsample(scale_factor=2, mode="nearest"),
-                    nn.Conv2d(current_channels, skip_channels, 3, 1, 1),
+                    make_conv2d(
+                        current_channels, skip_channels, 3, 1, 1,
+                        padding_mode=padding_mode,
+                    ),
                 )
             self.ups.append(up)
             self.decoder_time.append(self._make_te(time_emb_dim, decoder_in_channels))
@@ -243,11 +361,14 @@ class UNet(nn.Module):
                     blocks_per_level,
                     final_normalize=level != 0,
                     norm_type=norm_type,
+                    padding_mode=padding_mode,
                 )
             )
             current_channels = decoder_out_channels
 
-        self.conv_out = nn.Conv2d(current_channels, self.out_channels, 3, 1, 1)
+        self.conv_out = make_conv2d(
+            current_channels, self.out_channels, 3, 1, 1, padding_mode=padding_mode,
+        )
 
     def forward(self, x, t):
         """
@@ -297,7 +418,7 @@ class UNet(nn.Module):
 
     def _make_block_stack(
         self, size, in_channels, out_channels, num_blocks,
-        final_normalize=True, norm_type="layer"
+        final_normalize=True, norm_type="layer", padding_mode="zeros"
     ):
         """
         Construit une pile de blocs convolutionnels a resolution fixe.
@@ -323,6 +444,7 @@ class UNet(nn.Module):
                     out_channels,
                     normalize=normalize,
                     norm_type=norm_type,
+                    padding_mode=padding_mode,
                 )
             )
             current_channels = out_channels

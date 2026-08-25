@@ -67,6 +67,8 @@ class LevelConfig:
     unet_base_channels: int = 32
     norm_type: str = "group"
     upsample_mode: str = "interpolate"
+    padding_mode: str = "zeros"
+    downsample_mode: str = "stride_conv"
     model_dir: str = "saved_model/cascade_sgm"
     log_dir: str = "outputs/logs/cascade_sgm"
     image_dir: str = "outputs/img/wave_cascade_sgm"
@@ -137,6 +139,8 @@ class CoarseConfig:
     unet_out_channels: int | None = None
     norm_type: str = "group"
     upsample_mode: str = "interpolate"
+    padding_mode: str = "zeros"
+    downsample_mode: str = "stride_conv"
 
     @property
     def train_path(self) -> Path:
@@ -233,6 +237,8 @@ def build_coarse_sgm(config: CoarseConfig, image_chw: tuple[int, int, int]) -> S
         continuous_time=True,
         norm_type=config.norm_type,
         upsample_mode=config.upsample_mode,
+        padding_mode=config.padding_mode,
+        downsample_mode=config.downsample_mode,
     )
     return SGM(
         network,
@@ -278,6 +284,8 @@ def train_coarse(config: CoarseConfig, preview_samples: int) -> None:
         "unet_base_channels": config.unet_base_channels,
         "norm_type": config.norm_type,
         "upsample_mode": config.upsample_mode,
+        "padding_mode": config.padding_mode,
+        "downsample_mode": config.downsample_mode,
         "unet_out_channels": config.unet_out_channels,
     }
     logger = Logger(absolute_path(config.log_path), absolute_path(config.csv_path))
@@ -340,6 +348,8 @@ def build_sgm(config: LevelConfig | dict[str, Any], image_hw, coeff_mean, coeff_
         continuous_time=True,
         norm_type=get("norm_type", "layer"),
         upsample_mode=get("upsample_mode", "conv_transpose"),
+        padding_mode=get("padding_mode", "zeros"),
+        downsample_mode=get("downsample_mode", "stride_conv"),
     )
     return WaveletConditionalSGM(
         network,
@@ -377,6 +387,8 @@ def saved_config_dict(config, image_hw, coeff_mean, coeff_std):
         "unet_base_channels": config.unet_base_channels,
         "norm_type": config.norm_type,
         "upsample_mode": config.upsample_mode,
+        "padding_mode": config.padding_mode,
+        "downsample_mode": config.downsample_mode,
         "coeff_mean": coeff_mean.tolist(),
         "coeff_std": coeff_std.tolist(),
     }
@@ -470,6 +482,8 @@ def generate_unconditional_ca(saved: dict[str, Any], device: torch.device, n_sam
         continuous_time=True,
         norm_type=saved.get("norm_type", "layer"),
         upsample_mode=saved.get("upsample_mode", "conv_transpose"),
+        padding_mode=saved.get("padding_mode", "zeros"),
+        downsample_mode=saved.get("downsample_mode", "stride_conv"),
     )
     model = SGM(
         network,
@@ -509,6 +523,8 @@ def generate_coarse_sgm(saved: dict[str, Any], device: torch.device, n_samples: 
         "unet_base_channels": int(saved.get("unet_base_channels", 10)),
         "norm_type": saved.get("norm_type", "layer"),
         "upsample_mode": saved.get("upsample_mode", "conv_transpose"),
+        "padding_mode": saved.get("padding_mode", "zeros"),
+        "downsample_mode": saved.get("downsample_mode", "stride_conv"),
         "beta_min": float(saved.get("beta_min", 0.1)),
         "beta_max": float(saved.get("beta_max", 20.0)),
         "eps_time": float(saved.get("eps_time", 1e-2)),

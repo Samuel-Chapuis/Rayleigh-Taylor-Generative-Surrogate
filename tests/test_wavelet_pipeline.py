@@ -5,7 +5,7 @@ import pywt
 import torch
 
 from WSGM_Foward_and_Generator import inverse_dwt_batch
-from lib.diffusion_lib.UNet import UNet
+from lib.diffusion_lib.UNet import BlurPool2d, HorizontalCircularConv2d, UNet
 
 
 def test_periodic_wavelet_roundtrip_is_exact():
@@ -44,6 +44,23 @@ def test_stationary_unet_variant_forward_and_structure():
     assert any(isinstance(module, torch.nn.Upsample) for module in model.modules())
 
 
+def test_horizontal_circular_padding_wraps_only_x_axis():
+    conv = HorizontalCircularConv2d(1, 1, kernel_size=3, padding=1, bias=False)
+    conv.conv.weight.data.fill_(1.0)
+    image = torch.arange(9, dtype=torch.float32).reshape(1, 1, 3, 3)
+    output = conv(image)
+
+    # At top-left, the left neighbour wraps from x=2 while the row above is zero.
+    assert output[0, 0, 0, 0].item() == 15.0
+
+
+def test_blurpool_downsamples_even_spatial_sizes_without_phase_resize():
+    blur = BlurPool2d(channels=3, padding_mode="horizontal_circular")
+    output = blur(torch.randn(2, 3, 32, 16))
+    assert output.shape == (2, 3, 16, 8)
+    assert torch.isfinite(output).all()
+
+
 def test_legacy_unet_state_dict_names_are_preserved():
     model = UNet(size=16, in_channels=1, out_channels=1, depth=1, blocks_per_level=1)
     assert any(name.endswith(".ln.weight") for name in model.state_dict())
@@ -54,4 +71,5 @@ def test_active_wavelet_config_declares_new_ablation_variant():
         config = json.load(file)
     assert config["model"]["norm_type"] in {"layer", "group"}
     assert config["model"]["upsample_mode"] in {"conv_transpose", "interpolate"}
-
+    assert config["model"]["padding_mode"] == "horizontal_circular"
+    assert config["model"]["downsample_mode"] == "blurpool"
