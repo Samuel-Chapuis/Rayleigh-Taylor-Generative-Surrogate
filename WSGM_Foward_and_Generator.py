@@ -18,17 +18,17 @@ from torch.utils.data import DataLoader, TensorDataset
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 from lib.diffusion_lib.SGM import SGM
+from lib.diffusion_lib.ImageVisualizer import ImageVisualizer
+from lib.diffusion_lib.Logger import Logger
 from lib.diffusion_lib.UNet import UNet
+from lib.diffusion_lib.data_loader import wavelet_approximation_data_loader
+from lib.diffusion_lib.utils import get_best_device
 from lib.wavelet_diffusion_lib.ConditionalSGM import WaveletConditionalSGM
-from lib.wavelet_diffusion_lib.ImageVisualizer import ImageVisualizer
-from lib.wavelet_diffusion_lib.Logger import Logger
 from lib.wavelet_diffusion_lib.training_loop import (
     split_wave_batch,
     wave_sgm_training_loop,
 )
 from lib.diffusion_lib.training_loop import sgm_training_loop
-from lib.wavelet_diffusion_lib.data_loader import wavelet_approximation_data_loader
-from lib.wavelet_diffusion_lib.utils import get_best_device
 from lib.wavelet_diffusion_lib.wavelet_utils import (
     channel_stats,
     load_wave_tensor,

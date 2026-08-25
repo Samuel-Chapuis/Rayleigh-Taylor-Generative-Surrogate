@@ -89,6 +89,71 @@ class ProcessedDataset(Dataset):
         return img, label
 
 
+class WaveletApproximationDataset(ProcessedDataset):
+    """Dataset exposing the cA channel from stored wavelet coefficients.
+
+    The generic processed-dataset loading and split semantics are shared with
+    :class:`ProcessedDataset`; only wavelet-specific coefficient handling lives
+    here.  Coefficients are already physical floating-point values and must not
+    undergo the uint8 image normalisation applied by ``ProcessedDataset``.
+    """
+
+    def __init__(
+        self,
+        root: str | Path,
+        level: int,
+        train: bool | None = None,
+        split: str | None = None,
+        *,
+        normalize: bool = False,
+        mean: float | torch.Tensor | None = None,
+        std: float | torch.Tensor | None = None,
+        return_label: bool = False,
+    ) -> None:
+        if not isinstance(level, int) or isinstance(level, bool) or level < 1:
+            raise ValueError(f"level doit etre un entier strictement positif, recu {level!r}.")
+
+        split = self._resolve_split(train=train, split=split)
+        self.level = level
+        self.split = split
+        self.processed_path = Path(root) / "processed" / f"j{level}_{split}.pt"
+        self.return_label = return_label
+        self.normalize = normalize
+
+        coefficients, labels = self._load_processed_file(self.processed_path)
+        if coefficients.ndim == 3:
+            coefficients = coefficients.unsqueeze(1)
+        if coefficients.ndim != 4 or coefficients.shape[1] < 1:
+            raise ValueError(
+                f"Le fichier {self.processed_path} doit contenir [N,C,H,W] avec C >= 1, "
+                f"recu {tuple(coefficients.shape)}."
+            )
+
+        self.images = coefficients[:, 0:1].float().contiguous()
+        self.labels = labels
+        if normalize:
+            self.mean = torch.as_tensor(
+                self.images.mean() if mean is None else mean, dtype=self.images.dtype,
+            )
+            self.std = torch.as_tensor(
+                self.images.std(unbiased=False) if std is None else std, dtype=self.images.dtype,
+            )
+            if (
+                self.mean.numel() != 1 or self.std.numel() != 1
+                or not torch.isfinite(self.std) or self.std.item() <= 0
+            ):
+                raise ValueError("mean et std doivent etre des scalaires avec std > 0 pour cA.")
+        else:
+            self.mean = None
+            self.std = None
+
+    def __getitem__(self, index: int):
+        ca = self.images[index]
+        if self.normalize:
+            ca = (ca - self.mean) / self.std
+        return (ca, self.labels[index]) if self.return_label else ca
+
+
 def data_loader(
     config,
     split: str = "training",
@@ -108,3 +173,33 @@ def data_loader(
         batch_size=config.batch_size,
         shuffle=shuffle,
     )
+
+
+def wavelet_approximation_data_loader(
+    config,
+    level: int | None = None,
+    split: str = "training",
+    shuffle: bool | None = None,
+    *,
+    normalize: bool = False,
+    mean: float | torch.Tensor | None = None,
+    std: float | torch.Tensor | None = None,
+    return_label: bool = False,
+) -> DataLoader:
+    """Build a loader exposing only cA at a requested wavelet level."""
+    if level is None:
+        if not hasattr(config, "wavelet_level"):
+            raise AttributeError("level est requis si config ne definit pas wavelet_level.")
+        level = int(config.wavelet_level)
+    if shuffle is None:
+        shuffle = split == "training"
+    dataset = WaveletApproximationDataset(
+        root=config.store_path_dataset,
+        level=level,
+        split=split,
+        normalize=normalize,
+        mean=mean,
+        std=std,
+        return_label=return_label,
+    )
+    return DataLoader(dataset, batch_size=config.batch_size, shuffle=shuffle)

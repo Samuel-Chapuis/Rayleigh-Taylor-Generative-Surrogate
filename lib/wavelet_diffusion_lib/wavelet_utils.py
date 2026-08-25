@@ -3,14 +3,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from .ConditionalDDPM import WaveletConditionalDDPM
-from .UNet import UNet
-from .schedules import (
+from lib.diffusion_lib.UNet import UNet
+from lib.diffusion_lib.schedules import (
     SCHEDULE_REFERENCE_STEPS,
     diffusion_steps_from_snr,
     get_diffusion_schedule,
     snr_from_alpha_bar,
 )
+from .ConditionalDDPM import WaveletConditionalDDPM
 
 
 def load_wave_tensor(path, expected_channels=4):
