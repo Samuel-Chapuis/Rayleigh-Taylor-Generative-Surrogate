@@ -8,54 +8,54 @@ position of the interface is one of the main physical signatures of the flow.
 To preserve this information while reducing the dimensionality of the analysis, 
 it is possible to compares the fields line by line (because of the horizontal periodicity).
 
-Let $\rho(t,x,y)$ denote a validation field and $\varrho(t,x,y)$ a field from a
-compared dataset, where $t$ indexes the images, $x$ the vertical coordinate and
-$y$ the horizontal coordinate. For each image and each line, the mean density
+Let $\rho_r(z,x)$ denote the $r$-th validation field and $\varrho_r(z,x)$ the
+$r$-th field from a compared dataset, where $z$ is the vertical coordinate and
+$x$ the horizontal coordinate. For each image and each horizontal line, the mean density
 along the periodic direction is first computed as
 
 \begin{equation}
-    m_{\rho}(t,x)
+    m_{\rho}(r,z)
     =
-    \frac{1}{N_y}
-    \sum_{y=1}^{N_y}\rho(t,x,y),
+    \frac{1}{N_x}
+    \sum_{x=1}^{N_x}\rho_r(z,x),
     \qquad
-    m_{\varrho}(t,x)
+    m_{\varrho}(r,z)
     =
-    \frac{1}{N_y}
-    \sum_{y=1}^{N_y}\varrho(t,x,y).
+    \frac{1}{N_x}
+    \sum_{x=1}^{N_x}\varrho_r(z,x).
 \end{equation}
 
-The temporal mean profile of each line is then defined by
+The ensemble mean profile of each line is then defined by
 
 \begin{equation}
-    \widetilde{\rho}_l(x)
+    \widetilde{\rho}_l(z)
     =
-    \frac{1}{N_t}\sum_{t=1}^{N_t}m_{\rho}(t,x),
+    \frac{1}{N_s}\sum_{r=1}^{N_s}m_{\rho}(r,z),
     \qquad
-    \widetilde{\varrho}_l(x)
+    \widetilde{\varrho}_l(z)
     =
-    \frac{1}{N_t}\sum_{t=1}^{N_t}m_{\varrho}(t,x).
+    \frac{1}{N_s}\sum_{r=1}^{N_s}m_{\varrho}(r,z).
 \end{equation}
 
 This quantity represents the mean vertical density organization of the dataset.
 It is directly related to the average position and thickness of the mixing
 layer.
 
-The temporal variability of each line is described by the standard deviation
+The ensemble variability of each line is described by the standard deviation
 
 \begin{equation}
-    \sigma_{\rho,l}(x)
+    \sigma_{\rho,l}(z)
     =
     \sqrt{
-        \frac{1}{N_t}
-        \sum_{t=1}^{N_t}
+        \frac{1}{N_s}
+        \sum_{r=1}^{N_s}
         \left(
-            m_{\rho}(t,x)-\widetilde{\rho}_l(x)
+            m_{\rho}(r,z)-\widetilde{\rho}_l(z)
         \right)^2
     },
 \end{equation}
 
-and similarly for $\sigma_{\varrho,l}(x)$. This profile measures how strongly
+and similarly for $\sigma_{\varrho,l}(z)$. This profile measures how strongly
 the mean value of a given line fluctuates across the dataset.
 
 The distances used in the notebook are normalized $L^2$ distances between these
@@ -64,7 +64,7 @@ profiles:
 \begin{equation}
     d_{\mu}(\rho,\varrho)
     =
-    \frac{1}{N_x}
+    \frac{1}{N_z}
     \left\|
         \widetilde{\rho}_l
         -
@@ -73,7 +73,7 @@ profiles:
     \qquad
     d_{\sigma}(\rho,\varrho)
     =
-    \frac{1}{N_x}
+    \frac{1}{N_z}
     \left\|
         \sigma_{\rho,l}
         -
@@ -97,15 +97,15 @@ amplitude of its fluctuations.
 
 \subsection{Fluctuation 'energy' spectrum}
 
-The term 'energy spectrum' is used here in a loose sense to describe the distribution of fluctuations across spatial scales. It is not a true physical energy spectrum, but it hase to be seen as the signale energy (it would have been equal to a real energy spectrum if the density field was a velocity field). The first physical metric introduced above captures the mean vertical organization of the fields, but it does not provide any information about the distribution of fluctuations across scales. Starting from a dataset converted to a tensor of shape
-$(t,x,y)$, the fluctuation field is defined in the notebook by subtracting the
+The term 'energy spectrum' is used here in a loose sense to describe the distribution of fluctuations across spatial scales. It is not a true physical energy spectrum, but it has to be seen as signal energy; it would be equal to a real energy spectrum only if the density field were a velocity field. The first physical metric introduced above captures the mean vertical organization of the fields, but it does not provide any information about the distribution of fluctuations across scales. Starting from a dataset converted to a tensor of shape
+$(r,z,x)$, the fluctuation field is defined in the notebook by subtracting the
 global mean and taking its magnitude,
 
 \begin{equation}
-    \delta \rho(t,x,y)
+    \delta \rho_r(z,x)
     =
     \left|
-        \rho(t,x,y) - \overline{\rho}
+        \rho_r(z,x) - \overline{\rho}
     \right|.
 \end{equation}
 
@@ -137,5 +137,3 @@ scales.
     profile.}
     \label{fig:ch4_energy_spectrum}
 \end{figure}
-
-

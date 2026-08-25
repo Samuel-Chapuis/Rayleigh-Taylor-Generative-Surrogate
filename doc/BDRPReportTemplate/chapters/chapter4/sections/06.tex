@@ -8,8 +8,8 @@ using the existing data augmentation routines. A two-dimensional discrete
 wavelet transform is then applied to each image using a Daubechies-1 basis.
 
 For a decomposition level $j$, each field is mapped to four coefficient maps:
-the approximation coefficients $c_A$ and the horizontal, vertical, and
-diagonal detail coefficients $c_H$, $c_V$, and $c_D$. In the implementation,
+the approximation sub-band $LL$ and the three directional detail sub-bands
+$LH$, $HL$, and $HH$. In the implementation,
 these four arrays are stacked into a tensor of shape $(N,4,H',W')$, where $N$
 is the number of samples and $(H',W')$ is the spatial size of the wavelet
 coefficients at the chosen level. The dataset is then split into training,
@@ -57,15 +57,15 @@ configuration file so that sampling can be reproduced later without ambiguity.
 The conditioning and noising structure of this loop is shown in
 Figure~\ref{fig:conditioned_training_loop}.
 
-At a given wavelet level, let $c_A$ denote the approximation channel and
-$d_0=(c_H,c_V,c_D)$ the three detail channels. The approximation channel is
+At a given wavelet level, let $LL$ denote the approximation channel and
+$D_0=(LH,HL,HH)$ the three detail channels. The approximation channel is
 used only as a condition, whereas the VP-SDE is applied to the detail tensor.
 With the same notation as the image-space SGM, the exact conditional noising
 marginal is
 \[
-    d_t
+    D_t
     =
-    \sqrt{\bar{\alpha}(t)}\,d_0
+    \sqrt{\bar{\alpha}(t)}\,D_0
     +
     \sigma(t)\epsilon,
     \qquad
@@ -75,18 +75,18 @@ The baseline WSGM training procedure is therefore:
 \begin{algorithm}[H]
 \caption{Conditional WSGM training procedure at wavelet level $j$}
 \begin{algorithmic}
-\STATE Load precomputed wavelet tensors $(c_A,c_H,c_V,c_D)$ for level $j$.
+\STATE Load precomputed wavelet tensors $(LL,LH,HL,HH)$ for level $j$.
 \STATE Normalize each coefficient channel using training-split statistics.
-\STATE Set $d_0=(c_H,c_V,c_D)$ and keep $c_A$ fixed as the conditioning field.
+\STATE Set $D_0=(LH,HL,HH)$ and keep $LL$ fixed as the conditioning field.
 \STATE Initialize a conditional WSGM with a time-conditioned U-Net and the same affine VP-SDE schedule as the baseline SGM.
 \FOR{each training epoch}
-    \FOR{each batch $(c_A,d_0)$}
-        \STATE Sample a continuous time $t\in[\varepsilon_{\mathrm{time}},1]$ and Gaussian noise $\epsilon$ with the shape of $d_0$.
+    \FOR{each batch $(LL,D_0)$}
+        \STATE Sample a continuous time $t\in[\varepsilon_{\mathrm{time}},\mathds{1}]$ and Gaussian noise $\epsilon$ with the shape of $D_0$.
         \STATE Compute $\bar{\alpha}(t)=\exp(-\int_0^t\beta(s)\,ds)$ and $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$.
-        \STATE Build the noisy details $d_t=\sqrt{\bar{\alpha}(t)}d_0+\sigma(t)\epsilon$.
-        \STATE Build the target $y_t=\epsilon$ for \texttt{epsilon}-prediction or $y_t=\sqrt{\bar{\alpha}(t)}\epsilon-\sigma(t)d_0$ for \texttt{v}-prediction.
-        \STATE Predict $\hat{y}_\theta(c_A,d_t,t)$ from the concatenated tensor $(c_A,d_t)$.
-        \STATE Minimize $\|y_t-\hat{y}_\theta(c_A,d_t,t)\|_2^2$.
+        \STATE Build the noisy details $D_t=\sqrt{\bar{\alpha}(t)}D_0+\sigma(t)\epsilon$.
+        \STATE Build the target $y_t=\epsilon$ for \texttt{epsilon}-prediction or $y_t=\sqrt{\bar{\alpha}(t)}\epsilon-\sigma(t)D_0$ for \texttt{v}-prediction.
+        \STATE Predict $\hat{y}_\theta(LL,D_t,t)$ from the concatenated tensor $(LL,D_t)$.
+        \STATE Minimize $\|y_t-\hat{y}_\theta(LL,D_t,t)\|_2^2$.
     \ENDFOR
     \STATE Compute validation loss and save the checkpoint if it improves.
 \ENDFOR
@@ -97,49 +97,49 @@ Sampling uses the same probability-flow ODE as the baseline SGM, but only in
 the detail subspace and conditionally on the fixed approximation channel. The
 score estimate is
 \[
-    s_\theta(d_t,t\mid c_A)
+    s_\theta(D_t,t\mid LL)
     =
-    -\frac{\hat{\epsilon}_\theta(c_A,d_t,t)}{\sigma(t)}.
+    -\frac{\hat{\epsilon}_\theta(LL,D_t,t)}{\sigma(t)}.
 \]
 The conditional WSGM sampling procedure is:
 \begin{algorithm}[H]
 \caption{Conditional WSGM sampling procedure at wavelet level $j$}
 \begin{algorithmic}
 \STATE Reload the WSGM checkpoint and the coefficient normalization statistics.
-\STATE Select or generate an approximation channel $c_A$ and normalize it.
-\STATE Sample $d_1\sim\mathcal{N}(0,I)$ with three detail channels and the spatial shape of $c_A$.
-\STATE Choose $N$ integration steps, $\Delta t=-(1-\varepsilon_{\mathrm{time}})/N$, and a solver, Heun by default.
-\FOR{$i=0,\ldots,N-1$}
-    \STATE Set $t_i=1+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
-    \STATE Reconstruct $\hat{\epsilon}_\theta(c_A,d_{t_i},t_i)$ from the network output.
-    \STATE Compute $s_\theta(d_{t_i},t_i\mid c_A)=-\hat{\epsilon}_\theta(c_A,d_{t_i},t_i)/\sigma(t_i)$.
+\STATE Select or generate an approximation channel $LL$ and normalize it.
+\STATE Sample $D_{\mathds{1}}\sim\mathcal{N}(0,I)$ with three detail channels and the spatial shape of $LL$.
+\STATE Choose $N_{\mathrm{step}}$ integration steps, $\Delta t=-(\mathds{1}-\varepsilon_{\mathrm{time}})/N_{\mathrm{step}}$, and a solver, Heun by default.
+\FOR{$i=0,\ldots,N_{\mathrm{step}}-1$}
+    \STATE Set $t_i=\mathds{1}+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
+    \STATE Reconstruct $\hat{\epsilon}_\theta(LL,D_{t_i},t_i)$ from the network output.
+    \STATE Compute $s_\theta(D_{t_i},t_i\mid LL)=-\hat{\epsilon}_\theta(LL,D_{t_i},t_i)/\sigma(t_i)$.
     \STATE Compute the conditional probability-flow drift
     \[
-        F_\theta(d_{t_i},t_i\mid c_A)
+        F_\theta(D_{t_i},t_i\mid LL)
         =
-        -\frac{1}{2}\beta(t_i)d_{t_i}
-        -\frac{1}{2}\beta(t_i)s_\theta(d_{t_i},t_i\mid c_A).
+        -\frac{1}{2}\beta(t_i)D_{t_i}
+        -\frac{1}{2}\beta(t_i)s_\theta(D_{t_i},t_i\mid LL).
     \]
-    \STATE Predictor step: $\tilde{d}=d_{t_i}+\Delta t\,F_\theta(d_{t_i},t_i\mid c_A)$.
+    \STATE Predictor step: $\widetilde{D}=D_{t_i}+\Delta t\,F_\theta(D_{t_i},t_i\mid LL)$.
     \IF{Heun solver is used}
-        \STATE Compute $F_\theta(\tilde{d},t_{i+1}\mid c_A)$ and set
+        \STATE Compute $F_\theta(\widetilde{D},t_{i+1}\mid LL)$ and set
         \[
-            d_{t_{i+1}}
+            D_{t_{i+1}}
             =
-            d_{t_i}
+            D_{t_i}
             +
             \frac{\Delta t}{2}
             \left[
-            F_\theta(d_{t_i},t_i\mid c_A)
+            F_\theta(D_{t_i},t_i\mid LL)
             +
-            F_\theta(\tilde{d},t_{i+1}\mid c_A)
+            F_\theta(\widetilde{D},t_{i+1}\mid LL)
             \right].
         \]
     \ELSE
-        \STATE Set $d_{t_{i+1}}=\tilde{d}$.
+        \STATE Set $D_{t_{i+1}}=\widetilde{D}$.
     \ENDIF
 \ENDFOR
-\STATE Denormalize the generated details and concatenate them with the physical $c_A$.
+\STATE Denormalize the generated details and concatenate them with the physical $LL$.
 \STATE Apply the inverse discrete wavelet transform to obtain the finer-scale field.
 \end{algorithmic}
 \end{algorithm}
@@ -147,7 +147,7 @@ The conditional WSGM sampling procedure is:
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.88\textwidth]{figures/ch4/training_loop_conditioned.drawio.png}
-    \caption{Training loop for the conditional wavelet SGM. The approximation coefficients are kept as conditioning information, while noise is added only to the detail channels modeled by the conditional score network.}
+    \caption{Training loop for the conditional wavelet SGM. The $LL$ sub-band is kept as conditioning information, while noise is added only to the $LH$, $HL$, and $HH$ detail sub-bands modeled by the conditional score network.}
     \label{fig:conditioned_training_loop}
 \end{figure}
 

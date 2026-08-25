@@ -1,15 +1,17 @@
 \section{Overall Pipeline}
 
-The complete workflow starts from Direct Numerical Simulation density fields,
-applies preprocessing and physically motivated data augmentation, trains a
-generative diffusion model, and evaluates generated samples against validation
-data. Figure~\ref{fig:diffusion_pipeline} gives the general principle of this
-surrogate modeling approach.
+The complete workflow starts from Direct Numerical Simulation density fields
+generated from parameterized initial conditions, applies preprocessing and
+physically motivated data augmentation, trains generative diffusion models, and
+evaluates generated samples against validation data.
+Figure~\ref{fig:diffusion_pipeline} details how this workflow branches into two
+surrogate modeling strategies: a baseline model trained directly on the density
+fields and a wavelet-based model trained after a multi-resolution decomposition
+of the same fields.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/intro/pipeline.png}
-\caption{General principle of the diffusion-based surrogate modeling approach used in this work.}
+\caption{Methodological pipeline used to build and evaluate the diffusion-based RTI surrogates. The dataset is produced from DNS runs defined by modal and physical initial-condition parameters, then augmented before entering two modeling branches. The first branch trains an unconditional diffusion model directly in physical image space. The second branch decomposes each field into wavelet coefficients, trains unconditional or conditional diffusion models in coefficient space, reconstructs full fields by inverse wavelet transform, and compares the resulting samples with DNS reference data.}
 \label{fig:diffusion_pipeline}
 \end{figure}
-

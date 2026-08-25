@@ -66,7 +66,7 @@ Figure~\ref{fig:baseline_training_loop}.
 \STATE Initialize an SGM with a time-conditioned U-Net and an affine VP-SDE noise schedule.
 \FOR{each training epoch}
     \FOR{each batch $x_0$}
-        \STATE Sample a continuous time $t\in[0,1]$ and Gaussian noise $\epsilon$.
+        \STATE Sample a continuous time $t\in[0,\mathds{1}]$ and Gaussian noise $\epsilon$.
         \STATE Compute $\bar{\alpha}(t)=\exp(-\int_0^t\beta(s)\,ds)$ and $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$.
         \STATE Build the noisy field $x_t=\sqrt{\bar{\alpha}(t)}x_0+\sigma(t)\epsilon$.
         \STATE Build the target $y_t=\epsilon$ for \texttt{epsilon}-prediction or $y_t=\sqrt{\bar{\alpha}(t)}\epsilon-\sigma(t)x_0$ for \texttt{v}-prediction.
@@ -79,7 +79,7 @@ Figure~\ref{fig:baseline_training_loop}.
 \end{algorithm}
 
 Once the score network has been trained, generation is performed by starting
-from a Gaussian prior at $t=1$ and integrating the deterministic
+from a Gaussian prior at $t=\mathds{1}$ and integrating the deterministic
 probability-flow ODE backward to a small terminal time
 $\varepsilon_{\mathrm{time}}$. This is the deterministic counterpart of the
 reverse SDE discussed in the score-based formulation and avoids injecting an
@@ -89,10 +89,10 @@ additional Brownian increment at every sampling step.
 \caption{Baseline SGM sampling procedure}
 \begin{algorithmic}
 \STATE Reload the best SGM checkpoint and set the U-Net to evaluation mode.
-\STATE Sample $x_1\sim\mathcal{N}(0,I)$ with the target image shape.
-\STATE Choose $N$ integration steps, $\Delta t=-(1-\varepsilon_{\mathrm{time}})/N$, and a solver, Heun by default.
-\FOR{$i=0,\ldots,N-1$}
-    \STATE Set $t_i=1+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
+\STATE Sample $x_{\mathds{1}}\sim\mathcal{N}(0,I)$ with the target image shape.
+\STATE Choose $N_{\mathrm{step}}$ integration steps, $\Delta t=-(\mathds{1}-\varepsilon_{\mathrm{time}})/N_{\mathrm{step}}$, and a solver, Heun by default.
+\FOR{$i=0,\ldots,N_{\mathrm{step}}-1$}
+    \STATE Set $t_i=\mathds{1}+i\Delta t$ and $t_{i+1}=t_i+\Delta t$.
     \STATE Reconstruct $\hat{\epsilon}_\theta(x_{t_i},t_i)$ from the network output.
     \STATE Compute the score
     $s_\theta(x_{t_i},t_i)=-\hat{\epsilon}_\theta(x_{t_i},t_i)/\sigma(t_i)$.

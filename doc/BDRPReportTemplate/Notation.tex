@@ -1,0 +1,148 @@
+\begingroup
+\renewcommand{\arraystretch}{1.15}
+\small
+
+The notation below summarizes the symbols used throughout the report. Symbols
+introduced only inside a short local derivation keep the meaning given in that
+derivation. The diffusion time is always normalized in
+$[0,\mathds{1}]$; physical time, when needed, is denoted by
+$t_{\mathrm{phys}}$.
+
+\begin{longtable}{@{}p{0.25\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+\multicolumn{2}{@{}l}{\textbf{General conventions}} \\
+\midrule
+$\mathbf{a}$ & Vector or vectorized field. Bold symbols are used for high-dimensional states, fields, parameters, or stochastic processes. \\
+$\hat{a}$ & Estimated quantity, predicted quantity, or spectral amplitude depending on context. \\
+$\widetilde{a}$ & Generated, reconstructed, or transformed counterpart of $a$. \\
+$a_\theta$ & Quantity parameterized by trainable neural-network parameters $\theta$. \\
+$\mathbb{E}[\cdot]$ & Expectation. \\
+$\mathcal{N}(\boldsymbol{\mu},\mathbf{\Sigma})$ & Gaussian distribution with mean $\boldsymbol{\mu}$ and covariance $\mathbf{\Sigma}$. \\
+$\mathbf{I}$ & Identity matrix. \\
+$\|\cdot\|_2$ & Euclidean norm. \\
+$\mathcal{F}$ & Fourier transform. \\
+
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Rayleigh--Taylor instability and flow variables}} \\
+\midrule
+$\rho$ & Fluid density or scalar density field. In Chapter~5, $\rho$ also denotes the validation/reference density-field dataset. \\
+$\varrho$ & Generated or compared density-field dataset in the evaluation chapter. \\
+$\rho_h,\rho_l$ & Densities of the heavy and light fluids. \\
+$\mathbf{u}$ & Velocity field. \\
+$\mathbf{u}_j$ & Velocity field in fluid $j$, with $j\in\{h,l\}$. \\
+$p$ & Pressure field. \\
+$p_0$ & Hydrostatic reference pressure. \\
+$\mu$ & Dynamic viscosity. \\
+$\mathbf{g}$ & Imposed acceleration vector in the RTI equations. \\
+$g$ & Magnitude of the acceleration, with $\mathbf{g}=-g\mathbf{e}_z$ in the convention used for the RTI derivation. \\
+$\mathbf{e}_z$ & Unit vector in the positive vertical direction. \\
+$x,y,z$ & Spatial coordinates. In the interfacial derivation, $(x,y)$ are parallel to the unperturbed interface and $z$ is vertical. In the two-dimensional datasets, $x$ denotes the horizontal coordinate and $z$ the vertical coordinate. \\
+$\mathbf{x}_{\parallel}$ & Horizontal position vector parallel to the unperturbed interface, $\mathbf{x}_{\parallel}=(x,y)$. \\
+$t_{\mathrm{phys}}$ & Physical time of the flow or DNS snapshot. \\
+$A$ & Atwood number, $A=(\rho_h-\rho_l)/(\rho_h+\rho_l)$. \\
+$Re$ & Reynolds number, $Re=\rho U D/\mu$. \\
+$U$ & Incoming velocity used in the Reynolds-number example. \\
+$D$ & Sphere diameter used in the Reynolds-number example. \\
+$\eta(\mathbf{x}_{\parallel},t_{\mathrm{phys}})$ & Vertical displacement of the fluid interface. \\
+$\eta_0,\hat{\eta}$ & Initial or complex modal amplitude of the interface perturbation. \\
+$\phi_j$ & Velocity potential in fluid $j$. \\
+$\hat{\phi}_j$ & Complex modal amplitude of the velocity potential in fluid $j$. \\
+$\mathbf{k}$ & Horizontal wave vector of an interfacial or Fourier mode. \\
+$k$ & Wavenumber magnitude, $k=|\mathbf{k}|$, or a local Fourier/mode index when stated. \\
+$\gamma$ & Linear temporal growth rate of an RTI mode. \\
+$L_x$ & Horizontal domain size. \\
+$L_b$ & Diameter of the largest bubbles used in the cropping/domain-size discussion. \\
+$z_b,z_s$ & Lowest bubble tip and highest spike tip. \\
+$z_{\min}^{\mathrm{crop}},z_{\max}^{\mathrm{crop}}$ & Lower and upper vertical bounds of the retained crop. \\
+
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Fourier and wavelet representations}} \\
+\midrule
+$f(x,y)$ & Generic scalar field or signal. \\
+$\hat{f}(k_x,k_y)$ & Fourier coefficient or Fourier transform of $f$. \\
+$k_x,k_y$ & Spatial frequency components. \\
+$\phi_k$ & Fourier basis function indexed by $k$. \\
+$F$ & Fourier basis set. \\
+$K$ & Maximum retained Fourier mode in the linear reconstruction. \\
+$H$ & Threshold used in the non-linear coefficient selection. \\
+$\Lambda_H$ & Set of Fourier indices whose coefficients exceed threshold $H$. \\
+$\phi,\psi$ & Scaling function and mother wavelet. \\
+$u,s$ & Continuous wavelet translation and scale parameters. \\
+$\psi_{u,s}$ & Dilated and translated continuous wavelet. \\
+$\check{f}(u,s)$ & Continuous wavelet transform coefficient of $f$ at position $u$ and scale $s$. \\
+$j,n$ & Discrete scale level and translation index in the wavelet transform. \\
+$s_j,u_{j,n}$ & Dyadic scale and translation grid values. \\
+$\psi_{j,n}$ & Discrete wavelet at scale $j$ and position index $n$. \\
+$d_{j,n}$ & Discrete wavelet detail coefficient. \\
+$V_j,W_j$ & Approximation space and detail space at resolution level $j$. \\
+$a_j[n],d_j[n]$ & One-dimensional approximation and detail filter-bank coefficients at level $j$. \\
+$h[k],g[k]$ & Low-pass and high-pass filter coefficients in the fast wavelet transform. \\
+$LL,LH,HL,HH$ & Two-dimensional wavelet sub-bands after one decomposition level: approximation sub-band and three directional detail sub-bands. \\
+$D_0,D_t$ & Clean and noised tensor grouping the wavelet detail sub-bands $(LH,HL,HH)$ in the conditional WSGM formulation. \\
+$H',W'$ & Spatial height and width of wavelet coefficient maps after decomposition. \\
+
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Score-based diffusion models}} \\
+\midrule
+$\mathcal{D}$ & Training dataset, $\mathcal{D}=\{\mathbf{x}_0^{(i)}\}_{i=1}^{N}$. \\
+$N$ & Number of samples in a dataset or tensor. \\
+$d$ & Dimension of the vectorized data representation. \\
+$\mathbf{x}_0$ & Clean data sample: RTI density field or coefficient vector before noising. \\
+$\widetilde{\mathbf{x}}_0$ & Generated clean sample. \\
+$\mathbf{x}_t$ & Noisy state at normalized diffusion time $t$. \\
+$t$ & Normalized diffusion time, $t\in[0,\mathds{1}]$. \\
+$\mathds{1}$ & Stylized terminal diffusion time. \\
+$\tau$ & Reverse-time variable, $\tau=\mathds{1}-t$. \\
+$p_{\mathrm{data}}$ & Unknown data distribution represented by the DNS dataset. \\
+$p_\theta$ & Learned generative distribution. \\
+$p_t$ & Marginal probability density of the forward diffusion process at time $t$. \\
+$p_{t\mid 0}$ & Transition density from the clean state $\mathbf{x}_0$ to $\mathbf{x}_t$. \\
+$\mathbf{f}(\mathbf{x},t)$ & Drift coefficient of the generic forward SDE. \\
+$g_{\mathrm{diff}}(t)$ & Diffusion coefficient of the generic forward SDE; distinct from the RTI acceleration magnitude $g$. \\
+$\mathbf{w},\overline{\mathbf{w}}$ & Forward and reverse-time Wiener processes. \\
+$\beta(t)$ & VP-SDE noise schedule. \\
+$\beta_{\min},\beta_{\max}$ & Lower and upper bounds of the affine noise schedule. \\
+$\bar{\alpha}(t)$ & Cumulative signal coefficient, $\bar{\alpha}(t)=\exp(-\int_0^t\beta(s)\,ds)$. \\
+$\alpha(t)$ & Signal-amplitude coefficient, $\alpha(t)=\sqrt{\bar{\alpha}(t)}$. \\
+$\sigma(t)$ & Noise-amplitude coefficient, $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$. \\
+$\boldsymbol{\epsilon}$ & Standard Gaussian perturbation used in the forward noising kernel. \\
+$\boldsymbol{\epsilon}_\theta$ & Neural-network prediction of the Gaussian perturbation. \\
+$\mathbf{s}_\theta$ & Learned score approximation, $\mathbf{s}_\theta(\mathbf{x}_t,t)\approx\nabla_{\mathbf{x}_t}\log p_t(\mathbf{x}_t)$. \\
+$\mathbf{v}$ & Velocity-style SGM target used in the implementation. \\
+$y_t,\hat{y}_\theta$ & Generic training target and corresponding network prediction in the algorithmic descriptions. \\
+$\mathcal{L}_{\mathrm{simple}},\mathcal{L}_{\mathrm{cond}}$ & Unconditional and conditional diffusion training losses. \\
+$\mathbf{c}$ & Conditioning variable in conditional diffusion. \\
+$q_t$ & Probability density of the time-reversed process in the reverse-SDE derivation. \\
+$\mathbf{y}_t$ & State of the reverse process. \\
+$\mathbf{b}_\theta$ & Learned reverse-process drift. \\
+$N_{\mathrm{step}}$ & Number of numerical integration steps used by the sampler. \\
+$\Delta t_n$ & Numerical time increment between $t_n$ and $t_{n+1}$. \\
+$\mathbf{z}_n$ & Standard Gaussian variable used to sample a Wiener increment. \\
+$\varepsilon_{\mathrm{time}}$ & Small positive terminal time used to avoid evaluating the sampler exactly at zero noise. \\
+$F_\theta$ & Probability-flow ODE drift used in the implementation algorithms. \\
+
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Acronyms}} \\
+\midrule
+DNS & Direct Numerical Simulation. \\
+RTI & Rayleigh--Taylor instability. \\
+ICF & Inertial Confinement Fusion. \\
+MRA & Multi-resolution Analysis. \\
+FWT/DWT & Fast/Discrete Wavelet Transform. \\
+SDE/ODE & Stochastic/Ordinary Differential Equation. \\
+VP-SDE & Variance-preserving SDE. \\
+SGM/WSGM & Score-based Generative Model and Wavelet Score-based Generative Model. \\
+FID/PhyFID & Frechet Inception Distance and physics-adapted FID. \\
+
+\end{longtable}
+\endgroup

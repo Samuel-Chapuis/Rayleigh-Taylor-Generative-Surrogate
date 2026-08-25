@@ -48,14 +48,14 @@ simulations are consequently produced on domains of size $128\times512$.
 
 Since the baseline model is trained on square inputs, the original fields are
 cropped to a square field of view. This cropping is retained only when the full
-mixing zone remains inside the selected window. Let $y_b(t)$ and $y_s(t)$
+mixing zone remains inside the selected window. Let $z_b(t_{\mathrm{phys}})$ and $z_s(t_{\mathrm{phys}})$
 denote the lowest bubble tip and the highest spike tip. The retained crop must
 satisfy
 
 \[
-y_{\min}^{\mathrm{crop}} < y_b(t)
+z_{\min}^{\mathrm{crop}} < z_b(t_{\mathrm{phys}})
 \quad\text{and}\quad
-y_s(t) < y_{\max}^{\mathrm{crop}},
+z_s(t_{\mathrm{phys}}) < z_{\max}^{\mathrm{crop}},
 \]
 
 so that the full physically relevant interface dynamics remains visible.

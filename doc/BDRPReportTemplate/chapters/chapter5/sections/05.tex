@@ -47,7 +47,27 @@ other architectures and metrics.
 \subsection{Line profile and spectral indicators}
 
 The profiles and spectra extracted from the validation, generated and noise datasets are shown in Figures~\ref{fig:ch4_line_statistics} and
-\ref{fig:ch4_energy_spectrum}. The corresponding distances are,
+\ref{fig:ch4_energy_spectrum}. The corresponding distances are then reported in Table~\ref{tab:line_profile_spectrum_baseline}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]{figures/ch4/skewnorm_joyplot.png}
+    \caption{Line-wise density statistics extracted from the validation,
+    generated and noise datasets. The skew-normal fits emphasize the vertical
+    organization of the fields and the contrast between physical samples and
+    pure noise.}
+    \label{fig:ch4_line_statistics}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]{figures/ch4/skewnorm_joyplot_energy_spectrum.png}
+    \caption{Same comparison applied to the fluctuation energy spectrum. The
+    generated samples remain much closer to the validation set than pure noise,
+    but the spectral variability is still harder to match than the mean line
+    profile.}
+    \label{fig:ch4_energy_spectrum}
+\end{figure}
 
 \begin{table}[H]
     \centering

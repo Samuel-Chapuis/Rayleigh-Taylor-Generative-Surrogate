@@ -10,7 +10,7 @@ import math
 from lib.cea_lib.general import *
 
 
-def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top", save=False, path="../outputs/img/imageplot.png"):
+def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_position="top", save=False, path="../outputs/img/imageplot.png", text_fontsize=None, colorbar_tick_fontsize=None):
     """
     Affiche une image avec options de subplot, colormap et titre.
 
@@ -24,6 +24,8 @@ def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_positio
         cmap (str, optional): colormap utilisée (par défaut 'grey').
         colorbar (bool, optional): affiche une barre de couleur si True.
         title_position (str, optional): position du titre ("top" ou "left").
+        text_fontsize (int, optional): taille du texte associé à l'image.
+        colorbar_tick_fontsize (int, optional): taille des graduations de la colorbar.
 
     Returns:
         None
@@ -39,27 +41,30 @@ def imageplot(image, str='', sbpt=[], cmap='grey', colorbar=False, title_positio
     if colorbar:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(imgplot, cax=cax)
+        cbar = plt.colorbar(imgplot, cax=cax)
+        if colorbar_tick_fontsize is not None:
+            cbar.ax.tick_params(labelsize=colorbar_tick_fontsize)
 
     ax.axis('off')
 
     if str != '':
         if title_position == "top":
-            ax.set_title(str)
+            ax.set_title(str, fontsize=text_fontsize)
         elif title_position == "left":
             ax.text(
                 -0.1, 0.5, str,
                 transform=ax.transAxes,
                 rotation=90,
                 va='center',
-                ha='right'
+                ha='right',
+                fontsize=text_fontsize
             )
         
     if save:
         plt.savefig(path, dpi=300)
 
 
-def plot_sim_2d(sim, time, titre=None, save=False, path="../outputs/img/simulation_2D.png"):
+def plot_sim_2d(sim, time, titre=None, save=False, path="../outputs/img/simulation_2D.png", text_fontsize=None, title_fontsize=16, colorbar_tick_fontsize=None, shared_colorbar=False, cmap='RdYlBu_r'):
     """
     Affiche une série de simulations 2D à différents instants.
 
@@ -71,31 +76,91 @@ def plot_sim_2d(sim, time, titre=None, save=False, path="../outputs/img/simulati
         time (ndarray): vecteur des temps associés
         titre (str, optional): titre de la figure
         save (bool, optional): enregistrer la figure si True
+        text_fontsize (int, optional): taille des labels temporels des sous-figures
+        title_fontsize (int, optional): taille du titre global
+        colorbar_tick_fontsize (int, optional): taille des graduations des colorbars
+        shared_colorbar (bool, optional): affiche une colorbar commune aux 9 sous-figures
 
     Returns:
         None
     """
-    plt.figure(figsize=(15, 15))
-
-    for i in range(9):
-        nb = i * sim.shape[0] // 9
-        imageplot(
-            sim[nb, :, :], #reverse(sim[nb, :, :])
-            f"t={time[nb]:.2f}",
-            [3, 3, i + 1],
-            cmap='RdYlBu_r',
-            colorbar=True,
-            title_position="left"
+    if shared_colorbar:
+        fig = plt.figure(figsize=(15, 15))
+        gs = gridspec.GridSpec(
+            3,
+            3,
+            figure=fig,
+            wspace=0.35,
+            hspace=0.08
         )
-    
-    plt.suptitle(titre, fontsize=16)
+
+        indices = [i * sim.shape[0] // 9 for i in range(9)]
+        vmin = np.nanmin(sim[indices, :, :])
+        vmax = np.nanmax(sim[indices, :, :])
+        imgplot = None
+        axes = []
+
+        for i, nb in enumerate(indices):
+            row, col = divmod(i, 3)
+            ax = fig.add_subplot(gs[row, col])
+            axes.append(ax)
+            imgplot = ax.imshow(
+                sim[nb, :, :],
+                interpolation='nearest',
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax
+            )
+            ax.axis('off')
+            ax.text(
+                -0.1, 0.5, f"t={time[nb]:.2f}",
+                transform=ax.transAxes,
+                rotation=90,
+                va='center',
+                ha='right',
+                fontsize=text_fontsize
+            )
+
+        fig.suptitle(titre, fontsize=title_fontsize)
+        fig.subplots_adjust(top=0.92, right=0.88)
+
+        right_axes = axes[2::3]
+        right_edge = max(ax.get_position().x1 for ax in right_axes)
+        bottom = min(ax.get_position().y0 for ax in axes)
+        top = max(ax.get_position().y1 for ax in axes)
+        colorbar_pad = 0.012
+        colorbar_width = 0.014
+        cax = fig.add_axes([right_edge + colorbar_pad, bottom, colorbar_width, top - bottom])
+
+        cbar = fig.colorbar(imgplot, cax=cax)
+        if colorbar_tick_fontsize is not None:
+            cbar.ax.tick_params(labelsize=colorbar_tick_fontsize)
+    else:
+        plt.figure(figsize=(15, 15))
+
+        for i in range(9):
+            nb = i * sim.shape[0] // 9
+            imageplot(
+                sim[nb, :, :], #reverse(sim[nb, :, :])
+                f"t={time[nb]:.2f}",
+                [3, 3, i + 1],
+                cmap=cmap,
+                colorbar=True,
+                title_position="left",
+                text_fontsize=text_fontsize,
+                colorbar_tick_fontsize=colorbar_tick_fontsize
+            )
+
+        plt.suptitle(titre, fontsize=title_fontsize)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+
     plt.tight_layout()
     if save:
         plt.savefig(path, dpi=300)
     plt.show()
     
     
-def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, cmap='RdYlBu_r', save=False, path="../outputs/img/simulation_2D.png"):
+def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, cmap='RdYlBu_r', save=False, path="../outputs/img/simulation_2D.png", text_fontsize=None, title_fontsize=16, colorbar_tick_fontsize=None, shared_colorbar=False):
     """
     Affiche dans une image 2000x2000 le nombre nb de simulations 2D également réparties entre l'indice i_start et i_end avec un pas de i_freq.
 
@@ -107,6 +172,10 @@ def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, cmap='RdYlBu_
         nb (int): nombre de simulations à afficher
         titre (str, optional): titre de la figure
         save (bool, optional): enregistrer la figure si True
+        text_fontsize (int, optional): taille des labels temporels des sous-figures
+        title_fontsize (int, optional): taille du titre global
+        colorbar_tick_fontsize (int, optional): taille des graduations des colorbars
+        shared_colorbar (bool, optional): affiche une colorbar commune aux sous-figures
 
     Returns:
         None
@@ -132,22 +201,68 @@ def plot_sim_2d_from_to(sim, time, i_start, i_end, nb, titre=None, cmap='RdYlBu_
     else:
         figsize = (fig_size * fig_ratio, fig_size)
 
-    plt.figure(figsize=figsize)
-
     indices = np.linspace(i_start, i_end, nb, dtype=int)
-
-    for i, idx in enumerate(indices):
-        imageplot(
-            sim[idx, :, :], #reverse(sim[idx, :, :])
-            f"t={time[idx]:.2f}",
-            [best_rows, best_cols, i + 1],
-            cmap=cmap,
-            colorbar=True,
-            title_position="left"
-        )
     
-    plt.suptitle(titre, fontsize=16)
-    plt.tight_layout(rect=[0, 0, 1, 0.97], w_pad=1.0, h_pad=1.0)
+    if shared_colorbar:
+        fig = plt.figure(figsize=figsize)
+        gs = fig.add_gridspec(best_rows, best_cols, wspace=0.35, hspace=0.08)
+        vmin = np.nanmin(sim[indices, :, :])
+        vmax = np.nanmax(sim[indices, :, :])
+        axes = []
+        imgplot = None
+
+        for i, idx in enumerate(indices):
+            row, col = divmod(i, best_cols)
+            ax = fig.add_subplot(gs[row, col])
+            axes.append(ax)
+            imgplot = ax.imshow(
+                sim[idx, :, :], #reverse(sim[idx, :, :])
+                interpolation='nearest',
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax
+            )
+            ax.axis('off')
+            ax.text(
+                -0.1, 0.5, f"t={time[idx]:.2f}",
+                transform=ax.transAxes,
+                rotation=90,
+                va='center',
+                ha='right',
+                fontsize=text_fontsize
+            )
+
+        fig.suptitle(titre, fontsize=title_fontsize)
+        fig.subplots_adjust(top=0.90, right=0.90)
+
+        right_axes = [ax for i, ax in enumerate(axes) if i % best_cols == best_cols - 1]
+        right_edge = max(ax.get_position().x1 for ax in right_axes)
+        bottom = min(ax.get_position().y0 for ax in axes)
+        top = max(ax.get_position().y1 for ax in axes)
+        colorbar_pad = 0.012
+        colorbar_width = 0.014
+        cax = fig.add_axes([right_edge + colorbar_pad, bottom, colorbar_width, top - bottom])
+        cbar = fig.colorbar(imgplot, cax=cax)
+        if colorbar_tick_fontsize is not None:
+            cbar.ax.tick_params(labelsize=colorbar_tick_fontsize)
+    else:
+        plt.figure(figsize=figsize)
+
+        for i, idx in enumerate(indices):
+            imageplot(
+                sim[idx, :, :], #reverse(sim[idx, :, :])
+                f"t={time[idx]:.2f}",
+                [best_rows, best_cols, i + 1],
+                cmap=cmap,
+                colorbar=True,
+                title_position="left",
+                text_fontsize=text_fontsize,
+                colorbar_tick_fontsize=colorbar_tick_fontsize
+            )
+
+        plt.suptitle(titre, fontsize=title_fontsize)
+        plt.tight_layout(rect=[0, 0, 1, 0.97], w_pad=1.0, h_pad=1.0)
+
     if save:
         plt.savefig(path, dpi=300)
     plt.show()

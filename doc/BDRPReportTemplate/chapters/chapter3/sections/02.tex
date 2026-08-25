@@ -10,7 +10,7 @@ In inertial confinement fusion configurations, the instability develops during t
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.55\textwidth]{figures/ch1/rti_sketch.png}
+\includegraphics[width=0.55\textwidth]{figures/ch1/RTI_Evolution_f.png}
 \caption{Illustration of evolution of the Rayleigh--Taylor instability at the interface between two fluids of different densities}
 \label{fig:rti_principle}
 \end{figure}
@@ -28,14 +28,14 @@ where $\rho_h$ and $\rho_l$ denote the densities of the heavy and light fluids r
 
 \subsection{Mathematical Origin of the Rayleigh--Taylor Instability}
 
-The Rayleigh--Taylor instability naturally arises from the governing equations of fluid motion when a density stratification is subjected to an acceleration directed from the heavier fluid toward the lighter one. Following the classical development of Kull~\cite{KULL1991197}, the instability can be understood by considering the evolution of small perturbations of an initially hydrostatic equilibrium.
+The Rayleigh--Taylor instability naturally arises from the governing equations of fluid motion when a density stratification is subjected to an acceleration directed from the heavier fluid toward the lighter one. In the classical formulation of Chandrasekhar~\cite{chandrasekhar1981hydrodynamic}, the instability is most directly described by following the displacement of the material interface separating two fluids, rather than by first decomposing all flow variables into a base state and volumetric perturbations.
 
-For an incompressible Newtonian fluid, the conservation equations read
+Let $\rho$ denote the fluid density, $\mathbf{u}$ the velocity field, $p$ the pressure, $\mu$ the dynamic viscosity, $\mathbf{g}$ the imposed acceleration, and $t_{\mathrm{phys}}$ the physical time. For an incompressible Newtonian fluid, the conservation equations read
 
 \begin{align}
 \nabla\cdot\mathbf{u} &= 0,\\
 \rho\left(
-\frac{\partial\mathbf{u}}{\partial t}
+\frac{\partial\mathbf{u}}{\partial t_{\mathrm{phys}}}
 +\mathbf{u}\cdot\nabla\mathbf{u}
 \right)
 &=
@@ -44,47 +44,100 @@ For an incompressible Newtonian fluid, the conservation equations read
 +\rho\mathbf{g},
 \end{align}
 
-where $\rho$ denotes the density, $\mathbf{u}$ the velocity field, $p$ the pressure and $\mathbf{g}$ the imposed acceleration.
-
-In the absence of motion, the system is in hydrostatic equilibrium,
+In the absence of motion, the velocity vanishes and the pressure reduces to a hydrostatic reference pressure $p_0$. The corresponding equilibrium satisfies
 
 \begin{equation}
 \nabla p_0=\rho\mathbf{g}.
 \end{equation}
 
-The stability of this equilibrium depends entirely on the density stratification. When the lighter fluid lies above the heavier one, any perturbation is counteracted by the buoyancy force and the equilibrium is stable. Conversely, when the heavier fluid overlies the lighter one, a small displacement of the interface produces a buoyancy force that amplifies the perturbation rather than restoring it. The hydrostatic equilibrium therefore becomes unstable.
-
-Following the linear stability analysis presented by Kull~\cite{KULL1991197}, the flow variables are decomposed into a base state and infinitesimal perturbations,
+Consider two inviscid incompressible fluids separated, at equilibrium, by the plane $z=0$. The coordinate $z$ is taken opposite to the imposed acceleration. Let $g>0$ denote the magnitude of this acceleration and let $\mathbf{e}_z$ denote the unit vector in the positive $z$ direction, so that $\mathbf{g}=-g\mathbf{e}_z$. The coordinates parallel to the unperturbed interface are denoted by $\mathbf{x}_{\parallel}=(x,y)$. The perturbed material interface is represented by its vertical displacement $\eta(\mathbf{x}_{\parallel},t_{\mathrm{phys}})$ through the graph
 
 \begin{equation}
-\mathbf{u}=\mathbf{u}',
+z=\eta(\mathbf{x}_{\parallel},t_{\mathrm{phys}}),
+\end{equation}
+
+where $\eta$ is assumed small compared with the perturbation wavelength. In the Rayleigh--Taylor configuration considered here, the upper fluid is the heavy fluid, with density $\rho_h$, and occupies $z>\eta$, while the lower fluid is the light fluid, with density $\rho_l$, and occupies $z<\eta$. Thus $\rho_h>\rho_l$: the heavier fluid lies in the direction opposite to the acceleration and is accelerated toward the lighter one.
+
+In the linear inviscid limit, the motion induced in each fluid can be represented by a velocity potential $\phi_j$, where the index $j$ is equal to $h$ in the heavy fluid and $l$ in the light fluid. The corresponding velocity field in fluid $j$ is denoted by $\mathbf{u}_j$. Since each fluid is incompressible and irrotational at this order, $\phi_j$ satisfies Laplace's equation:
+
+\begin{equation}
+\mathbf{u}_j=\nabla \phi_j,
 \qquad
-p=p_0+p',
+\nabla^2\phi_j=0,
 \qquad
-\rho=\rho_0+\rho',
+j\in\{h,l\}.
 \end{equation}
 
-where only first-order terms are retained. Assuming perturbations of normal-mode form,
+Let $\mathbf{k}$ be the horizontal wave vector of an interfacial disturbance, $k=|\mathbf{k}|$ its wavenumber, $\gamma$ its temporal growth rate, $\hat{\eta}$ its complex amplitude, and $i$ the imaginary unit. A normal mode of the interface is written
 
 \begin{equation}
-\exp\left(i\mathbf{k}\cdot\mathbf{x}+\gamma t\right),
+\eta(\mathbf{x}_{\parallel},t_{\mathrm{phys}})
+=
+\hat{\eta}
+\exp\left(i\mathbf{k}\cdot\mathbf{x}_{\parallel}+\gamma t_{\mathrm{phys}}\right),
 \end{equation}
 
-the linearized equations reduce to an eigenvalue problem whose solution provides the perturbation growth rate.
+Let $\hat{\phi}_l$ and $\hat{\phi}_h$ denote the complex amplitudes of the velocity potentials in the light and heavy fluids. Since the perturbation must decay away from the interface, the potentials take the form
 
-For the ideal case of two incompressible, inviscid fluids separated by a sharp interface and neglecting surface tension, the classical dispersion relation is
+\begin{align}
+\phi_l &=
+\hat{\phi}_l
+e^{kz}
+\exp\left(i\mathbf{k}\cdot\mathbf{x}_{\parallel}+\gamma t_{\mathrm{phys}}\right),
+\qquad z<0,\\
+\phi_h &=
+\hat{\phi}_h
+e^{-kz}
+\exp\left(i\mathbf{k}\cdot\mathbf{x}_{\parallel}+\gamma t_{\mathrm{phys}}\right),
+\qquad z>0.
+\end{align}
+
+The interface is material: fluid particles initially on the interface remain on it. Linearizing this kinematic condition at the unperturbed interface $z=0$ gives, for each fluid $j\in\{h,l\}$,
 
 \begin{equation}
-\gamma^2=Agk,
+\frac{\partial \eta}{\partial t_{\mathrm{phys}}}
+=
+\left.\frac{\partial \phi_j}{\partial z}\right|_{z=0},
 \end{equation}
 
-The positive sign of $\gamma^2$ demonstrates that disturbances grow exponentially with time,
+Hence
 
 \begin{equation}
-\eta(t)=\eta_0e^{\gamma t},
+\hat{\phi}_l=\frac{\gamma}{k}\hat{\eta},
+\qquad
+\hat{\phi}_h=-\frac{\gamma}{k}\hat{\eta}.
 \end{equation}
 
-revealing that the hydrostatic equilibrium is intrinsically unstable when the acceleration is directed from the heavy fluid toward the light one. This result constitutes the mathematical foundation of the Rayleigh--Taylor instability and explains why small perturbations evolve into the nonlinear structures observed experimentally and numerically.
+The stability criterion follows from the dynamic condition at the same interface. In the absence of surface tension, the pressure is continuous across $z=\eta$. Combining this pressure continuity with the linearized unsteady Bernoulli relation in each fluid gives
+
+\begin{equation}
+\rho_h\frac{\partial\phi_h}{\partial t_{\mathrm{phys}}}
+-
+\rho_l\frac{\partial\phi_l}{\partial t_{\mathrm{phys}}}
++
+g(\rho_h-\rho_l)\eta
+=0
+\qquad \text{at } z=0.
+\end{equation}
+
+Substituting the kinematic relations into this interfacial balance yields the classical Rayleigh--Taylor dispersion relation
+
+\begin{equation}
+\gamma^2
+=
+gk
+\frac{\rho_h-\rho_l}{\rho_h+\rho_l}
+=
+A g k.
+\end{equation}
+
+The density ratio is exactly the Atwood number defined above. Since $\rho_h>\rho_l$ in the unstable ordering, $\gamma^2>0$. For an initial interface amplitude $\eta_0$, the displacement grows exponentially as
+
+\begin{equation}
+\eta(t_{\mathrm{phys}})=\eta_0e^{\gamma t_{\mathrm{phys}}},
+\end{equation}
+
+so the hydrostatic equilibrium is unstable. If the density ordering were reversed, the numerator in the dispersion relation would change sign and the same interface mode would oscillate rather than grow. This interfacial balance is the mathematical origin of the Rayleigh--Taylor instability and explains why small displacements evolve into the nonlinear bubbles and spikes observed experimentally and numerically.
 
 
 
@@ -116,15 +169,58 @@ This transition from ordered interface perturbations to fully developed turbulen
 
 \subsection{Multi-scale Nature and Turbulence}
 
-One of the main characteristics of the Rayleigh--Taylor instability is its strongly multi-scale behavior. Large coherent structures generated during the non-linear growth phase progressively fragment into smaller vortical structures through turbulent cascades and interface stretching mechanisms.
+The multi-scale character of a flow should not be understood as a purely
+numerical effect or as a simple consequence of looking at the same field with
+different grid resolutions. It is first a physical property of flows in which
+inertia, advection, viscosity, and coherent structures interact over a range of
+length scales. A classical experimental illustration is the flow past a sphere
+at increasing Reynolds number
+$Re=\rho U D/\mu$, where $\rho$ is the fluid density, $U$ the incoming velocity,
+$D$ the sphere diameter, and $\mu$ the dynamic viscosity. This evolution is
+shown in Figure~\ref{fig:reynolds_sphere_wakes} from the visualizations
+collected by Van Dyke~\citep{vandDyke1982album}. For low Reynolds number, the
+streamlines remain mostly organized and the wake is limited. As the Reynolds
+number increases, the separated region grows, vortical structures appear in the
+wake, and the flow progressively develops smaller spatial features embedded in
+larger coherent motions.
 
-As turbulence develops, energy is transferred across a wide range of spatial scales. Fine-scale structures emerge near the mixing layer interface and interact continuously with larger coherent motions. This scale coupling significantly complicates both physical analysis and numerical modeling. Figure~\ref{fig:rti_multiscale} illustrates this resolution-dependent multi-scale structure on single-mode RTI simulations.
+The Rayleigh--Taylor instability follows the same general mechanism of
+progressive scale enrichment, although the physical source of the motion is
+different. Instead of a mean flow separating behind an obstacle, RTI starts from
+an accelerated density interface. The early dynamics are dominated by the
+growth of large interface perturbations, while the non-linear regime generates
+bubbles, spikes, shear layers, and secondary vortices. As these structures
+interact, the mixing layer develops fine-scale gradients and intermittent
+features superimposed on the large coherent organization of the flow.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.65\textwidth]{figures/ch1/multiscale.png}
-\caption{Time evolution of the density field for a single-mode Rayleigh--Taylor instability at two times and three coarse-grid resolutions using the ILES-Rusanov scheme. Adapted from \citet{fluids4020078}.}
-\label{fig:rti_multiscale}
+\begin{subfigure}[t]{0.30\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/ch1/R=13.1.jpg}
+    \caption{$Re=13.1$}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.30\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/ch1/R=26.jpg}
+    \caption{$Re=26$}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.36\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/ch1/R=200.jpg}
+    \caption{$Re=200$}
+\end{subfigure}
+\caption[Experimental visualizations of a sphere wake at increasing Reynolds number]{Experimental visualizations of the wake behind a sphere at increasing Reynolds number, illustrating the progressive emergence of separated vortical structures and smaller flow scales as inertial effects become more important. Reproduced from \citet{vandDyke1982album}.}
+\label{fig:reynolds_sphere_wakes}
 \end{figure}
 
-The presence of coherent structures, intermittent mixing regions, and localized gradients motivates the use of multi-resolution analysis tools capable of simultaneously capturing both spatial localization and scale-dependent information. This aspect will later motivate the investigation of wavelet-based representations for generative modeling purposes.
+This analogy is useful for the present work because the density fields generated
+by RTI simulations also contain coherent structures, intermittent mixing
+regions, and localized gradients over several spatial scales. Capturing this
+joint presence of large-scale organization and small-scale details motivates the
+use of multi-resolution analysis tools capable of retaining both spatial
+localization and scale-dependent information. This aspect will later motivate
+the investigation of wavelet-based representations for generative modeling
+purposes.

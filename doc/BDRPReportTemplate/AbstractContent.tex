@@ -1,19 +1,19 @@
 ﻿Direct Numerical Simulations provide high-fidelity descriptions of
-Rayleigh--Taylor instability, but their computational cost limits the number of
+Rayleigh--Taylor instability (RTI), but their computational cost limits the number of
 available realizations. This constraint motivates the development of generative
 surrogate models able to reproduce the statistical properties of simulated
 density fields at a lower computational cost. In this work, the objective is to
 confront two diffusion-based strategies for the generation of two-dimensional
-Rayleigh--Taylor instability fields obtained from DNS: a classical diffusion
+Rayleigh--Taylor instability fields obtained from Direct Numerical Simulations (DNS): a classical diffusion
 model trained directly in physical space, and wavelet-based diffusion models
 operating on multi-resolution representations.
 
 The study first introduces the physical and numerical context of the
-Rayleigh--Taylor instability and emphasizes its strongly non-linear and
+RTI and emphasizes its strongly non-linear and
 multi-scale nature. Fourier and wavelet representations are then examined as
 possible tools for reducing dimensional complexity and capturing scale-dependent
 flow structures. The first generative approach is a baseline Denoising
-Diffusion Probabilistic Model trained directly in image space on preprocessed
+Diffusion Probabilistic Model (DDPM) trained directly in image space on preprocessed
 density fields, using physically consistent augmentations based on horizontal
 periodicity and symmetry. The second approach introduces wavelet decompositions
 in order to explicitly separate coarse structures from localized detail
@@ -21,7 +21,8 @@ coefficients before applying diffusion in this transformed space.
 
 The comparison between these approaches is carried out both qualitatively and
 quantitatively. Generated ensembles are evaluated using feature-space
-distances, including FID and a domain-adapted PhyFID, as well as physically
+distances, including Fréchet Inception Distance (FID) and a domain-adapted physical
+PhyFID, as well as physically
 motivated metrics based on vertical density profiles and fluctuation spectra.
 These indicators are designed to assess not only the visual realism of the
 generated samples, but also their ability to reproduce statistical and
@@ -41,7 +42,7 @@ rougher than those obtained with the direct image-space diffusion model.
 
 This confrontation therefore provides a first assessment of the benefits and
 limitations of wavelet representations for diffusion surrogate modeling of
-Rayleigh--Taylor instability. While classical diffusion currently gives the
+RTI. While classical diffusion currently gives the
 best generation quality in this study, wavelet-based diffusion remains a
 promising direction for improving physical interpretability and scale-aware
 generation, provided that the conditioning strategy and architecture are further
