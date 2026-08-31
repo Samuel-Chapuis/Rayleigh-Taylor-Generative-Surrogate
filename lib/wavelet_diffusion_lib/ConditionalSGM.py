@@ -90,6 +90,20 @@ class WaveletConditionalSGM(nn.Module):
         sigma = self.marginal_std(t)
         return sigma[:, None, None, None] * noisy_details + alpha[:, None, None, None] * prediction
 
+    def predict_details0_from_prediction(self, noisy_details, t, prior, prediction):
+        """Reconstruct normalized clean details from the raw network output."""
+        t = t.to(device=noisy_details.device, dtype=noisy_details.dtype).reshape(-1)
+        alpha = self.alpha_bar(t).clamp_min(1e-12).sqrt()
+        sigma = self.marginal_std(t)
+        if self.prediction_type == "epsilon":
+            return (
+                noisy_details - sigma[:, None, None, None] * prediction
+            ) / alpha[:, None, None, None]
+        return (
+            alpha[:, None, None, None] * noisy_details
+            - sigma[:, None, None, None] * prediction
+        )
+
     def score(self, noisy_details, t, prior):
         sigma = self.marginal_std(t).reshape(-1, 1, 1, 1)
         return -self.predict_epsilon(noisy_details, t, prior) / sigma
@@ -108,6 +122,7 @@ class WaveletConditionalSGM(nn.Module):
         n_steps=256,
         solver="heun",
         return_history=False,
+        final_denoise=False,
     ):
         """Generate details with the conditional probability-flow ODE."""
         if n_steps < 1:
@@ -143,6 +158,15 @@ class WaveletConditionalSGM(nn.Module):
                 x = predictor
             if not torch.isfinite(x).all():
                 raise FloatingPointError("La trajectoire SGM wavelet contient des valeurs non finies.")
+            if return_history:
+                history.append(torch.cat((prior, x), dim=1).cpu())
+
+        if final_denoise:
+            t_final = torch.full((n,), self.eps_time, device=device, dtype=x.dtype)
+            prediction = self.network(torch.cat((prior, x), dim=1), t_final)
+            x = self.predict_details0_from_prediction(x, t_final, prior, prediction)
+            if not torch.isfinite(x).all():
+                raise FloatingPointError("Le denoising final SGM wavelet contient des valeurs non finies.")
             if return_history:
                 history.append(torch.cat((prior, x), dim=1).cpu())
 

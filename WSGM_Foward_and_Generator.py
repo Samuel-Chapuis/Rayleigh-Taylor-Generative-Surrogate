@@ -60,6 +60,7 @@ class LevelConfig:
     sampling_steps: int = 256
     prediction_type: str = "v"
     sampler: str = "heun"
+    final_denoise: bool = False
     prior_channels: int = 1
     target_channels: int = 3
     unet_depth: int = 3
@@ -120,10 +121,10 @@ class CoarseConfig:
     normalize_ca: bool = True
     do_train: bool = True
     input_path: str = ""
-    store_path: str = "outputs/saved_models/cascade_sgm/coarse_cA2_RT64.pt"
+    store_path: str = "outputs/model/cascade_sgm/coarse_cA2_RT64.pt"
     log_path: str = "outputs/logs/cascade_sgm/coarse_cA2_RT64.log"
     csv_path: str = "outputs/logs/cascade_sgm/coarse_cA2_RT64.csv"
-    config_path: str = "outputs/saved_models/cascade_sgm/coarse_cA2_RT64_config.json"
+    config_path: str = "outputs/model/cascade_sgm/coarse_cA2_RT64_config.json"
     time_emb_dim: int = 100
     beta_min: float = 0.1
     beta_max: float = 20.0
@@ -379,6 +380,7 @@ def saved_config_dict(config, image_hw, coeff_mean, coeff_std):
         "sampling_steps": config.sampling_steps,
         "prediction_type": config.prediction_type,
         "sampler": config.sampler,
+        "final_denoise": config.final_denoise,
         "coeff_chw": (config.input_channels, *image_hw),
         "prior_channels": config.prior_channels,
         "target_channels": config.target_channels,
@@ -428,7 +430,8 @@ def train_one_level(config: LevelConfig, preview_samples: int) -> None:
     with torch.no_grad():
         prior, real_details = split_wave_batch(next(iter(val_loader)), config.device, config.prior_channels)
         generated = sgm.sample(prior[:preview_samples], device=config.device,
-                               n_steps=config.sampling_steps, solver=config.sampler)
+                               n_steps=config.sampling_steps, solver=config.sampler,
+                               final_denoise=config.final_denoise)
     viz = ImageVisualizer(output_dir=absolute_path(config.image_dir))
     show_wave_channels(viz, torch.cat((prior[:preview_samples], real_details[:preview_samples]), 1).cpu(),
                        f"sgm_wave_j{config.wavelet_level}_real")
@@ -454,6 +457,8 @@ def apply_generation_runtime_overrides(saved: dict[str, Any], config: LevelConfi
     saved = dict(saved)
     saved["sampling_steps"] = config.sampling_steps
     saved["sampler"] = config.sampler
+    saved["eps_time"] = config.eps_time
+    saved["final_denoise"] = config.final_denoise
     return saved
 
 
@@ -575,7 +580,8 @@ def generated_details(ca_physical, saved, model, device, batch_size):
         for (ca_batch,) in loader:
             prior = ((ca_batch - mean) / std).to(device)
             sampled = model.sample(prior, device=device, n_steps=int(saved["sampling_steps"]),
-                                   solver=saved.get("sampler", "heun"))
+                                   solver=saved.get("sampler", "heun"),
+                                   final_denoise=bool(saved.get("final_denoise", False)))
             detail_mean = torch.as_tensor(saved["coeff_mean"], dtype=sampled.dtype)[1:].view(1, 3, 1, 1)
             detail_std = torch.as_tensor(saved["coeff_std"], dtype=sampled.dtype)[1:].view(1, 3, 1, 1)
             batches.append((sampled[:, 1:].cpu() * detail_std + detail_mean).cpu())
