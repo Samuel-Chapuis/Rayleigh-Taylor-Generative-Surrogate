@@ -3,7 +3,7 @@ Rayleigh--Taylor instability (RTI), but their computational cost limits the numb
 available realizations. This constraint motivates the development of generative
 surrogate models able to reproduce the statistical properties of simulated
 density fields at a lower computational cost. In this work, the objective is to
-confront two diffusion-based strategies for the generation of two-dimensional
+compare two diffusion-based strategies for the generation of two-dimensional
 Rayleigh--Taylor instability fields obtained from Direct Numerical Simulations (DNS): a classical diffusion
 model trained directly in physical space, and wavelet-based diffusion models
 operating on multi-resolution representations.
@@ -12,9 +12,8 @@ The study first introduces the physical and numerical context of the
 RTI and emphasizes its strongly non-linear and
 multi-scale nature. Fourier and wavelet representations are then examined as
 possible tools for reducing dimensional complexity and capturing scale-dependent
-flow structures. The first generative approach is a baseline Denoising
-Diffusion Probabilistic Model (DDPM) trained directly in image space on preprocessed
-density fields, using physically consistent augmentations based on horizontal
+flow structures. The first generative approach is a baseline Score Base Generative Model (SGM) trained directly in image space on preprocessed
+density fields, using physically consistent data augmentations based on horizontal
 periodicity and symmetry. The second approach introduces wavelet decompositions
 in order to explicitly separate coarse structures from localized detail
 coefficients before applying diffusion in this transformed space.
@@ -31,8 +30,7 @@ scale-dependent properties of the reference RTI fields.
 The baseline diffusion model generates samples that reproduce the main
 organization of the reference simulations and remain significantly closer to
 the validation dataset than pure noise or unrelated images. In PhyFID space,
-the generated fields obtain a distance of approximately $0.132$ from the
-validation set, compared with $6.04$ for pure noise. The physical metrics show
+the generated fields is 60 time closer to the validation set than pure noise. The physical metrics show
 the same trend and confirm that the model captures non-trivial statistical
 information about the RTI dataset. The wavelet-based formulation introduces a
 physically meaningful multi-resolution inductive bias and shows that diffusion

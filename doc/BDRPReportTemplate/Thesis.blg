@@ -2,7 +2,6 @@ This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: Thesis.aux
 A level-1 auxiliary file: chapters/chapter1/main.aux
-A level-1 auxiliary file: chapters/chapter2/main.aux
 A level-1 auxiliary file: chapters/chapter3/main.aux
 A level-1 auxiliary file: chapters/chapter4/main.aux
 A level-1 auxiliary file: chapters/chapter5/main.aux
@@ -10,44 +9,44 @@ A level-1 auxiliary file: chapters/chapter6/main.aux
 A level-1 auxiliary file: chapters/chapterappendix/main.aux
 The style file: plainnat.bst
 Database file #1: Thesis.bib
-You've used 10 entries,
+You've used 13 entries,
             2773 wiz_defined-function locations,
-            672 strings with 6626 characters,
-and the built_in function-call counts, 3874 in all, are:
-= -- 341
-> -- 187
-< -- 8
-+ -- 67
-- -- 57
-* -- 276
-:= -- 637
-add.period$ -- 40
-call.type$ -- 10
-change.case$ -- 45
-chr.to.int$ -- 10
-cite$ -- 20
-duplicate$ -- 200
-empty$ -- 339
-format.name$ -- 69
-if$ -- 800
+            708 strings with 7588 characters,
+and the built_in function-call counts, 5725 in all, are:
+= -- 543
+> -- 257
+< -- 11
++ -- 91
+- -- 78
+* -- 442
+:= -- 909
+add.period$ -- 60
+call.type$ -- 13
+change.case$ -- 62
+chr.to.int$ -- 13
+cite$ -- 26
+duplicate$ -- 275
+empty$ -- 490
+format.name$ -- 93
+if$ -- 1202
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 15
-newline$ -- 67
-num.names$ -- 40
-pop$ -- 97
+missing$ -- 17
+newline$ -- 92
+num.names$ -- 52
+pop$ -- 112
 preamble$ -- 1
-purify$ -- 39
+purify$ -- 52
 quote$ -- 0
-skip$ -- 139
+skip$ -- 195
 stack$ -- 0
-substring$ -- 85
-swap$ -- 10
-text.length$ -- 0
+substring$ -- 219
+swap$ -- 24
+text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 85
+type$ -- 123
 warning$ -- 0
-while$ -- 35
+while$ -- 54
 width$ -- 0
-write$ -- 153
+write$ -- 215
