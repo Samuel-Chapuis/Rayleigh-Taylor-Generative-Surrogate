@@ -17,7 +17,7 @@ A major difficulty in ICF lies in maintaining the stability of the implosion. Sm
 
 Predicting the evolution of the Rayleigh--Taylor instability remains challenging because of its non-linear, multi-scale, and eventually turbulent nature. Direct Numerical Simulations (DNS) provide a reference approach to study such flows, as they resolve the relevant spatial and temporal scales without relying on turbulence closure models \citep{MoinMahesh1998}. Therefore they make it possible to generate accurate representations of the instability dynamics, from the early growth phase to more complex mixing regimes, including the bubble, spike, and mixing structures documented in the RTI literature \citep{KULL1991197,zhou2017rti1}. The physical mechanism of RTI, the numerical role of DNS, and the mathematical representations used to analyze the resulting density fields are developed in Chapter~\ref{chap:background}. Figure~\ref{fig:dns_example} shows an example of the type of density fields considered in this work.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \centering
 \includegraphics[width=0.8\textwidth]{figures/intro/RTCEA_simulation_2D_f.png}
 \caption{Example of density field evolution obtained from Direct Numerical Simulations of the Rayleigh--Taylor instability.}
@@ -30,13 +30,22 @@ Generative models provide a natural formulation: they approximate the distributi
 
 This motivates the wavelet-based strategy introduced by Guth, Coste, De Bortoli, and Mallat in the Wavelet Score-Based Generative Model (WSGM) \citep{Guth2022WSGM}. WSGM factorizes generation across scales: a coarse representation is sampled first, then wavelet details are generated conditionally from coarse to fine. For Gaussian multiscale distributions, the authors show that the discretization error can be controlled without increasing the number of time steps per image pixel with resolution; their experiments also report convergence with far fewer integration steps than a conventional SGM, in some cases by roughly two orders of magnitude. This is not a universal guarantee for arbitrary RTI fields, but it identifies a concrete route toward faster diffusion sampling.
 
-The present study adapts this idea to two-dimensional Rayleigh--Taylor density fields. Wavelets are relevant here because they combine spatial and scale localization, a property useful for turbulent flows where coherent large-scale structures coexist with localized fine-scale fluctuations \citep{Farge1992,Mallat2009,Meyer1992}. Each field is decomposed into one approximation component, $LL$, and three directional detail components, $LH$, $HL$, and $HH$. In the implemented pipeline, an initial coarse approximation can be sampled by an unconditional diffusion model, after which a cascade of conditional diffusion models generates the details level by level. At each level, the current coarse field conditions the detail model; the sampled details are then combined with it through an inverse wavelet transform to produce the next finer approximation. The preprocessing choices, the direct image-space baseline, and this cascade are described in Chapter~\ref{chap:methodology}.
+The present study adapts this idea to two-dimensional Rayleigh--Taylor density fields. Wavelets are relevant here because they combine spatial and scale localization, a property useful for turbulent flows where coherent large-scale structures coexist with localized fine-scale fluctuations \citep{Farge1992,Mallat2009,Meyer1992}. Each field is decomposed into one approximation component, $LL$, and three directional detail components, $LH$, $HL$, and $HH$. In the implemented pipeline, an initial coarse approximation can be sampled by an unconditional diffusion model, after which a cascade of conditional diffusion models generates the details level by level. At each level, the current coarse field conditions the detail model; the sampled details are then combined with it through an inverse wavelet transform to produce the next finer approximation. Figure~\ref{fig:introduction_wavelet_diffusion_scheme} summarizes the high-level distinction between direct image-space diffusion and the wavelet-based formulation. The preprocessing choices, the direct image-space baseline, and this cascade are described in Chapter~\ref{chap:methodology}.
 
-\textbf{The central hypothesis is that this scale-conditioned cascade, by separating large-scale organization from localized fine-scale fluctuations, can provide a more efficient and better-conditioned generative representation of RTI fields than a conventional image-space diffusion model.} 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/ch5/WaveletDiffusion.png}
+\caption{Comparison between direct diffusion and wavelet-based diffusion. In the wavelet case, the prior is defined on a lower-resolution latent representation before the inverse wavelet transform reconstructs the full field.}
+\label{fig:introduction_wavelet_diffusion_scheme}
+\end{figure}
+
+\textbf{The central hypothesis is that this scale-conditioned cascade, by separating large-scale organization from localized fine-scale fluctuations, can provide a more efficient and better-conditioned generative representation of RTI fields than a conventional image-space diffusion model.}
 
 The study therefore asks whether a direct score-based baseline can learn the RTI distribution from a limited dataset, and whether the adapted WSGM formulation can improve sampling efficiency or statistical fidelity without degrading the physical relevance of the generated fields. The experimental protocol and comparison with DNS references are presented in Chapter~\ref{chap:experiments}; Chapter~\ref{chap:conclusion} discusses the limitations of the current wavelet formulation and the conditions required to scale the surrogate further.
 
-The main contributions are:
+\newpage
+
+\textbf{The main contributions of this study are summarized as follows:}
 \begin{enumerate}
     \item Implementation of a baseline diffusion model trained directly on preprocessed density fields;
     \item Construction of physically consistent data augmentations adapted to the symmetries and periodicity of the dataset;
