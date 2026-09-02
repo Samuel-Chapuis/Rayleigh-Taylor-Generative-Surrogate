@@ -1,6 +1,6 @@
 \section{Introduction to score-based diffusion}
 
-\subsection{From individual simulations to a probability distribution}
+\subsection{Learning the probability distribution from samples}
 
 Machine learning approaches can broadly be divided into supervised and unsupervised methods. In supervised learning, the objective is to learn a mapping between an input and a target output provided through labeled examples. Typical applications include regression and classification tasks, where each sample is associated with a known quantity of interest.
 
@@ -14,7 +14,7 @@ Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or e
 
 is regarded as a finite collection of samples drawn from an unknown data
 distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective is therefore not to reconstruct one particular DNS realization, but to
-learn the \emph{the probability distribution} of the simulated RTI
+learn the \emph{probability distribution $p_{\mathrm{data}}(\mathbf{x}_0)$} of the simulated RTI
 fields. In other words, the model should map the space of admissible density fields to a probability measure that captures the properties of the dataset.
 The learned model, denoted by $p_{\theta}(\mathbf{x}_0)$, should approximate the
 unknown distribution according to

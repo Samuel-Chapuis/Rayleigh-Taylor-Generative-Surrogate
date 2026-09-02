@@ -2,34 +2,27 @@
 
 The baseline model is trained directly on preprocessed two-dimensional RTI density fields. This pipeline is used as the reference against which the wavelet-based approach is compared.
 
-The baseline implementation is organized around the script
-\texttt{\_to\_move\_2D/diffusion.py} and the reusable library
-\texttt{lib/diffusion\_lib}. The script plays the role of an experiment driver:
-it defines the configuration, selects the computing device, loads the processed
-RTI tensors, checks that the dataset shape is consistent with the model
-configuration, initializes the SGM and U-Net, launches the training loop when
-required, and finally reloads the best checkpoint for visualization and
-sampling.
+The baseline pipeline follows the standard components of a score-based
+generative model. The preprocessed RTI tensors are first loaded as
+floating-point density fields and normalized to the interval $[-1,1]$. A
+continuous variance-preserving SDE with affine $\beta(t)$ is then used to define
+the forward noising process, the corresponding exact marginal perturbation, and
+the probability-flow ODE used during sampling. The score network is a
+time-conditioned U-Net trained to predict the target associated with the chosen
+SGM parameterization, which is the $\mathbf{v}$-parameterization in the
+baseline configuration.
 
-The library separates the main components of the diffusion pipeline. The
-\texttt{data\_loader} module loads the already preprocessed training,
-validation, and test tensors, converts them to floating-point images, and
-normalizes them in the interval $[-1,1]$. The \texttt{SGM} module implements a
-continuous VP-SDE with affine $\beta(t)$, exact marginal noising, score
-reconstruction, and probability-flow ODE sampling using Heun by default. The \texttt{UNet} module
-provides the time-conditioned convolutional network used to predict either the
-Gaussian perturbation or, in the current default configuration, the
-$\mathbf{v}$-parameterization. The \texttt{training\_loop} module contains the
-training logic: for each batch, a continuous diffusion time is sampled,
-Gaussian noise is added using the exact VP marginal, the U-Net predicts the
-chosen SGM target, and the parameters are updated by minimizing the mean
-squared error between true and predicted targets. Validation loss is used to
-select and save the best model checkpoint.
+During training, each batch is perturbed at a randomly sampled continuous
+diffusion time. Gaussian noise is added according to the exact VP marginal, the
+U-Net predicts the selected target, and the model parameters are updated by
+minimizing the mean squared error between the true and predicted targets. A
+validation set is used to monitor generalization and to retain the checkpoint
+with the lowest validation loss for subsequent visualization and sampling.
 
 The score network is a two-dimensional U-Net that receives a noisy density
 field $\mathbf{x}_t$ together with the corresponding continuous diffusion time
 $t$ and predicts the target required by the selected SGM parameterization. With
-the default $\mathbf{v}$-parameterization used in \texttt{SGM.py}, the target is
+the $\mathbf{v}$-parameterization, the target is
 \[
 \mathbf{v}
 =
