@@ -40,6 +40,21 @@ from lib.wavelet_diffusion_lib.wavelet_utils import (
 PROJECT_ROOT = Path(__file__).resolve().parent
 RUN_CONFIG_PATH = PROJECT_ROOT / "WSGM_Config.json"
 
+INITIAL_CA_SOURCE_DESCRIPTIONS = {
+    "dataset": (
+        "WSGM_reference",
+        "coarse cA lu directement dans le dataset; ablation oracle, pas de generation coarse",
+    ),
+    "coarse_sgm": (
+        "WSGM",
+        "coarse cA genere par le SGM inconditionnel coarse; cascade complete",
+    ),
+    "generated": (
+        "WSGM_legacy_generated_coarse",
+        "coarse cA genere par un ancien SGM inconditionnel externe",
+    ),
+}
+
 
 @dataclass
 class LevelConfig:
@@ -601,6 +616,9 @@ def generate_cascade(run_config, device):
     output_dir = absolute_path(generation.get("output_dir", "outputs/generated/cascade_sgm"))
     output_dir.mkdir(parents=True, exist_ok=True)
     initial_source = generation.get("initial_ca_source", "dataset")
+    if initial_source not in INITIAL_CA_SOURCE_DESCRIPTIONS:
+        raise ValueError("initial_ca_source doit valoir 'dataset', 'coarse_sgm' ou 'generated'.")
+    cascade_name, coarse_source_description = INITIAL_CA_SOURCE_DESCRIPTIONS[initial_source]
 
     # The initial cA can come directly from the requested dataset split. In
     # that mode no checkpoint/configuration is needed for the coarse level.
@@ -610,7 +628,8 @@ def generate_cascade(run_config, device):
         f"j{levels[0]}_{split}.pt"
     )
     count = min(len(coarse_data), int(n_samples)) if n_samples is not None else min(len(coarse_data), batch_size)
-    current_ca = coarse_data[:count, :1].float()
+    reference_ca = coarse_data[:count, :1].float()
+    current_ca = reference_ca
     if initial_source == "coarse_sgm":
         coarse_config_path = absolute_path(
             generation.get("coarse_config_path", make_coarse_config(run_config, device).config_path)
@@ -627,15 +646,36 @@ def generate_cascade(run_config, device):
         if generation.get("initial_ca_checkpoint_path"):
             initial_config["store_path"] = generation["initial_ca_checkpoint_path"]
         current_ca = generate_unconditional_ca(initial_config, device, count)
-    elif initial_source != "dataset":
-        raise ValueError("initial_ca_source doit valoir 'dataset', 'coarse_sgm' ou 'generated'.")
+
+    print(f"{cascade_name}: {coarse_source_description}.")
     # Safety net for legacy coarse configs without ca_min/ca_max. The detail
     # models were trained on the physical support of the dataset cA.
-    ca_reference = coarse_data[:count, :1]
-    current_ca = current_ca.clamp(ca_reference.min(), ca_reference.max())
-    if tuple(current_ca.shape) != tuple(coarse_data[:count, :1].shape):
+    current_ca = current_ca.clamp(reference_ca.min(), reference_ca.max())
+    if tuple(current_ca.shape) != tuple(reference_ca.shape):
         raise ValueError("Le modele cA produit une resolution incompatible avec la cascade.")
+    torch.save(reference_ca, output_dir / f"j{levels[0]}_reference_cA.pt")
+    if initial_source == "dataset":
+        torch.save(current_ca, output_dir / f"j{levels[0]}_reference_initial_cA.pt")
+    else:
+        torch.save(current_ca, output_dir / f"j{levels[0]}_generated_initial_cA.pt")
     torch.save(current_ca, output_dir / f"j{levels[0]}_initial_cA.pt")
+    metadata = {
+        "cascade_name": cascade_name,
+        "initial_ca_source": initial_source,
+        "coarse_source_description": coarse_source_description,
+        "coarse_level": levels[0],
+        "dataset_split": split,
+        "n_samples": count,
+        "reference_ca_path": f"j{levels[0]}_reference_cA.pt",
+        "initial_ca_path": f"j{levels[0]}_initial_cA.pt",
+        "explicit_initial_ca_path": (
+            f"j{levels[0]}_reference_initial_cA.pt"
+            if initial_source == "dataset"
+            else f"j{levels[0]}_generated_initial_cA.pt"
+        ),
+    }
+    with (output_dir / "generation_metadata.json").open("w", encoding="utf-8") as file:
+        json.dump(metadata, file, indent=2)
 
     for level in levels:
         level_config = make_level_config(run_config, level, device)

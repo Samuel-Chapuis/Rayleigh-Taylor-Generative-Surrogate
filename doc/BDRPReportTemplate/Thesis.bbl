@@ -8,15 +8,12 @@
 \bibitem[Anderson(1982)]{ANDERSON1982313}
 Brian~D.O. Anderson.
 \newblock Reverse-time diffusion equation models.
-\newblock \emph{Stochastic Processes and their Applications}, 12\penalty0
-  (3):\penalty0 313--326, 1982.
+\newblock \emph{Stochastic Processes and their Applications}, 12\penalty0 (3):\penalty0 313--326, 1982.
 \newblock ISSN 0304-4149.
 \newblock \doi{https://doi.org/10.1016/0304-4149(82)90051-5}.
-\newblock URL
-  \url{https://www.sciencedirect.com/science/article/pii/0304414982900515}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/0304414982900515}.
 
-\bibitem[Brunton et~al.(2020)Brunton, Noack, and
-  Koumoutsakos]{Brunton2020MLFluid}
+\bibitem[Brunton et~al.(2020)Brunton, Noack, and Koumoutsakos]{Brunton2020MLFluid}
 Steven~L. Brunton, Bernd~R. Noack, and Petros Koumoutsakos.
 \newblock Machine learning for fluid mechanics.
 \newblock \emph{Annual Review of Fluid Mechanics}, 52:\penalty0 477--508, 2020.
@@ -40,11 +37,9 @@ Marie Farge.
 \bibitem[Guth et~al.(2022)Guth, Coste, Bortoli, and Mallat]{Guth2022WSGM}
 Florentin Guth, Simon Coste, Valentin~De Bortoli, and St{\'e}phane Mallat.
 \newblock Wavelet score-based generative modeling.
-\newblock In \emph{Advances in Neural Information Processing Systems},
-  volume~35, pages 478--491. Curran Associates, Inc., 2022.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~35, pages 478--491. Curran Associates, Inc., 2022.
 \newblock \doi{10.52202/068431-0035}.
-\newblock URL
-  \url{https://proceedings.neurips.cc/paper_files/paper/2022/hash/03474669b759f6d38cdca6fb4eb905f4-Abstract-Conference.html}.
+\newblock URL \url{https://proceedings.neurips.cc/paper_files/paper/2022/hash/03474669b759f6d38cdca6fb4eb905f4-Abstract-Conference.html}.
 
 \bibitem[Kull(1991)]{KULL1991197}
 H.J. Kull.
@@ -52,8 +47,7 @@ H.J. Kull.
 \newblock \emph{Physics Reports}, 206\penalty0 (5):\penalty0 197--325, 1991.
 \newblock ISSN 0370-1573.
 \newblock \doi{https://doi.org/10.1016/0370-1573(91)90153-D}.
-\newblock URL
-  \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
 
 \bibitem[Mallat(2009)]{Mallat2009}
 Stéphane Mallat.
@@ -72,21 +66,16 @@ Parviz Moin and Krishnan Mahesh.
 \newblock \emph{Annual Review of Fluid Mechanics}, 30:\penalty0 539--578, 1998.
 \newblock \doi{10.1146/annurev.fluid.30.1.539}.
 
-\bibitem[Peherstorfer et~al.(2018)Peherstorfer, Willcox, and
-  Gunzburger]{Peherstorfer2018}
+\bibitem[Peherstorfer et~al.(2018)Peherstorfer, Willcox, and Gunzburger]{Peherstorfer2018}
 Benjamin Peherstorfer, Karen Willcox, and Max Gunzburger.
-\newblock Survey of multifidelity methods in uncertainty propagation,
-  inference, and optimization.
+\newblock Survey of multifidelity methods in uncertainty propagation, inference, and optimization.
 \newblock \emph{SIAM Review}, 60\penalty0 (3):\penalty0 550--591, 2018.
 \newblock \doi{10.1137/16M1082469}.
 \newblock URL \url{https://doi.org/10.1137/16M1082469}.
 
-\bibitem[Song et~al.(2020)Song, Sohl{-}Dickstein, Kingma, Kumar, Ermon, and
-  Poole]{Song2021SDE}
-Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano
-  Ermon, and Ben Poole.
-\newblock Score-based generative modeling through stochastic differential
-  equations.
+\bibitem[Song et~al.(2020)Song, Sohl{-}Dickstein, Kingma, Kumar, Ermon, and Poole]{Song2021SDE}
+Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole.
+\newblock Score-based generative modeling through stochastic differential equations.
 \newblock \emph{CoRR}, abs/2011.13456, 2020.
 \newblock URL \url{https://arxiv.org/abs/2011.13456}.
 
@@ -97,8 +86,7 @@ Milton Van~Dyke.
 
 \bibitem[Zhou(2017)]{zhou2017rti1}
 Ye~Zhou.
-\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow,
-  turbulence, and mixing. i.
+\newblock Rayleigh--taylor and richtmyer--meshkov instability induced flow, turbulence, and mixing. i.
 \newblock \emph{Physics Reports}, 720-722:\penalty0 1--136, 2017.
 
 \end{thebibliography}

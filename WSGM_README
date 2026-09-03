@@ -8,6 +8,39 @@ Le script gere deux familles de modeles independantes :
 
 La generation reconstruit ensuite l'image par transformees inverses `pywt.idwt2`.
 
+## Distinction `WSGM_reference` / `WSGM`
+
+Deux cas experimentaux sont possibles, et ils ne mesurent pas la meme chose.
+
+```text
+WSGM_reference:
+  cA_J vient du dataset, typiquement j2_validation.pt[:, 0:1].
+  Le coarse n'est pas genere.
+  Seuls les details conditionnels sont generes.
+  Role: ablation oracle/perfect coarse pour isoler la qualite des modeles
+        conditionnels et la reconstruction coarse-to-fine.
+
+WSGM:
+  cA_J est genere par le SGM coarse inconditionnel.
+  Les details conditionnels sont ensuite generes a partir de ce cA genere.
+  Role: cascade complete utilisable en generation autonome.
+```
+
+Dans `WSGM_Config.json`, cette distinction est controlee par
+`generate.initial_ca_source` :
+
+```text
+dataset    -> WSGM_reference
+coarse_sgm -> WSGM
+generated  -> ancien chemin compatible, avec coarse genere par un SGM externe
+```
+
+Important : `WSGM_reference` n'est pas une vraie generation autonome du champ
+complet, car sa structure basse frequence est injectee depuis la reference DNS.
+Il sert a diagnostiquer l'erreur des niveaux conditionnels sans accumulation
+d'erreur coarse. Le cas `WSGM` est plus difficile : l'erreur du SGM coarse se
+propage ensuite dans les niveaux `j2`, puis `j1`.
+
 ## Donnees
 
 Le dataset doit contenir les tenseurs wavelet dans :
@@ -171,9 +204,12 @@ parametres d'optimisation viennent de `train`.
 - `border_mode` : mode de bord PyWavelets, par exemple `periodization`.
 - `output_dir` : dossier des tenseurs generes.
 - `initial_ca_source` : source du coefficient coarse initial. Valeurs possibles :
-  - `dataset` : utilise le vrai `cA` du split ; aucun modele coarse n'est requis ;
-  - `coarse_sgm` : utilise le SGM defini dans la section `coarse` ;
-  - `generated` : utilise un ancien modele SGM inconditionnel externe.
+  - `dataset` : `WSGM_reference`. Utilise le vrai `cA` du split ; aucun modele
+    coarse n'est requis et aucune coarse n'est generee ;
+  - `coarse_sgm` : `WSGM`. Utilise le SGM defini dans la section `coarse` pour
+    generer le `cA` initial ;
+  - `generated` : ancien chemin compatible. Utilise un ancien modele SGM
+    inconditionnel externe pour generer le `cA` initial.
 - `coarse_config_path` : configuration sauvegardee du SGM coarse lorsque la
   source est `coarse_sgm`.
 - `coarse_checkpoint_path` : checkpoint coarse optionnel qui surcharge le
@@ -186,6 +222,21 @@ parametres d'optimisation viennent de `train`.
 Le mode `coarse_sgm` lit encore le fichier `j{level}_{dataset}.pt` pour
   connaitre la resolution et le nombre d'echantillons. Le checkpoint coarse est
   utilise uniquement pour produire les valeurs de `cA`.
+
+La generation sauvegarde toujours :
+
+```text
+j{coarsest_level}_reference_cA.pt       # cA du dataset, pour comparaison
+j{coarsest_level}_initial_cA.pt         # cA effectivement injecte dans la cascade
+generation_metadata.json                # label WSGM_reference/WSGM et source coarse
+```
+
+Elle ajoute aussi un nom explicite :
+
+```text
+j{coarsest_level}_reference_initial_cA.pt  # si initial_ca_source="dataset"
+j{coarsest_level}_generated_initial_cA.pt  # si initial_ca_source!="dataset"
+```
 
 ### Diagnostic d'une grille périodique
 

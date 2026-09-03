@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pywt
 import torch
+from scipy.stats import skewnorm
 
 from lib.PhyFID.metrics import compare_datasets
 
@@ -115,6 +116,159 @@ def plot_image_grid(images, *, n=16, cols=4, seed=0, cmap="gray", title=None, vm
         fig.suptitle(title, fontsize=14)
     plt.show()
     return fig, indices
+
+
+def save_figure(fig, path, *, dpi=300):
+    """Save a figure after creating its parent directory."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, bbox_inches="tight", dpi=dpi)
+    return path
+
+
+def plot_generation_comparison(models, *, n=16, cols=4, seed=0, cmap="gray", title=None):
+    """Show one reproducible 4x4 block per model in a single report figure."""
+    if not models:
+        raise ValueError("At least one generated dataset is required.")
+
+    prepared = [(label, as_numpy_images(to_unit_interval(images))) for label, images in models]
+    n = min(int(n), *(len(images) for _, images in prepared))
+    if n == 0:
+        raise ValueError("Cannot plot an empty image batch.")
+
+    indices = np.random.default_rng(seed).choice(n, size=n, replace=False)
+    rows_per_model = int(np.ceil(n / cols))
+    fig, axes = plt.subplots(
+        rows_per_model,
+        len(prepared) * cols,
+        figsize=(2.3 * len(prepared) * cols, 2.35 * rows_per_model),
+        squeeze=False,
+        constrained_layout=True,
+    )
+    for model_index, (label, images) in enumerate(prepared):
+        for position, index in enumerate(indices):
+            row, col = divmod(position, cols)
+            axis = axes[row, model_index * cols + col]
+            axis.imshow(images[index], cmap=cmap)
+            axis.axis("off")
+        for position in range(n, rows_per_model * cols):
+            row, col = divmod(position, cols)
+            axes[row, model_index * cols + col].axis("off")
+        axes[0, model_index * cols].set_title(label, fontsize=12, loc="left", pad=7)
+    if title:
+        fig.suptitle(title, fontsize=14)
+    return fig, indices
+
+
+def _line_profiles(images):
+    """Return the baseline row-mean profiles and their ensemble distances."""
+    fields = as_numpy_images(_to_unit_scale_without_clipping(images)).astype(np.float64)
+    return fields.mean(axis=-1)
+
+
+def _line_profile_metrics_from_rows(reference_rows, generated_rows):
+    if reference_rows.shape[1] != generated_rows.shape[1]:
+        raise ValueError("Reference and generated fields must have the same height.")
+    height = reference_rows.shape[1]
+    return {
+        "mean_distance": float(np.linalg.norm(reference_rows.mean(axis=0) - generated_rows.mean(axis=0)) / height),
+        "std_distance": float(np.linalg.norm(reference_rows.std(axis=0) - generated_rows.std(axis=0)) / height),
+    }
+
+
+def line_profile_metrics(reference, generated):
+    """Reproduce the baseline distances on row means and their variability."""
+    return _line_profile_metrics_from_rows(_line_profiles(reference), _line_profiles(generated))
+
+
+def fluctuation_energy_spectrum(images, axis=1):
+    """Baseline fluctuation spectrum: ``|FFT(|rho - mean(rho)|)|^2``."""
+    fields = as_numpy_images(_to_unit_scale_without_clipping(images)).astype(np.float64)
+    fluctuations = np.abs(fields - fields.mean())
+    spectrum = np.fft.fftshift(np.fft.fft(fluctuations, axis=axis), axes=axis)
+    return np.abs(spectrum) ** 2
+
+
+def _fit_skewnorm(values, min_scale=1e-6, max_abs_alpha=50):
+    values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+    if values.size < 3:
+        return 0.0, float(values.mean()) if values.size else 0.0, min_scale
+    mean = float(values.mean())
+    std = float(values.std())
+    if std < min_scale:
+        return 0.0, mean, min_scale
+    try:
+        alpha, loc, scale = skewnorm.fit(values)
+        if not np.isfinite([alpha, loc, scale]).all() or scale < min_scale:
+            raise ValueError("Invalid skew-normal parameters")
+        return float(np.clip(alpha, -max_abs_alpha, max_abs_alpha)), float(loc), float(scale)
+    except Exception:
+        return 0.0, mean, max(std, min_scale)
+
+
+def plot_skewnorm_rows(reference, generated, *, quantity="density", n_curves=8, title=None):
+    """Compare row-wise skew-normal laws on a deliberately small diagnostic batch.
+
+    Only the displayed rows are fitted.  This retains the baseline diagnostic
+    while avoiding a fit for every row of every image ensemble.
+    """
+    if quantity == "density":
+        reference_data = as_numpy_images(_to_unit_scale_without_clipping(reference))
+        generated_data = as_numpy_images(_to_unit_scale_without_clipping(generated))
+        x_label = "Row-averaged density"
+        metric_label = "density"
+    elif quantity == "energy":
+        reference_data = fluctuation_energy_spectrum(reference)
+        generated_data = fluctuation_energy_spectrum(generated)
+        x_label = "Row-averaged fluctuation energy"
+        metric_label = "energy"
+    else:
+        raise ValueError("quantity must be either 'density' or 'energy'.")
+
+    reference_rows = reference_data.mean(axis=-1)
+    generated_rows = generated_data.mean(axis=-1)
+    if reference_rows.shape[1] != generated_rows.shape[1]:
+        raise ValueError("Reference and generated fields must have the same height.")
+
+    if quantity == "density":
+        metrics = line_profile_metrics(reference, generated)
+    else:
+        metrics = _line_profile_metrics_from_rows(reference_rows, generated_rows)
+
+    indices = np.linspace(0, reference_rows.shape[1] - 1, min(int(n_curves), reference_rows.shape[1]), dtype=int)
+    values = np.concatenate((reference_rows[:, indices].ravel(), generated_rows[:, indices].ravel()))
+    x_min, x_max = np.quantile(values[np.isfinite(values)], [0.005, 0.995])
+    if x_max <= x_min:
+        x_max = x_min + 1e-6
+    x = np.linspace(x_min, x_max, 500)
+
+    fig, axis = plt.subplots(figsize=(8.5, 5.6), constrained_layout=True)
+    spacing, height = 1.0, 0.64
+    for offset_index, row_index in enumerate(indices):
+        offset = offset_index * spacing
+        for values_at_row, color, label in (
+            (reference_rows[:, row_index], "#1f77b4", "Validation"),
+            (generated_rows[:, row_index], "#d62728", "Generated"),
+        ):
+            alpha, loc, scale = _fit_skewnorm(values_at_row)
+            curve = skewnorm.pdf(x, alpha, loc=loc, scale=scale)
+            if curve.max() > 0:
+                curve = height * curve / curve.max()
+            axis.plot(x, offset + curve, color=color, linewidth=1.4, label=label if offset_index == 0 else None)
+            axis.fill_between(x, offset, offset + curve, color=color, alpha=0.18)
+    axis.set_yticks(np.arange(len(indices)) * spacing, [str(index) for index in indices])
+    axis.set_ylabel("Row index")
+    axis.set_xlabel(x_label)
+    axis.grid(alpha=0.2, axis="x")
+    axis.legend(loc="upper right")
+    axis.set_title(
+        title or (
+            f"Row-wise skew-normal comparison ({metric_label}): "
+            f"d_mean={metrics['mean_distance']:.3e}, d_std={metrics['std_distance']:.3e}"
+        )
+    )
+    return fig, metrics
 
 
 def _mean_energy_spectrum(images):

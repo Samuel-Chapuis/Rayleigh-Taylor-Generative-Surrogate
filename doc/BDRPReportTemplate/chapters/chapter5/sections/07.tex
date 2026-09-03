@@ -1,15 +1,16 @@
 \section{Interpretation}
 
 The current experiments show that the direct diffusion model provides the
-strongest generative baseline in terms of overall sample quality and agreement
-with the validation distribution. The wavelet-based formulation remains less
-mature quantitatively, but it introduces a physically meaningful multi-scale
-inductive bias and a more interpretable coarse-to-fine generation mechanism.
+strongest unconditional generative baseline in terms of overall sample quality
+and agreement with the validation distribution. The wavelet-based formulation
+separates into two regimes: its conditioned detail stages are accurate when the
+coarse state is supplied, while the fully generated cascade is presently
+limited by coarse-stage error propagation.
 
 The comparison therefore does not simply oppose a good model to a bad one. It
 highlights a genuine methodological trade-off: direct diffusion currently gives
-better samples, whereas wavelet diffusion offers a more structured and
-physically motivated representation whose conditioning strategy, normalization,
-and architecture still require refinement.
+better unconditional samples, whereas wavelet diffusion offers a structured
+coarse-to-fine representation whose potential for fast sampling depends on a
+more accurate unconditional coarse model.
 
 This evaluation chapter showed the strengths and limitations of the implemented pipelines. The final chapter summarizes the main findings and discusses perspectives for improving the wavelet-based approach.
