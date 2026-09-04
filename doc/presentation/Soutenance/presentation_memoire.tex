@@ -1,0 +1,619 @@
+\documentclass[t,10pt,aspectratio=169]{beamer}
+
+\makeatletter
+\def\input@path{{../23Juin/}}
+\makeatother
+\usetheme{CEA23}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
+
+\title{Diffusion Models for Rayleigh--Taylor Instability}
+\subtitle{Towards fast multi-scale generation of DNS-derived fields}
+\date[2026]{Master's thesis defense -- 2026}
+\author[S. Chapuis]{Samuel \textsc{Chapuis}}
+
+\titlepagelogo{\includegraphics[height=24mm]{graphics/ORIGINAL/LOGO_CEA.png}}
+\setvalue{\diffusion}{}
+
+\CEAmerci{Thank you for your attention}
+\CEAcenter{CEA Bruyères-le-Châtel}
+\addr{BSI / Turbulence}
+\CEAemail{}
+
+\newcommand{\reportfig}[1]{../../BDRPReportTemplate/figures/#1}
+\newcommand{\smallref}[1]{\vspace{0.3ex}{\tiny\color{CEAgrey}#1}}
+
+\begin{document}
+
+% 1
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% Problem
+% 2
+\begin{frame}[plain]
+  \frametitle{The scientific problem}
+  \framesubtitle{Generate ensembles of plausible RTI fields at a fraction of DNS cost}
+  \vspace{10pt}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.44\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.67\textheight,keepaspectratio]{\reportfig{intro/RTCEA_simulation_2D_f.png}}
+      \par\vspace{0.5ex}
+      \textit{DNS example: RTI density evolution}
+      \\[-0.2ex]
+      % \smallref{Density fields obtained from direct numerical simulations.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Context}
+        \small
+        \begin{itemize}
+          \item DNS resolves the relevant scales, but its computational cost limits the number of realizations.
+          \item Uncertainty quantification, parameter scans and rare-event studies require large ensembles.
+          \item RTI combines coherent structures, sharp interfaces and fine-scale mixing.
+        \end{itemize}
+      \end{block}
+      \begin{alertblock}{Research question}
+        \small Can a generative surrogate learn the distribution of RTI fields and produce new plausible realizations quickly?
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 3
+\begin{frame}
+  \frametitle{Rayleigh--Taylor instability}
+  \framesubtitle{A nonlinear instability with a hierarchical spatial structure}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.46\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{\reportfig{ch1/RTI_Evolution_f.png}}
+      \par\vspace{0.5ex}
+      \textit{Physical mechanism}
+      \\[-0.2ex]
+      % \smallref{Dense fluid accelerated by a lighter fluid: bubbles and spikes develop.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{block}{Characteristic stages}
+        \small
+        \begin{itemize}
+          \item growth of initial interface perturbations;
+          \item formation of bubbles and spikes;
+          \item sharp gradients and localized structures;
+          \item mixing and transfer of energy towards finer scales.
+        \end{itemize}
+      \end{block}
+      \vspace{1ex}
+      % \centering
+      \begin{alertblock}{Objective}
+        \small A surrogate model must capture both global morphology and local fluctuations.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[plain]
+  \frametitle{Why wavelets for RTI fields?}
+  \framesubtitle{Localize information in both position and spatial scale}
+  \vspace{10pt}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{\reportfig{ch2/wavelet_decomposition.png}}
+      \par\vspace{0.5ex}
+      \textit{Two-dimensional wavelet decomposition}
+    \end{column}
+    \begin{column}{0.39\textwidth}
+      \begin{block}{Limitation of a global representation}
+        \small Fourier modes are useful for spectral analysis, but they are spatially global and less adapted to localized sharp interfaces.
+      \end{block}
+      \begin{block}{Wavelet inductive bias}
+        \small A multi-resolution representation separates large-scale organization from localized directional details.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.5ex}
+  \begin{alertblock}{Why this matters for WSGM}
+    \centering\small The coarse field carries global organization; the detail channels carry localized fine-scale variability.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[plain]
+  \frametitle{Wavelet representation of RTI fields}
+  \framesubtitle{One approximation channel and three directional detail channels}
+  \vspace{10pt}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.49\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.8\textheight,keepaspectratio]{\reportfig{ch2/2DExemple_Masque.png}}
+      \par\vspace{0.5ex}
+      \textit{Coefficient organization}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{block}{At wavelet level $j$}
+        \small
+        \begin{itemize}
+          \item $LL$: low-frequency approximation;
+          \item $LH$, $HL$, $HH$: horizontal, vertical and diagonal details;
+          \item each sub-band has a reduced spatial resolution.
+        \end{itemize}
+      \end{block}
+      \begin{alertblock}{Interpretation and intuition}
+        \begin{itemize}
+          \item The $LL$ sub-band captures the overall shape and large-scale features.
+          \item The details can be generated conditionally on the coarse field.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.2ex}
+\end{frame}
+
+% 4
+\begin{frame}
+  \frametitle{Why a generative surrogate?}
+  \framesubtitle{The target is a distribution of fields, not one reconstructed trajectory}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Learning objective}
+        \small Approximate the distribution represented by the DNS ensemble, then sample new fields from the learned model.
+      \end{block}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{alertblock}{Two strategies compared}
+        \small
+        \begin{enumerate}
+          \item direct score-based diffusion in image space;
+          \item wavelet score-based diffusion with a coarse-to-fine cascade.
+        \end{enumerate}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{0.7ex}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Physical requirements}
+        \small Preserve RTI morphology, the mixing-layer organization, density statistics and scale-dependent fluctuations.
+      \end{block}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{exampleblock}{Central hypothesis}
+        \small Separating coarse organization from localized details may reduce the cost of generation, provided that the coarse model converges to the correct distribution.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Background
+% 5
+\begin{frame}[plain]
+  \frametitle{Learning a distribution from samples}
+  \framesubtitle{A simple bimodal example already contains the generative challenge}
+  \vspace{10pt}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{\reportfig{ch3/diffusion_1d_dataset.png}}
+      \par\vspace{0.5ex}
+      \textit{Toy data distribution}
+      \\[-0.2ex]
+      % \smallref{The model must represent both modes rather than their average.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Generative modeling}
+        \small Given physical samples, learn the statistical structure of the dataset rather than reconstructing one particular field.
+      \end{block}
+      \vspace{15pt}
+      \begin{alertblock}{For RTI fields}
+        \small The relevant objects are ensembles: the model should generate diverse fields with the same statistical and physical organization as the DNS data.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 6
+\begin{frame}[plain]
+  \frametitle{Diffusion: noising then denoising}
+  \framesubtitle{From a data distribution to Gaussian noise and back}
+  \vspace{15pt}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.57\textheight,keepaspectratio]{\reportfig{ch3/diffusion_1d_forward.png}}
+      \par\vspace{0.5ex}
+      % \textbf{Forward diffusion: destroy structure}
+      % \\[-0.2ex]
+      % \smallref{The data distribution progressively approaches a Gaussian prior.}
+      \begin{block}{Forward process : destroy structure}
+        \footnotesize Known fields are progressively corrupted until their structure is replaced by noise.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.57\textheight,keepaspectratio]{\reportfig{ch3/diffusion_1d_reverse_score.png}}
+      \par\vspace{0.5ex}
+      % \textbf{Reverse diffusion: recover samples}
+      % \\[-0.2ex]
+      % \smallref{The learned score guides trajectories back towards the data distribution.}
+      \begin{block}{Reverse process : recover samples}
+        \footnotesize The learned denoising direction is applied repeatedly to recover a plausible sample.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.5ex}
+  \begin{alertblock}{Core idea}
+    \centering\small Train on noisy fields, then generate by reversing the same path from Gaussian noise.
+  \end{alertblock}
+\end{frame}
+
+% 7
+\begin{frame}
+  \frametitle{How score-based diffusion works}
+  \framesubtitle{The network learns a denoising direction at every noise level}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.55\textwidth}
+      \vspace{20pt}
+      \centering
+      \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{\reportfig{ch4/training_loop2.drawio.png}}
+      \par\vspace{0.5ex}
+    \end{column}
+    \begin{column}{0.39\textwidth}
+      \begin{block}{During training}
+        \small
+        \begin{enumerate}
+          \item start from a known physical field;
+          \item add noise at a randomly selected level;
+          \item train the network to predict the direction back towards realistic data.
+        \end{enumerate}
+      \end{block}
+      \begin{alertblock}{Generation}
+        \footnotesize Start from noise and follow the learned direction repeatedly. Fewer steps are faster but less accurate.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+% Method
+% 9
+\begin{frame}[plain]
+  \frametitle{Method overview}
+  \framesubtitle{From DNS data to two diffusion-based surrogate models}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.59\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.64\textheight,keepaspectratio]{\reportfig{intro/pipeline.png}}
+      \par\vspace{0.5ex}
+      \textit{Data-to-surrogate pipeline}
+      \\[-0.2ex]
+      \smallref{The same processed data feed the direct and wavelet branches.}
+    \end{column}
+    \begin{column}{0.35\textwidth}
+      \begin{block}{Common stages}
+        \small
+        \begin{enumerate}
+          \item prepare DNS density fields;
+          \item apply physically admissible augmentation;
+          \item train diffusion models;
+          \item compare generated ensembles with held-out DNS fields.
+        \end{enumerate}
+      \end{block}
+      \begin{alertblock}{Controlled comparison}
+        \small The direct SGM provides the baseline needed to isolate the effect of the wavelet representation.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{-0.4cm}
+  \begin{exampleblock}{Experimental logic}
+    \centering\scriptsize Same data and metrics; only the representation and generation factorization change.
+  \end{exampleblock}
+\end{frame}
+
+% 10
+\begin{frame}
+  \frametitle{DNS dataset and preprocessing}
+  \framesubtitle{Use the symmetries of the physical problem without leaking trajectories across splits}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.63\textheight,keepaspectratio]{\reportfig{ch3/augmentation.png}}
+      \par\vspace{0.5ex}
+      \textit{Physically admissible augmentations}
+      \\[-0.2ex]
+      \smallref{Horizontal cyclic shifts and horizontal reflections only.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Dataset}
+        \small
+        \begin{itemize}
+          \item RT-CEA bi-mode density fields stored in HDF5;
+          \item raw fields of size $512\times256$;
+          \item model inputs at the fixed $64\times64$ resolution;
+          \item separate training, validation and test simulations.
+        \end{itemize}
+      \end{block}
+      \begin{exampleblock}{Split principle}
+        \footnotesize Splitting by simulation prevents snapshots from the same physical trajectory from appearing in both training and validation sets.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 11
+\begin{frame}
+  \frametitle{Direct image-space SGM}
+  \framesubtitle{Time-conditioned U-Net for full-field score prediction}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{\reportfig{ch4/Unet2.drawio.png}}
+      \par\vspace{0.5ex}
+      \textit{Baseline score network}
+      \\[-0.2ex]
+      \smallref{Convolutional U-Net with skip connections and time conditioning.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Training}
+        \small
+        \begin{itemize}
+          \item continuous VP-SDE;
+          \item random diffusion time for each batch;
+          \item $v$-parameterization and mean-squared error loss;
+          \item sinusoidal time embedding injected at each scale.
+        \end{itemize}
+      \end{block}
+      \begin{block}{Sampling}
+        \small Start from Gaussian noise and integrate the probability-flow ODE with a Heun solver.
+      \end{block}
+      \vspace{-0.4cm}
+      \smallref{U-Net: Ronneberger et al.; implementation: PyTorch.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 13
+\begin{frame}[plain]
+  \frametitle{WSGM: a coarse-to-fine cascade}
+  \framesubtitle{Generation across scales instead of diffusing the full field at once}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{\reportfig{ch5/WaveletDiffusion.png}}
+      \par\vspace{0.5ex}
+  \vspace{0.5ex}
+  \begin{alertblock}{Computational intuition}
+    \centering\small Diffusion is applied in lower-dimensional detail spaces; the inverse wavelet reconstructs the full field.
+  \end{alertblock}
+\end{frame}
+
+
+
+% 14
+\begin{frame}
+  \frametitle{Conditional diffusion for wavelet details}
+  \framesubtitle{The score model operates only on fine-scale coefficients}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.55\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{\reportfig{ch4/training_loop_conditioned.drawio.png}}
+      \par\vspace{0.5ex}
+      \textit{Conditional training loop}
+      \\[-0.2ex]
+      \smallref{Noise is added to details; $LL$ remains the conditioning field.}
+    \end{column}
+    \begin{column}{0.39\textwidth}
+      \begin{block}{Model input}
+        \small $[LL,D_t]$ with $D_t=(LH_t,HL_t,HH_t)$ noisy.
+      \end{block}
+      \begin{block}{Model output}
+        \small Prediction of the score-model target associated with the detail tensor.
+      \end{block}
+      \begin{alertblock}{Key condition}
+        \small The detail model can only generate compatible fine-scale content if the coarse field is physically and statistically consistent.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% 15
+\begin{frame}
+  \frametitle{Experimental protocol and metrics}
+  \framesubtitle{Compare detail quality with coarse-model quality}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.45\textwidth}
+      \begin{block}{Reference-coarse WSGM}
+        \small
+        \begin{itemize}
+          \item $LL$ extracted from a validation field;
+          \item details generated conditionally;
+          \item oracle ablation, not an autonomous generator.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{alertblock}{Generated-coarse WSGM}
+        \small
+        \begin{itemize}
+          \item $LL$ sampled by a coarse SGM;
+          \item fully generative cascade;
+          \item measures the end-to-end result.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{1.2ex}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.45\textwidth}
+      \begin{block}{Distributional metric}
+        \small PhyFID compares ensembles in a feature space learned from RTI fields.
+      \end{block}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{block}{Physical diagnostics}
+        \small Mean vertical density profiles and fluctuation-energy spectra complement the feature-space distance.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% Results
+% 16
+\begin{frame}[plain]
+  \frametitle{Baseline SGM: plausible RTI fields}
+  \framesubtitle{The direct model learns non-trivial structure from a limited DNS ensemble}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.38\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\reportfig{ch5/original.png}}
+      \par\vspace{0.5ex}
+      \textit{DNS reference field}
+    \end{column}
+    \begin{column}{0.56\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\reportfig{ch5/baseline_sgm_grid.png}}
+      \par\vspace{0.5ex}
+      \textbf{Samples generated by the direct SGM}
+    \end{column}
+  \end{columns}
+  \vspace{0.3ex}
+  \centering\small Generated fields reproduce the vertical organization and bubble--spike-like structures without reconstructing a particular DNS trajectory.
+  \vspace{0.5ex}
+  \begin{exampleblock}{Distributional result}
+    \centering\scriptsize PhyFID: $0.132$ for generated fields versus $6.04$ for the noise reference.
+  \end{exampleblock}
+\end{frame}
+
+% 17
+\begin{frame}[plain]
+  \frametitle{Visual comparison at a fixed step count}
+  \framesubtitle{The generated coarse coefficient degrades the complete cascade}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.31\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\reportfig{ch5/baseline_sgm_grid.png}}
+      \par\vspace{0.5ex}
+      \textbf{Direct SGM baseline}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\reportfig{ch5/wsgm_reference_coarse_grid.png}}
+      \par\vspace{0.5ex}
+      \textbf{WSGM reference-coarse}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\reportfig{ch5/wsgm_generated_coarse_grid.png}}
+      \par\vspace{0.5ex}
+      \textbf{WSGM generated-coarse}
+    \end{column}
+  \end{columns}
+  \vspace{0.7ex}
+  \centering\small The reference-coarse result supports the detail model; the visible quality loss mainly appears when the coarse coefficient is sampled.
+\end{frame}
+
+% 18
+\begin{frame}[plain]
+  \frametitle{Quality versus the number of reverse steps}
+  \framesubtitle{More integration steps cannot repair an incorrect coarse distribution}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.63\textheight,keepaspectratio]{\reportfig{ch5/phyfid_vs_steps.png}}
+      \par\vspace{0.5ex}
+      \textbf{PhyFID versus reverse steps}
+      \\[-0.2ex]
+      \smallref{Lower is better. The reference-coarse curve is an oracle diagnostic.}
+    \end{column}
+    \begin{column}{0.29\textwidth}
+      \begin{block}{Observation}
+        \small
+        \begin{itemize}
+          \item reference-coarse remains accurate with few steps;
+          \item generated-coarse remains near $2.83$ at $64$ steps;
+          \item increasing the step count does not fix the coarse distribution.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.2ex}
+  \begin{alertblock}{Interpretation}
+    \centering\scriptsize The bottleneck is the generated coarse distribution, not detail integration.
+  \end{alertblock}
+\end{frame}
+
+% 19
+\begin{frame}
+  \frametitle{Central result: a quality--speed trade-off}
+  \framesubtitle{The WSGM is faster, but currently less accurate in its fully generative form}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.43\textwidth}
+      \begin{block}{Direct SGM}
+        \small
+        \begin{itemize}
+          \item best overall sample quality;
+          \item generation in the full image space;
+          \item higher sampling cost.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{alertblock}{Fully generative WSGM}
+        \small
+        \begin{itemize}
+          \item faster generation through multi-scale factorization;
+          \item rougher fields and larger distance to validation data;
+          \item speed advantage depends on coarse-model convergence.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+  \vspace{1.8ex}
+  \centering
+  {\large\color{CEAred}\textbf{WSGM does not outperform SGM yet: it provides a credible route towards faster sampling.}}
+\end{frame}
+
+% 20
+\begin{frame}
+  \frametitle{Limitations, perspectives and conclusion}
+  \framesubtitle{Improve the coarse model before exploiting the surrogate}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.46\textwidth}
+      \begin{alertblock}{Current limitations}
+        \small
+        \begin{itemize}
+          \item limited DNS ensemble and partial parameter coverage;
+          \item wavelet architecture remains exploratory;
+          \item fully generated WSGM fields are still rougher;
+          \item the reference-coarse setting is diagnostic, not autonomous.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{block}{Next steps}
+        \small
+        \begin{itemize}
+          \item improve and evaluate the coarse diffusion model;
+          \item perform a systematic hyperparameter analysis;
+          \item target rare-event prediction with fast ensembles;
+          \item address inverse problems: infer initial conditions compatible with an observed morphology.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{-0.45cm}
+  \begin{exampleblock}{Take-home message}
+    \centering\footnotesize The direct SGM gives the best quality. The WSGM is faster, but its competitiveness depends on convergence of the generated coarse state.
+  \end{exampleblock}
+\end{frame}
+
+% 21
+\begin{frame}[plain]
+  \usebeamertemplate*{last page}
+\end{frame}
+
+\end{document}
