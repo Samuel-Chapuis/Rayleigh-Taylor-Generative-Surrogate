@@ -8,6 +8,12 @@ conditional detail models. In the \emph{generated-coarse} setting, the
 initial $cA^2$ is itself sampled by a diffusion model, so that errors can
 propagate through the full cascade.
 
+The visual comparison in Figure~\ref{fig:ch5_wsgm_field_comparison} contrasts
+the direct SGM baseline with the two wavelet-based settings at the same nominal
+number of reverse steps. The reference-coarse WSGM samples are expected to be
+the cleanest diagnostic of the detail models, whereas the generated-coarse
+case measures the full unconditional cascade.
+
 \begin{figure}[H]
     \centering
 
@@ -18,7 +24,7 @@ propagate through the full cascade.
             height=\textwidth
         ]{figures/ch5/baseline_sgm_grid.png}
         \caption{SGM baseline with $128$ reverse steps.}
-        \label{fig:ch5_original}
+        \label{fig:ch5_wsgm_baseline_grid}
     \end{subfigure}
     \hfill
     \begin{subfigure}[c]{0.32\textwidth}
@@ -42,10 +48,15 @@ propagate through the full cascade.
     \end{subfigure}
 
     \caption{Comparison between the SGM baseline (a), the WSGM with reference coarse coefficients (b), and the WSGM with generated coarse coefficients (c).}
-    \label{fig:ch5_sgm_comparison}
+    \label{fig:ch5_wsgm_field_comparison}
 \end{figure}
 
-% TODO: Faire la transitiion et expliquer que je ne refait pas la fluctuation d'energie par ce que les resultats n'apparote pas plus que la moyenne par ligne
+To complement this visual inspection, Figure~\ref{fig:ch5_sgm_comparison_den}
+compares the line-wise averaged density distributions. The fluctuation-energy
+spectrum is not repeated for this wavelet comparison, because it did not add a
+distinct qualitative ranking relative to the line-wise density statistic in the
+present experiments. The mean vertical organization is therefore used as the
+more compact physical diagnostic for comparing the three ensembles.
 
 \begin{figure}[H]
     \centering
@@ -80,11 +91,18 @@ propagate through the full cascade.
         \label{fig:ch5_den_generated_coarse_grid}
     \end{subfigure}
 
-    \caption{Line wise averaged density distributions for the SGM baseline (a), the WSGM with reference coarse coefficients (b), and the WSGM with generated coarse coefficients (c).}
+    \caption{Line-wise averaged density distributions for the SGM baseline (a), the WSGM with reference coarse coefficients (b), and the WSGM with generated coarse coefficients (c).}
     \label{fig:ch5_sgm_comparison_den}
 \end{figure}
 
-% TODO: Faire la transition et introduire le plot suivant qui dit grossomodo que le WSGM avec reference coarse est meilleur que le SGM baseline en terme de qualité et de vitesse ( nombre de steps ). Mais que le le WSGM avec generated coarse est moins bon que le SGM baseline en terme de qualité mais pas de vitesse. Il semble donc probable qu'un modele WSGM avec generated coarse mieux fait puisse atteindre la qualité du SGM baseline avec moins de steps et donc acceleré la generation des images. D'ou la courbe EXPECTATION dans le plot suivant.
+Figure~\ref{fig:ch5_phyfid_steps} separates the role of the wavelet detail
+models from the role of the coarse diffusion model. The reference-coarse WSGM
+should not be interpreted as a useful generative model by itself, since it uses
+coarse information taken from a validation field. It is instead an oracle-coarse
+ablation: it tests whether the wavelet cascade can generate accurate fine-scale
+content when the coarse state is already physically consistent. The
+generated-coarse curve then shows what remains when this favorable assumption is
+removed.
 
 \begin{figure}[H]
     \centering
@@ -96,21 +114,13 @@ propagate through the full cascade.
     \label{fig:ch5_phyfid_steps}
 \end{figure}
 
-
-
-Figure~\ref{fig:ch5_phyfid_steps} makes the separation between the two WSGM
-settings quantitative. With a reference coarse coefficient, PhyFID is
-$3.6\times10^{-3}$ at $64$ reverse steps and remains below $10^{-1}$ down to
-$8$ steps. The conditional detail process can therefore be sampled with far
-fewer steps than the direct SGM in this controlled setting. In contrast, the
-unconditional cascade is near $2.83$ at $64$ steps and changes little as the
-number of steps is increased; its limiting factor is the sampled coarse
-coefficient, not the numerical integration accuracy of the detail stages.
-
-The reference-coarse result nevertheless establishes an important target for
-the method: the conditional detail models are not the primary bottleneck. If
-the coarse diffusion stage is improved so that its distribution is compatible
-with the conditions encountered during detail-model training, the WSGM should
-be able to approach the direct SGM quality while requiring substantially fewer
-reverse steps in the detail generation. This remains a hypothesis supported by
-the controlled ablation, not a demonstrated end-to-end acceleration.
+With a reference coarse coefficient, PhyFID is $3.6\times10^{-3}$ at $64$
+reverse steps and remains below $10^{-1}$ down to $8$ steps. This indicates
+that the conditional wavelet detail models can work with a small number of
+sampling steps, provided that the coarse coefficient has converged to the
+correct distribution. In contrast, the fully generated cascade remains near
+$2.83$ at $64$ steps and changes little when the number of steps is increased.
+The current bottleneck is therefore the generated coarse coefficient, not the
+conditional detail generation. The expectation curve summarizes the resulting
+target: if the coarse model is improved, the WSGM cascade could recover the
+quality of the direct SGM with fewer reverse steps.

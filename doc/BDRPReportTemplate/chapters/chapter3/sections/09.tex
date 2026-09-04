@@ -1,6 +1,6 @@
 \section{Introduction to score-based diffusion}
 
-\subsection{From individual simulations to a probability distribution}
+\subsection{Learning the probability distribution from samples}
 
 Machine learning approaches can broadly be divided into supervised and unsupervised methods. In supervised learning, the objective is to learn a mapping between an input and a target output provided through labeled examples. Typical applications include regression and classification tasks, where each sample is associated with a known quantity of interest.
 
@@ -14,7 +14,7 @@ Let $\mathbf{x}_0\in\mathbb{R}^{d}$ denote a discretized RTI density field, or e
 
 is regarded as a finite collection of samples drawn from an unknown data
 distribution $p_{\mathrm{data}}(\mathbf{x}_0)$. The central objective is therefore not to reconstruct one particular DNS realization, but to
-learn the \emph{the probability distribution} of the simulated RTI
+learn the \emph{probability distribution $p_{\mathrm{data}}(\mathbf{x}_0)$} of the simulated RTI
 fields. In other words, the model should map the space of admissible density fields to a probability measure that captures the properties of the dataset.
 The learned model, denoted by $p_{\theta}(\mathbf{x}_0)$, should approximate the
 unknown distribution according to
@@ -86,22 +86,21 @@ d\mathbf{x}
 =
 \mathbf{f}(\mathbf{x},t)dt
 +
-g(t)d\mathbf{w}
+g_{\mathrm{diff}}(t)d\mathbf{w}
 \end{equation}
-
-où $t\in[0,T]$, $\mathbf{w}$ désigne un processus de Wiener standard, et
+where $t\in[0,\mathds{1}]$, $\mathbf{w}$ denotes a standard Wiener process, and
 \[
-\mathbf{f}:\mathbb{R}^{d}\times[0,T]\to\mathbb{R}^{d}
-\quad\text{et}\quad
-g:[0,T]\to\mathbb{R}_{+}
+\mathbf{f}:\mathbb{R}^{d}\times[0,\mathds{1}]\to\mathbb{R}^{d}
+\quad\text{and}\quad
+g_{\mathrm{diff}}:[0,\mathds{1}]\to\mathbb{R}_{+}
 \]
-sont respectivement le coefficient de dérive et le coefficient de diffusion,
-qui contrôle l'intensité du bruit injecté \citep{Song2021SDE}.
+are respectively the drift coefficient and the diffusion coefficient,
+which controls the intensity of the injected noise \citep{Song2021SDE}.
 
 The objective of this process is to progressively destroy the structure present in the data. As time increases, the probability distribution $(p_t(\mathbf{x}))$ evolves from the complex data distribution $(p_{\mathrm{data}})$ toward a simple prior distribution that is chosen as a standard Gaussian,
 
 \begin{equation}
-p_T(\mathbf{x})
+p_{\mathds{1}}(\mathbf{x})
 \approx
 \mathcal{N}(\mathbf{0},\mathbf{I})
 \end{equation}
@@ -116,16 +115,27 @@ d\mathbf{x}
 \sqrt{\beta(t)}\,d\mathbf{w}
 \end{equation}
 
-where $(\beta(t))$ controls the noise schedule.
+where $(\beta(t))$ controls the noise schedule. In the implemented SGM,
+\[
+\beta(t)=\beta_{\min}+(\beta_{\max}-\beta_{\min})t,
+\qquad t\in[0,\mathds{1}],
+\]
+with positive bounds satisfying $0<\beta_{\min}\leq\beta_{\max}$.
 
-The discrete implementation used during training relies on a finite number of timesteps $(t\in{0,\ldots,T})$. Defining $\bar{\alpha}_t=\sqrt{e^{-\frac{1}{2}\int_0^t \beta(s) ds}}$, the noisy sample at any diffusion time can be obtained directly through
+The implementation used during training does not simulate the forward SDE by Euler--Maruyama. It samples the exact marginal distribution at a continuous time $t\in[0,\mathds{1}]$. Defining
+\begin{equation}
+\bar{\alpha}(t)
+=
+\exp\left(-\int_0^t \beta(s)\,ds\right),
+\end{equation}
+the noisy sample at any diffusion time can be obtained directly through
 
 \begin{equation}
 \mathbf{x}_t
 =
-\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
+\sqrt{\bar{\alpha}(t)}\,\mathbf{x}_0
 +
-\sqrt{1-\bar{\alpha}_t}\,
+\sqrt{1-\bar{\alpha}(t)}\,
 \boldsymbol{\epsilon}
 \qquad
 \boldsymbol{\epsilon}
@@ -154,55 +164,55 @@ Its solution is
 \]
 Thus one may define
 \[
-    \alpha_t
+    \alpha(t)
     = e^{
         -\frac{1}{2}\int_0^t \beta(s)\,ds},
     \qquad
-    \mathbf{x}(t)=\alpha_t\mathbf{x}_0.
+    \mathbf{x}(t)=\alpha(t)\mathbf{x}_0.
 \]
 
 \proofstep{Stochastic term} For the stochastic part, set
-$\mathbf{y}(t)=\alpha_t^{-1}\mathbf{x}(t)$. Since $\alpha_t$ is deterministic,
+$\mathbf{y}(t)=\alpha(t)^{-1}\mathbf{x}(t)$. Since $\alpha(t)$ is deterministic,
 Ito's product rule gives
 \[
     d\mathbf{y}
     =
-    \alpha_t^{-1}d\mathbf{x}
+    \alpha(t)^{-1}d\mathbf{x}
     +
-    \mathbf{x}\,d(\alpha_t^{-1}).
+    \mathbf{x}\,d(\alpha(t)^{-1}).
 \]
-Substituting the SDE and the derivative of $\alpha_t^{-1}$ cancels the drift,
+Substituting the SDE and the derivative of $\alpha(t)^{-1}$ cancels the drift,
 which yields
 \[
     d\mathbf{y}
     =
-    \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}.
+    \alpha(t)^{-1}\sqrt{\beta(t)}\,d\mathbf{w}.
 \]
 
-Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and multiply by $\alpha_t$:
+Thus, to recover $\mathbf{x}(t)$, one can integrate the stochastic term and multiply by $\alpha(t)$:
 \begin{align*}
-    \int_{0}^{t} dy &= \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w} \\
-    \Rightarrow x(t) &= \alpha_t \, x_0 + \alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}
+    \int_{0}^{t} dy &= \int_{0}^{t} \alpha(s)^{-1}\sqrt{\beta(s)}\,d\mathbf{w} \\
+    \Rightarrow x(t) &= \alpha(t) \, x_0 + \alpha(t) \int_{0}^{t} \alpha(s)^{-1}\sqrt{\beta(s)}\,d\mathbf{w}
 \end{align*}
 
 \proofstep{Distribution} The integral of the stochastic term is a Gaussian random variable with mean zero and variance
 \begin{align*}
-    \text{Var}\left(\alpha_t \int_{0}^{t} \alpha_t^{-1}\sqrt{\beta(t)}\,d\mathbf{w}\right)
-    &= \alpha_t^2 \int_{0}^{t} (\alpha_s^{-1}\sqrt{\beta(s)})^2 ds \\
-    &= \alpha_t^2 \int_{0}^{t} \alpha_s^{-2} \beta(s) ds \\
-    &= \alpha_t^2 \left( \frac{1}{\alpha_t^2} -1 \right) \\
-    &= 1 - \alpha_t^2
+    \text{Var}\left(\alpha(t) \int_{0}^{t} \alpha(s)^{-1}\sqrt{\beta(s)}\,d\mathbf{w}\right)
+    &= \alpha(t)^2 \int_{0}^{t} (\alpha(s)^{-1}\sqrt{\beta(s)})^2 ds \\
+    &= \alpha(t)^2 \int_{0}^{t} \alpha(s)^{-2} \beta(s) ds \\
+    &= \alpha(t)^2 \left( \frac{1}{\alpha(t)^2} -1 \right) \\
+    &= 1 - \alpha(t)^2
 \end{align*}
 
 
-\proofstep{Conclusion} By combining the deterministic and stochastic parts, we obtain the final expression for $\mathbf{x}_t$ seting $\bar{\alpha}_t = \alpha_t^2$:
+\proofstep{Conclusion} By combining the deterministic and stochastic parts, we obtain the final expression for $\mathbf{x}_t$ setting $\bar{\alpha}(t) = \alpha(t)^2$:
 \begin{equation*}
 \boxed{
     \mathbf{x}_t
     =
-    \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0
+    \sqrt{\bar{\alpha}(t)}\,\mathbf{x}_0
     +
-    \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},
+    \sqrt{1-\bar{\alpha}(t)}\,\boldsymbol{\epsilon},
     \qquad
     \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
 }
@@ -222,7 +232,7 @@ higher-dimensional space and cannot be represented by a simple histogram.
     \centering
     \includegraphics[width=0.95\textwidth]{figures/ch3/diffusion_1d_forward.png}
     \caption{Forward diffusion in one dimension. Left: evolution of the noisy
-    marginal density $p_T(\mathbf{x})$ for several diffusion times. Right: trajectories
+    marginal density $p_t(\mathbf{x})$ for several diffusion times. Right: trajectories
     of individual samples during the Markov noising process.}
     \label{fig:diff1d}
 \end{figure}
@@ -239,12 +249,12 @@ d\mathbf{x}
 \left[
 \mathbf{f}(\mathbf{x},t)
 -
-g(t)^2
+g_{\mathrm{diff}}(t)^2
 \nabla_{\mathbf{x}}
 \log p_t(\mathbf{x})
 \right]dt
 +
-g(t)d\bar{\mathbf{w}}, \quad {\scriptstyle \text{where $\bar{\mathbf{w}}$ is a reverse-time Wiener process.}}
+g_{\mathrm{diff}}(t)d\bar{\mathbf{w}}, \quad {\scriptstyle \text{where $\bar{\mathbf{w}}$ is a reverse-time Wiener process.}}
 \end{equation}
 
 \begin{compactproof}[title={Proof}]
@@ -255,7 +265,7 @@ d\mathbf{x}
 =
 \mathbf{f}(\mathbf{x},t)dt
 +
-g(t)d\mathbf{w},
+g_{\mathrm{diff}}(t)d\mathbf{w},
 \end{equation*}
 where $\mathbf{w}$ is a Wiener process. The corresponding Fokker-Planck equation describes the evolution of the probability density $p_t(\mathbf{x})$ of $\mathbf{x}$ at time $t$:
 \begin{equation*}
@@ -263,9 +273,9 @@ where $\mathbf{w}$ is a Wiener process. The corresponding Fokker-Planck equation
 =
 -\nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},t)p_t(\mathbf{x})\right]
 +
-\frac{1}{2}g(t)^2\nabla_{\mathbf{x}}^2p_t(\mathbf{x}).
+\frac{1}{2}g_{\mathrm{diff}}(t)^2\nabla_{\mathbf{x}}^2p_t(\mathbf{x}).
 \end{equation*}
-Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x})=p_{\tau}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(\tau)$:
+Let thus derive the  Fokker-Planck equation for $\tau = \mathds{1}-t$ and $q_t(\mathbf{x})=p_{\tau}(\mathbf{x})$ the probability density of $\mathbf{y}(t)=\mathbf{x}(\tau)$:
 \begin{align*}
     \partial q_t(\mathbf{x})
     &=
@@ -273,24 +283,24 @@ Let thus derive the  Fokker-Planck equation for $\tau = T-t$ and $q_t(\mathbf{x}
     &=
     \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)p_{\tau}(\mathbf{x})\right]
     -
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2p_{\tau}(\mathbf{x})\\
+    \frac{1}{2}g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}^2p_{\tau}(\mathbf{x})\\
     &=
     \nabla_{\mathbf{x}}\cdot\left[\mathbf{f}(\mathbf{x},\tau)q_t(\mathbf{x})\right]
     +
-    \left(-1+\frac{1}{2}\right)g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
+    \left(-1+\frac{1}{2}\right)g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x})\\
     &=
-    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})}\right)q_t(\mathbf{x})\right]
+    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g_{\mathrm{diff}}(\tau)^2\frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})}\right)q_t(\mathbf{x})\right]
     +
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).  \\
+    \frac{1}{2}g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).  \\
     &=
-    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    \nabla_{\mathbf{x}}\cdot\left[\left(\mathbf{f}(\mathbf{x},\tau)-g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
     +
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}) \quad 
+    \frac{1}{2}g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}) \quad 
     {\scriptstyle \text{with:} \frac{\nabla_{\mathbf{x}}q_t(\mathbf{x})}{q_t(\mathbf{x})} = \nabla_{\mathbf{x}}\log q_t(\mathbf{x}) } \\
     &= 
-    - \nabla_{\mathbf{x}}\cdot\left[\left(-\mathbf{f}(\mathbf{x},\tau)+g(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
+    - \nabla_{\mathbf{x}}\cdot\left[\left(-\mathbf{f}(\mathbf{x},\tau)+g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}\log q_t(\mathbf{x})\right)q_t(\mathbf{x})\right]
     +
-    \frac{1}{2}g(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).
+    \frac{1}{2}g_{\mathrm{diff}}(\tau)^2\nabla_{\mathbf{x}}^2q_t(\mathbf{x}).
 \end{align*}
 
 The last line is the Fokker-Planck equation corresponding to the reverse-time SDE
@@ -302,20 +312,20 @@ d\mathbf{y}
 \left[
 \mathbf{f}(\mathbf{y},\tau)
 -
-g(\tau)^2
+g_{\mathrm{diff}}(\tau)^2
 \nabla_{\mathbf{y}}
 \log q_t(\mathbf{y})
 \right]dt
 +
-g(\tau)d\bar{\mathbf{w}}
+g_{\mathrm{diff}}(\tau)d\bar{\mathbf{w}}
 }
 \end{equation*}
 
-where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $T-t$ and $q_t(\mathbf{x})$ with $p_{T-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
+where $\bar{\mathbf{w}}$ is a reverse-time Wiener process. Finally, we can replace $\tau$ with $\mathds{1}-t$ and $q_t(\mathbf{x})$ with $p_{\mathds{1}-t}(\mathbf{x})$ to obtain the reverse-time SDE in terms of the original time variable $t$ and the original probability density $p_t(\mathbf{x})$.     
 
 \end{compactproof}
 
-The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. It is now required to estimate the score with only a finite number of samples $(\mathbf{x}_{0},\mathbf{x}_{t})$ drawn from the forward diffusion process. Considering $\mathbf{x}_{t} = \alpha_{t}\mathbf{x}_{0} + \sigma_{t}\boldsymbol{\epsilon}$, with $\sigma_{t}=1-\alpha_{t}$ and $\boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$ as shown in the the equation \ref{eq:x_t}. It is possible to rewrite the score as
+The score $\mathbf{s}(\mathbf{x},t) \approx \nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ corresponds to the gradient of the logarithmic probability density. Geometrically, it points toward regions of higher probability and therefore indicates how a noisy sample should be displaced in order to become more representative of the underlying data distribution. It is now required to estimate the score with only a finite number of samples $(\mathbf{x}_{0},\mathbf{x}_{t})$ drawn from the forward diffusion process. Considering $\mathbf{x}_{t} = \alpha(t)\mathbf{x}_{0} + \sigma(t)\boldsymbol{\epsilon}$, with $\alpha(t)=\sqrt{\bar{\alpha}(t)}$, $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$, and $\boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$ as shown in Equation~\ref{eq:x_t}, it is possible to rewrite the score as
 
 \begin{equation}
     \mathbf{s}_{\theta}(\mathbf{x}_t,t)
@@ -471,13 +481,13 @@ Hence,
 
 
 
-Consider now a Gaussian forward perturbation kernel with mean $\alpha_t\mathbf{x}_0$ and variance $\sigma_t^2\mathbf{I}$, where $\alpha_t=\bar{\alpha}_t^2$ and $\sigma_t = \sqrt{1 - \bar{\alpha}_t^2}$ are known functions of time from equation \eqref{eq:x_t}. The forward process can be written as
+Consider now a Gaussian forward perturbation kernel with mean $\alpha(t)\mathbf{x}_0$ and variance $\sigma(t)^2\mathbf{I}$, where $\alpha(t)=\sqrt{\bar{\alpha}(t)}$ and $\sigma(t)=\sqrt{1-\bar{\alpha}(t)}$ are known functions of time from Equation~\eqref{eq:x_t}. The forward process can be written as
 \begin{equation*}
 \mathbf{x}_t
 =
-\alpha_t\mathbf{x}_0
+\alpha(t)\mathbf{x}_0
 +
-\sigma_t\boldsymbol{\epsilon},
+\sigma(t)\boldsymbol{\epsilon},
 \qquad
 \boldsymbol{\epsilon}\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
 \end{equation*}
@@ -486,7 +496,7 @@ Leading to the transition density
     \nabla_{\mathbf{x}_t}
     \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
     =
-    -\frac{\boldsymbol{\epsilon}}{\sigma_t},
+    -\frac{\boldsymbol{\epsilon}}{\sigma(t)},
 \end{equation}
 
 
@@ -500,8 +510,8 @@ p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
 \mathcal{N}
 \left(
 \mathbf{x}_t;
-\alpha_t\mathbf{x}_0,
-\sigma_t^2\mathbf{I}
+\alpha(t)\mathbf{x}_0,
+\sigma(t)^2\mathbf{I}
 \right).
 \end{equation*}
 
@@ -509,9 +519,9 @@ Its logarithm is, up to a term independent of $\mathbf{x}_t$,
 \begin{equation*}
 \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
 =
--\frac{1}{2\sigma_t^2}
+-\frac{1}{2\sigma(t)^2}
 \left\|
-\mathbf{x}_t-\alpha_t\mathbf{x}_0
+\mathbf{x}_t-\alpha(t)\mathbf{x}_0
 \right\|^2
 +
 C(t,\mathbf{x}_0).
@@ -523,9 +533,9 @@ Consequently,
 \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
 =
 -\frac{
-\mathbf{x}_t-\alpha_t\mathbf{x}_0
+\mathbf{x}_t-\alpha(t)\mathbf{x}_0
 }{
-\sigma_t^2
+\sigma(t)^2
 }
 \\
 \Rightarrow\qquad
@@ -534,54 +544,172 @@ Consequently,
 \nabla_{\mathbf{x}_t}
 \log p_{t\mid 0}(\mathbf{x}_t\mid\mathbf{x}_0)
 =
--\frac{\boldsymbol{\epsilon}}{\sigma_t}
+-\frac{\boldsymbol{\epsilon}}{\sigma(t)}
 }
 \qquad
 {\scriptstyle
 \text{since }
-\mathbf{x}_t-\alpha_t\mathbf{x}_0
+\mathbf{x}_t-\alpha(t)\mathbf{x}_0
 =
-\sigma_t\boldsymbol{\epsilon}.
+\sigma(t)\boldsymbol{\epsilon}.
 }
 \end{align*}
 
 \end{compactproof}
 
-
-
-which points toward regions of higher probability density at each noise level.
-In practice, an equivalent and commonly used parameterization trains a network
-$\boldsymbol{\epsilon}_{\theta}$ to predict the Gaussian noise added to a clean
-sample. A simplified training objective is
+Or $\sigma(t)$ is known and $\boldsymbol{\epsilon}$ can be estimated by a neural network $\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)$, which leads to the following training objective:
 
 \begin{equation}
+    \boxed{
     \mathcal{L}_{\mathrm{simple}}(\theta)
     =
-    \mathbb{E}_{\mathbf{x}_0,t,\boldsymbol{\epsilon}}
+    \mathbb{E}_{t,\mathbf{x}_0,\boldsymbol{\epsilon}}
     \left[
         \left\|
-        \boldsymbol{\epsilon}
-        -
-        \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
+            \boldsymbol{\epsilon}
+            -
+            \boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)
         \right\|_2^2
     \right].
+    }
+    \label{eq:simple_noise_loss}
 \end{equation}
 
-Because the model is trained over all noise levels, it learns a sequence of
-local denoising directions rather than an explicit analytical expression for
-the complex RTI distribution. Repeated application of these directions
-transports samples from the Gaussian prior toward the regions occupied by the
-DNS data. The resulting ensemble of generated fields provides an approximation
-of the distribution sought in this work.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-In the one-dimensional setting, figure \ref{fig:diffusion_1d_reverse_score} shows the score can be represented as arrows along
-the $x$ axis. These arrows point toward regions where the noisy density is
-larger. Near the end of the forward process, the density is almost Gaussian and
-the score mainly points back toward the origin. At lower noise levels, the
-score separates the samples toward the two modes of the data distribution. The
-reverse generative process can therefore be interpreted as a gradual
-specialization: an initially structureless Gaussian sample is first brought
-back to the high-probability region, then assigned to one of the modes.
+\subsection{Sampling from the learned reverse process}
+\label{subsec:sampling_reverse_process}
+
+The training objective above provides an approximation of the score
+$\nabla_{\mathbf{x}}\log p_t(\mathbf{x})$ for every diffusion time. It does
+not, however, directly generate a new density field. Once the network has been
+trained, sampling consists in replacing the unknown score in the reverse
+process by its neural approximation and solving the resulting stochastic
+differential equation numerically.
+
+To remain consistent with the time reversal introduced in the previous proof,
+let $ \tau = \mathds{1} - t$ and so $ \mathbf{y}_t = \mathbf{x}_{\tau} $ and $ q_t(\mathbf{y}) = p_{\tau}(\mathbf{y}) $. The reverse process is then written with a time variable increasing from $ \tau = 0 $ to $ \tau = \mathds{1} $ as
+\begin{equation}
+    d\mathbf{y}
+    =
+    \left[
+        -\mathbf{f}(\mathbf{y},\tau)
+        +g_{\mathrm{diff}}(\tau)^2
+        \nabla_{\mathbf{y}}\log p_{\tau}(\mathbf{y})
+    \right]dt
+    +
+    g_{\mathrm{diff}}(\tau)d\overline{\mathbf{w}}.
+    \label{eq:reverse_sde_increasing_time}
+\end{equation}
+At the beginning of the reverse process, we have $ \mathbf{y}_0=\mathbf{x}_{\mathds{1}} \sim p_{\mathds{1}} \approx \mathcal{N}(\mathbf{0},\mathbf{I}) $ and if Equation~\eqref{eq:reverse_sde_increasing_time} were solved using the exact
+score, its terminal random variable would satisfy $ \mathbf{y}_{\mathds{1}}\sim p_0=p_{\mathrm{data}} $.
+In practice, the exact score is replaced by the learned approximation
+$\mathbf{s}_{\theta}$, which gives
+\begin{equation}
+    d\mathbf{y}
+    =
+    \mathbf{b}_{\theta}(\mathbf{y},t)dt
+    +g_{\mathrm{diff}}(\tau)d\overline{\mathbf{w}},
+    \label{eq:learned_reverse_sde_sampling}
+\end{equation}
+\vspace{-5pt}
+\begin{equation*}
+    \text{with,} \quad
+    \mathbf{b}_{\theta}(\mathbf{y},t)
+    =
+    -\mathbf{f}(\mathbf{y},\tau)
+    +g_{\mathrm{diff}}(\tau)^2
+    \mathbf{s}_{\theta}(\mathbf{y},\tau).
+    \label{eq:learned_reverse_drift_sampling}
+\end{equation*}
+Using the noise-prediction parameterization
+$\mathbf{s}_{\theta}(\mathbf{x}_t,t)
+=-\boldsymbol{\epsilon}_{\theta}(\mathbf{x}_t,t)/\sigma(t)$, the drift can
+also be evaluated directly from the output of the trained network.
+
+Equation~\eqref{eq:learned_reverse_sde_sampling} generally has no closed-form
+solution because its drift depends on the nonlinear neural network. A temporal
+grid
+\begin{equation}
+    0=t_0<t_1<\cdots<t_{N_{\mathrm{step}}}=\mathds{1},
+    \qquad
+    \Delta t_n=t_{n+1}-t_n,
+\end{equation}
+is therefore introduced. The Wiener increment over one time step is sampled as
+\begin{equation}
+    \Delta\overline{\mathbf{w}}_n
+    =
+    \sqrt{\Delta t_n}\,\mathbf{z}_n,
+    \qquad
+    \mathbf{z}_n\sim\mathcal{N}(\mathbf{0},\mathbf{I}).
+\end{equation}
+A direct Euler--Maruyama discretization would give
+\begin{equation}
+    \mathbf{y}_{n+1}
+    =
+    \mathbf{y}_n
+    +\Delta t_n\mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+    +g_{\mathrm{diff}}(\mathds{1}-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:euler_maruyama_sampling}
+\end{equation}
+This expression makes the role of the trained network explicit: at each noise
+level, the score estimate modifies the drift of the reverse diffusion and
+therefore determines the direction in which the current noisy sample evolves.
+The Gaussian term preserves the stochastic nature of the reverse process.
+
+In this work, the integration is performed using a predictor--corrector scheme
+of Heun type. First, an Euler prediction is computed,
+\begin{equation}
+    \widetilde{\mathbf{y}}_{n+1}
+    =
+    \mathbf{y}_n
+    +\Delta t_n\mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+    +g_{\mathrm{diff}}(\mathds{1}-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:heun_sampling_predictor}
+\end{equation}
+The drift is then evaluated again at the predicted state, and the two drift
+estimates are averaged,
+\begin{equation}
+\begin{aligned}
+    \mathbf{y}_{n+1}
+    ={}&
+    \mathbf{y}_n
+    +\frac{\Delta t_n}{2}
+    \left[
+        \mathbf{b}_{\theta}(\mathbf{y}_n,t_n)
+        +
+        \mathbf{b}_{\theta}
+        (\widetilde{\mathbf{y}}_{n+1},t_{n+1})
+    \right]
+    \\
+    &+
+    g_{\mathrm{diff}}(\mathds{1}-t_n)\sqrt{\Delta t_n}\,\mathbf{z}_n.
+    \label{eq:heun_sampling_corrector}
+\end{aligned}
+\end{equation}
+The same Gaussian realization $\mathbf{z}_n$ is used in the prediction and
+correction. Compared with Euler--Maruyama, the Heun correction accounts for the
+variation of the learned drift over the time step, at the cost of a second
+evaluation of the neural network.
+
+Starting from $\mathbf{y}_0\sim\mathcal{N}(\mathbf{0},\mathbf{I})$ and
+repeating these updates for $n=0,\ldots,N_{\mathrm{step}}-1$ produces the final state
+$\mathbf{y}_{N_{\mathrm{step}}}$. Since $\mathbf{y}_{N_{\mathrm{step}}}$ approximates a sample from $p_0$, it is
+interpreted as a newly generated RTI density field. Repeating the procedure
+with independent initial Gaussian samples and independent Wiener increments
+produces an ensemble whose distribution approximates
+$p_{\mathrm{data}}$.
+
+This behavior is illustrated in
+Figure~\ref{fig:diffusion_1d_reverse_score}. In the one-dimensional example, the
+score is represented by arrows along the $x$ axis. At each diffusion time, the
+arrows point in the direction of increasing $p_t$. Near $t=\mathds{1}$, they mostly
+point toward the origin because the distribution is nearly Gaussian. As the
+reverse process approaches $t=0$, the central region becomes unstable and the
+score directs samples toward one of the two modes of the original bimodal
+distribution. The reverse process can therefore be interpreted as a gradual
+transport of probability mass from a simple Gaussian prior toward the regions
+occupied by the data.
 
 \begin{figure}[H]
     \centering
@@ -593,54 +721,13 @@ back to the high-probability region, then assigned to one of the modes.
     \label{fig:diffusion_1d_reverse_score}
 \end{figure}
 
-\begin{equation}
-\mathbf{s}*{\theta}(\mathbf{x},t)
-\approx
-\nabla*{\mathbf{x}}
-\log p_t(\mathbf{x}).
-\end{equation}
-
-Since the exact score is unknown, it is estimated through denoising score matching. For the variance-preserving formulation adopted in this work, the score can be related to the Gaussian perturbation used during the forward process,
-% \citep{Vincent2011,Song2019}
-
-
-\begin{equation}
-\nabla_{\mathbf{x}_t}
-\log p(\mathbf{x}_t|\mathbf{x}_0)
-=
--
-\frac{
-\boldsymbol{\epsilon}
-}{
-\sqrt{1-\bar{\alpha}_t}
-}.
-\end{equation}
-
-This relation motivates the noise-prediction parameterization, where the neural network predicts the perturbation $(\boldsymbol{\epsilon})$ added to the clean sample. The corresponding training objective is,
-
-\begin{equation}
-\mathcal{L}(\theta)
-=
-\mathbb{E}_{\mathbf{x}*0,t,\boldsymbol{\epsilon}}
-\left[
-\left|
-\boldsymbol{\epsilon}
--
-\boldsymbol{\epsilon}*{\theta}
-(\mathbf{x}_t,t)
-\right|_2^2
-\right].
-\end{equation}
-
-After training, the estimated score is used to numerically integrate the reverse-time dynamics from an initial Gaussian sample
-
-\begin{equation}
-\mathbf{x}_T
-\sim
-\mathcal{N}(\mathbf{0},\mathbf{I}),
-\end{equation}
-
-thereby transporting the probability mass from the simple Gaussian prior toward the complex distribution of RTI density fields. The generated samples can therefore be interpreted as approximate realizations drawn from the learned distribution $(p_{\theta}(\mathbf{x}))$.
+For RTI density fields, the same mechanism acts in a high-dimensional state
+space. The network does not explicitly reconstruct an analytical expression
+for $p_{\mathrm{data}}$. Instead, it learns the local vector field required to
+transport noisy states toward regions of high probability at every noise level.
+Repeated numerical integration of these learned directions produces an
+ensemble of fields whose distribution approximates the distribution of the DNS
+dataset.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -737,19 +824,23 @@ seek to model
 \begin{equation}
     p(\mathbf{x})
     =
-    p(\mathbf{c}_A,\mathbf{c}_D)
+    p(LL,LH,HL,HH)
     =
-    p(\mathbf{c}_A)\,p(\mathbf{c}_D\mid\mathbf{c}_A),
+    p(LL)\,p(LH,HL,HH\mid LL),
 \end{equation}
 
-where $\mathbf{c}_A$ denotes approximation coefficients and $\mathbf{c}_D$
-detail coefficients. In a deeper cascade, this factorization can be iterated
+where $LL$ denotes the approximation sub-band and $(LH,HL,HH)$ denote the
+three directional detail sub-bands. In a deeper cascade, this factorization can be iterated
 across scales, for example
 
 \begin{equation}
-    p(Ca_3,Ch_3,Ch_2,Ch_1)
-    =
-    p(Ca_3)\,p(Ch_3\mid Ca_3)\,p(Ch_2\mid Ca_2)\,p(Ch_1\mid Ca_1),
+    \begin{aligned}
+    &p(LL^{(3)},LH^{(3)},HL^{(3)},HH^{(3)},LH^{(2)},HL^{(2)},HH^{(2)},LH^{(1)},HL^{(1)},HH^{(1)})\\
+    &\qquad =
+    p(LL^{(3)})
+    \prod_{\ell=1}^{3}
+    p(LH^{(\ell)},HL^{(\ell)},HH^{(\ell)}\mid LL^{(\ell)}),
+    \end{aligned}
 \end{equation}
 
 which is precisely the logic explored in the multi-level wavelet notebooks.

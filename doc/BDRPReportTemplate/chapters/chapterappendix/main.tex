@@ -1,5 +1,304 @@
+\chapter{Code and Reproducibility}
+\label{chap:code_appendix}
 
-﻿\chapter{Additional Material}
+This appendix documents the implementation used to obtain the results presented
+in this report. The code is written in Python and relies primarily on PyTorch
+for tensor operations, automatic differentiation, neural-network modules and
+GPU execution \citep{paszke2019pytorch}. The purpose of this appendix is not to
+reproduce every source line, but to explain the responsibilities of the main
+files, the data exchanged between them, and the choices that affect the
+scientific interpretation of the results.
 
-\textbf{TODO:} Add appendices if needed: extended experimental tables, additional qualitative samples, implementation details, hyperparameters, dataset preprocessing details, or pseudo-code that is too long for the main report.
+The paths below are relative to the repository root. The two main workflow
+files retain the spelling used in the repository:
+\begin{itemize}
+\item \lstinline|WSGM_Foward_and_Generator.py|;
+\item \lstinline|SGM_Foward.py|.
+\end{itemize}
 
+\section{Software organization}
+
+The implementation is divided into executable workflows and reusable
+libraries. The workflows assemble a complete experiment, whereas the library
+modules implement the model, data and evaluation primitives.
+
+{\footnotesize
+\begin{longtable}{@{}p{0.38\textwidth}p{0.54\textwidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Role in the pipeline} \\
+\midrule
+\endhead
+\lstinline|data_mining_CEA.py| & Loads the CEA HDF5 simulations, splits them by simulation, applies preprocessing and augmentation, and exports the image datasets. \\
+\lstinline|SGM_Foward.py| & Builds and trains the direct image-space VP-SGM, then saves its weights and configuration. \\
+\lstinline|SGM_Generator.py| & Reloads a direct SGM from its configuration and checkpoint, samples in batches, and stores generated tensors. \\
+\lstinline|WSGM_Foward_and_Generator.py| & Trains the coarse model and the conditional wavelet detail models, or runs the complete coarse-to-fine cascade according to \lstinline|WSGM_Config.json|. \\
+\lstinline|PhyFID_Generator.py| & Trains the physical feature encoder and stores the validation statistics used by PhyFID. \\
+\lstinline|lib/diffusion_lib/| & Generic DDPM/SGM models, U-Net, schedules, data loaders, training loops and experiment utilities. \\
+\lstinline|lib/wavelet_diffusion_lib/| & Conditional diffusion models and training utilities specific to wavelet coefficients. \\
+\lstinline|lib/PhyFID/| & Preprocessing, physical feature extraction and Frechet-distance evaluation. \\
+\lstinline|Visualisation_fusionnee.ipynb| & Post-processing notebook used to compare generated ensembles and produce the report figures. \\
+\bottomrule
+\end{longtable}
+}
+
+The normal execution order is therefore
+\[
+\begin{aligned}
+\text{CEA files} &\longrightarrow \text{processed tensors}
+\longrightarrow \text{trained checkpoints} \\
+&\longrightarrow \text{generated ensembles}
+\longrightarrow \text{physical diagnostics and figures}.
+\end{aligned}
+\]
+The saved configuration files are part of this chain: a checkpoint alone is
+not sufficient to reconstruct a model if its architecture, normalization or
+sampling parameters are not known.
+
+\section{Dataset construction}
+
+The entry point for dataset preparation is
+\lstinline|data_mining_CEA.py|. It loads the three CEA HDF5 files through the
+helpers in \lstinline|lib/cea_lib|. The function
+\lstinline|split_indices_by_simulation| identifies a trajectory through the
+fixed parameters stored in the label columns: Atwood number, phase and number
+of modes. All snapshots sharing these parameters are assigned to the same
+subset. This is important because a snapshot-level random split would put
+different times from one physical trajectory in both training and validation,
+and would make the validation error optimistic.
+
+The resulting simulation-level split uses the ratios $0.8$, $0.1$ and $0.1$.
+Each subset is then passed to \lstinline|data_preprocessing| and
+\lstinline|data_augmentater| from \lstinline|lib/cea_lib|. The processed fields
+are resized to $64\times64$ pixels. For the image-space diffusion workflow,
+\lstinline|to_uint8| applies a per-field min--max rescaling before the tensors
+are saved as \lstinline|training.pt|, \lstinline|validation.pt| and
+\lstinline|test.pt|. The generic loader later maps these values to
+$[-1,1]$, which is the convention expected by the image-space diffusion
+models.
+
+The wavelet workflow uses a different representation. Its coefficient files
+are stored as floating-point tensors with shape $(N,4,H',W')$, where the four
+channels are the approximation coefficient $cA$ and the detail coefficients
+$cH$, $cV$ and $cD$. These coefficients must not be passed through the image
+loader's uint8 normalization. The distinction is implemented by
+\lstinline|WaveletApproximationDataset| and by the wavelet utilities described
+below. The discrete wavelet transform is used as a multiresolution change of
+representation, following the standard wavelet framework \citep{Mallat2009}
+and its use for localized multiscale analysis in turbulence \citep{Farge1992}.
+
+\section{Direct image-space SGM}
+
+\subsection{Training workflow}
+
+\lstinline|SGM_Foward.py| defines the direct image-space baseline. Its
+\lstinline|Config| dataclass centralizes the dataset path, image shape,
+training hyperparameters, VP-SDE schedule, U-Net architecture and output
+paths. The function \lstinline|build_sgm| creates a time-conditioned U-Net and
+wraps it in the \lstinline|SGM| class. \lstinline|main| then loads the
+training and validation data, optionally restores an input checkpoint,
+constructs an \lstinline|AdamW| optimizer, and calls
+\lstinline|sgm_training_loop|. AdamW is the decoupled weight-decay optimizer
+introduced by Loshchilov and Hutter \citep{loshchilov2019adamw}.
+
+The continuous VP-SDE implemented in \lstinline|lib/diffusion_lib/SGM.py| is
+defined by
+\[
+    \mathrm{d}x_t
+    = -\frac{1}{2}\beta(t)x_t\,\mathrm{d}t
+      + \sqrt{\beta(t)}\,\mathrm{d}W_t,
+\]
+with an affine schedule between \lstinline|beta_min| and
+\lstinline|beta_max|. Because the marginal distribution is known in closed
+form, the forward training step directly constructs
+\[
+    x_t = \sqrt{\bar{\alpha}(t)}x_0
+          + \sqrt{1-\bar{\alpha}(t)}\,\epsilon,
+    \qquad \epsilon\sim\mathcal{N}(0,I),
+\]
+without simulating the SDE with Euler--Maruyama. The score network is trained
+with denoising score matching. The implementation supports both
+\lstinline|epsilon|-prediction and the bounded $v$-parameterization; the
+experiments reported in the later chapters use the configuration selected in
+the corresponding JSON file.
+
+The training loop in \lstinline|lib/diffusion_lib/training_loop.py| samples a
+continuous time and Gaussian perturbation for every batch, evaluates an MSE
+against the selected target, clips gradients when requested, evaluates the
+validation loss, and saves the best checkpoint. This follows the score-based
+diffusion formulation of Song et al. \citep{Song2021SDE}; the relation between
+forward and reverse-time diffusion processes goes back to Anderson
+\citep{ANDERSON1982313}. The older discrete implementation in
+\lstinline|DDPM.py| follows the DDPM forward and reverse construction of Ho et
+al. \citep{ho2020ddpm}; it remains available as a reusable library component,
+although the main baseline discussed in this report is the continuous SGM.
+
+\subsection{U-Net and time conditioning}
+
+The model in \lstinline|lib/diffusion_lib/UNet.py| is an encoder--decoder
+convolutional network with skip connections. At each encoder level, a stack of
+convolutional blocks extracts features and a strided operation reduces the
+spatial resolution. The bottleneck processes the coarsest representation. The
+decoder upsamples the features and concatenates them with the corresponding
+encoder activations. This contracting/expanding structure follows the U-Net
+design of Ronneberger et al. \citep{ronneberger2015unet}, adapted here for
+noise prediction rather than segmentation.
+
+The diffusion time is represented by sinusoidal features and projected into
+the channel dimension at each resolution level. In continuous-time mode, the
+embedding receives $t\in[0,1]$ directly; in discrete DDPM mode, an embedding
+table is used. The convolutional blocks can use layer normalization or group
+normalization. The latter is motivated by the batch-size-independent
+normalization proposed by Wu and He \citep{wu2018groupnorm}. The implementation
+also exposes transposed-convolution or interpolation-based upsampling,
+zero-padding or horizontal circular padding, and strided-convolution or
+blur-pool downsampling.
+
+The file \lstinline|lib/diffusion_lib/Attention.py| contains a spatial QKV
+attention block based on scaled dot-product attention. The underlying
+attention mechanism is associated with the Transformer formulation of Vaswani
+et al. \citep{vaswani2017attention}, and the implementation follows the style
+used in diffusion U-Nets such as the DDPM codebase \citep{ho2020ddpm}. There
+is, however, an important implementation detail: the current
+\lstinline|UNet.py| does not import or instantiate \lstinline|AttentionBlock|.
+Consequently, the results reported in this thesis use the convolutional,
+time-conditioned U-Net and do not use spatial attention. The attention file is
+therefore documented for completeness, not as an active part of the trained
+architecture.
+
+\subsection{Generation workflow}
+
+\lstinline|SGM_Generator.py| is deliberately separated from training. It
+loads the JSON configuration generated by \lstinline|SGM_Foward.py|,
+reconstructs the same U-Net and SGM objects, loads the saved state dictionary,
+and switches the model to evaluation mode. \lstinline|generate_sgm_dataset|
+generates samples in batches to limit memory usage. The SGM sampler integrates
+the probability-flow ODE using either Euler or Heun; Heun is the default and
+uses two score evaluations per step. The generated fields and a second dataset
+sampled from a freshly initialized, untrained SGM (called the noise reference
+in the script) are saved as PyTorch tensors for later analysis.
+
+\section{Wavelet diffusion cascade}
+
+\subsection{Conditional detail models}
+
+The wavelet-specific implementation is in the directory
+\lstinline|lib/wavelet_diffusion_lib|.
+
+At each level, the coefficient tensor is split into a prior $cA$ and a detail tensor
+$D=(cH,cV,cD)$. The class \lstinline|WaveletConditionalSGM| applies the VP-SDE
+only to $D$. Its network receives the concatenation
+\[
+    [cA,D_t]
+\]
+and predicts the noise or $v$ target for the details. The approximation field
+is therefore a condition and is not itself diffused in the conditional model.
+Channel means and standard deviations are registered in the model so that
+normalization used during training can be inverted before reconstruction.
+
+The function \lstinline|wave_sgm_loss| implements conditional denoising score
+matching. It samples $t$, adds the exact VP perturbation to the detail
+channels, concatenates the unchanged prior, and computes the MSE between the
+network output and the selected target. The corresponding training loop saves
+the checkpoint with the lowest validation loss. The parallel
+\lstinline|WaveletConditionalDDPM| and \lstinline|wave_training_loop| classes
+provide the discrete DDPM alternative, with the same coarse/detail channel
+convention.
+
+\subsection{Coarse-to-fine orchestration}
+
+\lstinline|WSGM_Foward_and_Generator.py| is the main orchestration script. Its
+configuration distinguishes two model families:
+
+\begin{description}
+\item[Coarse SGM.] An unconditional image-space SGM is trained on the
+  approximation coefficients $cA$. It supplies the initial coarse state for a
+  complete generated cascade.
+\item[Conditional detail SGM.] One model is trained at each wavelet level to
+  generate details conditional on the current approximation coefficient.
+\end{description}
+
+The function \lstinline|generate_cascade| selects the initial coarse state,
+generates the detail coefficients, applies the inverse discrete wavelet
+transform, and passes the reconstructed approximation to the next level. The
+two initial-state options are important for interpreting the experiments. In
+the generated setting, $cA$ comes from the coarse diffusion model and the
+cascade is fully generative. In the reference setting, $cA$ is read from a
+validation field. The latter is an oracle-coarse ablation: it isolates the
+conditional detail models and tests whether they can generate compatible fine
+scales when the coarse state is already correct. It is not an independent
+generative model and should not be counted as an end-to-end sampling method.
+
+This factorization follows the Wavelet Score-Based Generative Model proposed
+by Guth et al. \citep{Guth2022WSGM}. The WSGM paper motivates the use of
+coarse-to-fine wavelet generation to reduce the cost of sampling, but the
+present implementation and dataset determine whether that potential is
+realized for RTI fields. In particular, the speed advantage and the quality of
+the complete cascade remain separate empirical quantities.
+
+\section{PhyFID implementation}
+
+The files in \lstinline|lib/PhyFID| implement a domain-specific distribution
+metric. \lstinline|preprocessing.py| converts input arrays to NCHW floating
+point tensors in $[0,1]$. \lstinline|encoder.py| defines a convolutional
+autoencoder. The encoder is trained on a training subset using reconstruction
+MSE; after training, only its bottleneck vector is used as a physical feature.
+\lstinline|metrics.py| computes the mean and covariance of these feature
+vectors and evaluates the Frechet distance
+\[
+    d^2 = \lVert\mu_1-\mu_2\rVert_2^2
+    + \operatorname{tr}\left(\Sigma_1+\Sigma_2
+    -2(\Sigma_1\Sigma_2)^{1/2}\right).
+\]
+The construction is inspired by the Fréchet Inception Distance of Heusel et
+al. \citep{heusel2017fid}, but it is not the standard FID: the feature space is
+learned from RTI fields by the local autoencoder rather than taken from an
+ImageNet Inception network. Consequently, PhyFID values are meaningful only
+when the same encoder, preprocessing convention and comparable ensemble size
+are used for all compared datasets.
+
+\lstinline|PhyFID_Generator.py| creates this reference in four steps: it loads
+the training and validation coefficient datasets, selects the requested
+channel, trains the encoder, saves its checkpoint, and stores the validation
+mean and covariance. The script contains this call at module level, so running
+the file or importing it executes the reference-building procedure. Evaluation
+of an already generated dataset is instead provided by
+\lstinline|evaluate_phyfid_dataset| and does not retrain the encoder.
+
+\section{Analysis notebook}
+
+The notebook \lstinline|analyse_reslutat/Visualisation_fusionnee.ipynb| is an
+analysis and figure-generation notebook rather than a second model implementation. Its
+cells load saved tensors and metadata from the SGM and WSGM workflows, select
+the cascade variant, compute lightweight statistical diagnostics, and export
+the figures used in Chapter~\ref{chap:experiments}. Depending on the selected
+configuration, the notebook compares generated and reference-coarse cascades,
+plots coefficient or reconstruction fields, computes density statistics and
+spectral diagnostics, and can call PhyFID.
+
+For reproducibility, the notebook must be run against the checkpoints,
+normalization statistics and generated tensors produced by the corresponding
+experiment. Changing the cascade key, wavelet level, number of samples or
+normalization changes the numerical comparison even if the plotting cells are
+unchanged. The notebook should therefore be regarded as a post-processing
+layer whose inputs are the serialized outputs of the scripts documented
+above.
+
+\section{Reproducibility checklist}
+
+The following quantities should be preserved together with a reported result:
+
+\begin{itemize}
+\item the source simulation files and the simulation-level split seed;
+\item the preprocessing, augmentation and per-channel normalization rules;
+\item the JSON model configurations and the corresponding state dictionaries;
+\item the initial coarse-state choice (reference or generated);
+\item the wavelet family and decomposition levels;
+\item the sampler, solver and number of reverse steps for every model;
+\item the PhyFID encoder, reference statistics and number of evaluated samples.
+\end{itemize}
+
+These items are not merely software metadata. The initial coarse-state choice
+changes the scientific question, and the reverse-step count changes the
+measured speed--quality trade-off. In particular, a comparison between direct
+SGM and WSGM is only an end-to-end comparison when the coarse coefficient is
+also generated by the WSGM pipeline.

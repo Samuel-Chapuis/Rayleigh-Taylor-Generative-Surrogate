@@ -1,4 +1,24 @@
 \section{Limitations}
 
-The main limitations of this work are the small size of the DNS dataset, the partial quantitative evaluation of the wavelet-based model, and the current roughness of reconstructed wavelet-generated fields. The diffusion architecture and conditioning strategy were initially designed close to image-space generation and may not be optimal for the statistical structure of wavelet coefficients.
+The main limitations of this work are the small size of the DNS dataset, the
+partial quantitative evaluation of the wavelet-based model, and the current
+roughness of reconstructed wavelet-generated fields. The diffusion architecture
+and conditioning strategy were initially designed close to image-space
+generation and may not be optimal for the statistical structure of wavelet
+coefficients.
 
+The WSGM results must also be interpreted with care. The fully generated
+cascade is faster to sample than the direct image-space SGM, because the
+generation is distributed across lower-dimensional wavelet coefficients.
+However, this acceleration is presently obtained at the cost of lower sample
+quality: the generated fields remain rougher, contain more visible artifacts,
+and match the validation distribution less accurately than the baseline. The
+current WSGM should therefore be seen as a faster but less accurate alternative,
+not as a model that already dominates the direct SGM.
+
+Finally, the reference-coarse experiment is not a useful generative setting in
+itself, since it uses coarse information taken from validation data. Its role is
+diagnostic: it isolates the conditional detail stages and shows that they can
+produce accurate fine-scale content when the coarse coefficient is already
+physically consistent. The limiting factor of the present WSGM pipeline is
+therefore the unconditional coarse diffusion stage.

@@ -1,4 +1,26 @@
 \section{Perspectives}
 
-Future work should evaluate the wavelet model with the same full metric suite as the baseline, investigate alternative wavelet families and decomposition levels, improve coefficient normalization, and explore progressive coarse-to-fine generation. Larger and more diverse DNS datasets would also make it possible to assess generalization more robustly.
+Future work should first improve and evaluate the coarse diffusion model,
+because it controls whether the speed advantage of WSGM can be obtained without
+losing too much sample quality. The reference-coarse results suggest that the
+conditional detail stages can work when the coarse state is correct; the next
+step is therefore to make the generated coarse coefficient converge to the same
+distribution as the reference coarse coefficients used during training.
 
+It would then be useful to perform a systematic hyperparameter analysis. The
+current results depend on several coupled choices: the wavelet family, the
+decomposition level, the normalization of the coefficient channels, the number
+of reverse diffusion steps, and the conditioning architecture. A controlled
+study of these parameters would help determine whether the present quality loss
+comes mainly from the representation, from the diffusion model, or from the
+coarse-to-fine coupling.
+
+Beyond sample generation, such models could also be used for downstream
+physical tasks. One direction is rare-event prediction, where a fast generative
+surrogate could be used to explore low-probability configurations without
+running a large number of expensive DNS simulations. Another direction is
+inverse-problem solving: given an observed density morphology, the model could
+help search for initial conditions or coarse states that are likely to produce
+that final shape. In this setting, the generative model would not only replace
+forward simulations, but also provide a structured prior over physically
+plausible RTI fields.

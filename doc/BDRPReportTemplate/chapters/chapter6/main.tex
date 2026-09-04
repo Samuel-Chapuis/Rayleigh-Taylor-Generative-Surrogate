@@ -52,39 +52,22 @@ problem. The obtained results show that the model can learn relationships
 between approximation and detail coefficients, and that the wavelet framework
 offers a meaningful way to analyze where reconstruction errors occur.
 
-However, the current wavelet-based diffusion model does not yet outperform the
-classical image-space baseline. The reconstructed fields remain rougher and
-contain more visible artifacts, especially in the generated detail
-coefficients. This result is important because it shows that introducing a
-physically motivated representation is not sufficient by itself: the diffusion
-architecture, the conditioning mechanism, the normalization of coefficient
-channels, and the choice of wavelet level must all be carefully adapted to the
-statistical structure of the transformed data. At the present stage, the direct
-diffusion model therefore provides the best generation quality, while the
-wavelet approach remains a promising but incomplete direction.
-
-Several perspectives naturally follow from this work. First, the wavelet-based
-pipeline should be evaluated with the same quantitative metrics as the
-baseline, including PhyFID, line-wise density statistics, and fluctuation
-spectra. This would make it possible to determine precisely which physical
-properties are degraded or preserved by the wavelet formulation. Second,
-alternative wavelet families and decomposition levels should be investigated,
-since they directly control the separation between coarse and fine scales.
-Third, the conditioning strategy could be improved, for example by using
-multi-level conditioning or by generating the wavelet scales progressively from
-coarse to fine. Finally, larger and more diverse DNS datasets would help assess
-the generalization capabilities of both approaches and reduce the risk of
-overfitting.
+The main outcome of the wavelet experiments is a quality--speed compromise. At
+the present stage, the direct SGM provides the best generation quality, whereas
+the fully generated WSGM cascade offers faster sampling but less accurate
+fields. This result does not invalidate the wavelet approach: it shows that the
+multi-resolution cascade can be computationally attractive, but that its
+practical competitiveness depends on the quality of the generated coarse
+coefficient.
 
 Overall, this work demonstrates that diffusion models are a relevant framework
 for learning generative surrogate models of Rayleigh--Taylor instability
 fields. The classical SGM baseline already captures meaningful statistical and
-physical information from a limited DNS dataset. The wavelet-based formulation,
-although not yet competitive in its current implementation, opens an
-interesting path toward more interpretable and scale-aware generative models
-for turbulent physical systems.
+physical information from a limited DNS dataset. The wavelet-based formulation
+does not yet reach the same quality, but it exposes a credible route toward
+faster scale-aware generation.
 
 
 \input{chapters/chapter6/sections/01}
 \input{chapters/chapter6/sections/02}
-\input{chapters/chapter6/sections/03}
+% \input{chapters/chapter6/sections/03}

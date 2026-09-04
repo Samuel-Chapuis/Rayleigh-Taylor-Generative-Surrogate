@@ -1,4 +1,4 @@
-\begin{thebibliography}{13}
+\begin{thebibliography}{20}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -41,6 +41,18 @@ Florentin Guth, Simon Coste, Valentin~De Bortoli, and St{\'e}phane Mallat.
 \newblock \doi{10.52202/068431-0035}.
 \newblock URL \url{https://proceedings.neurips.cc/paper_files/paper/2022/hash/03474669b759f6d38cdca6fb4eb905f4-Abstract-Conference.html}.
 
+\bibitem[Heusel et~al.(2017)Heusel, Ramsauer, Unterthiner, Nessler, and Hochreiter]{heusel2017fid}
+Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernhard Nessler, and Sepp Hochreiter.
+\newblock Gans trained by a two time-scale update rule converge to a local nash equilibrium.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~30, pages 6626--6637. Curran Associates, Inc., 2017.
+\newblock URL \url{https://proceedings.neurips.cc/paper/2017/hash/8a1d694707eb0fefe65871369074926d-Abstract.html}.
+
+\bibitem[Ho et~al.(2020)Ho, Jain, and Abbeel]{ho2020ddpm}
+Jonathan Ho, Ajay~N. Jain, and Pieter Abbeel.
+\newblock Denoising diffusion probabilistic models.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~33, pages 6840--6851. Curran Associates, Inc., 2020.
+\newblock URL \url{https://proceedings.neurips.cc/paper/2020/hash/4c5bcfec8584af0d967f1ab10179ca4b-Abstract.html}.
+
 \bibitem[Kull(1991)]{KULL1991197}
 H.J. Kull.
 \newblock Theory of the rayleigh-taylor instability.
@@ -48,6 +60,12 @@ H.J. Kull.
 \newblock ISSN 0370-1573.
 \newblock \doi{https://doi.org/10.1016/0370-1573(91)90153-D}.
 \newblock URL \url{https://www.sciencedirect.com/science/article/pii/037015739190153D}.
+
+\bibitem[Loshchilov and Hutter(2019)]{loshchilov2019adamw}
+Ilya Loshchilov and Frank Hutter.
+\newblock Decoupled weight decay regularization.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+\newblock URL \url{https://openreview.net/forum?id=Bkg6RiCqY7}.
 
 \bibitem[Mallat(2009)]{Mallat2009}
 Stéphane Mallat.
@@ -66,12 +84,25 @@ Parviz Moin and Krishnan Mahesh.
 \newblock \emph{Annual Review of Fluid Mechanics}, 30:\penalty0 539--578, 1998.
 \newblock \doi{10.1146/annurev.fluid.30.1.539}.
 
+\bibitem[Paszke et~al.(2019)Paszke, Gross, Massa, Lerer, Bradbury, Chanan, Killeen, Lin, Gimelshein, Antiga, Desmaison, Kopf, Yang, DeVito, Raison, Tejani, Chilamkurthy, Steiner, Fang, Bai, and Chintala]{paszke2019pytorch}
+Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu~Fang, Junjie Bai, and Soumith Chintala.
+\newblock Pytorch: An imperative style, high-performance deep learning library.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~32, pages 8024--8035. Curran Associates, Inc., 2019.
+\newblock URL \url{https://proceedings.neurips.cc/paper_files/paper/2019/hash/bdbca288fee7f92f2bfa9f7012727740-Abstract.html}.
+
 \bibitem[Peherstorfer et~al.(2018)Peherstorfer, Willcox, and Gunzburger]{Peherstorfer2018}
 Benjamin Peherstorfer, Karen Willcox, and Max Gunzburger.
 \newblock Survey of multifidelity methods in uncertainty propagation, inference, and optimization.
 \newblock \emph{SIAM Review}, 60\penalty0 (3):\penalty0 550--591, 2018.
 \newblock \doi{10.1137/16M1082469}.
 \newblock URL \url{https://doi.org/10.1137/16M1082469}.
+
+\bibitem[Ronneberger et~al.(2015)Ronneberger, Fischer, and Brox]{ronneberger2015unet}
+Olaf Ronneberger, Philipp Fischer, and Thomas Brox.
+\newblock U-net: Convolutional networks for biomedical image segmentation.
+\newblock In \emph{Medical Image Computing and Computer-Assisted Intervention (MICCAI)}, volume 9351 of \emph{Lecture Notes in Computer Science}, pages 234--241. Springer, 2015.
+\newblock \doi{10.1007/978-3-319-24574-4_28}.
+\newblock URL \url{https://doi.org/10.1007/978-3-319-24574-4_28}.
 
 \bibitem[Song et~al.(2020)Song, Sohl{-}Dickstein, Kingma, Kumar, Ermon, and Poole]{Song2021SDE}
 Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole.
@@ -83,6 +114,19 @@ Yang Song, Jascha Sohl{-}Dickstein, Diederik~P. Kingma, Abhishek Kumar, Stefano 
 Milton Van~Dyke.
 \newblock \emph{An Album of Fluid Motion}.
 \newblock Parabolic Press, Stanford, California, 1982.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~30. Curran Associates, Inc., 2017.
+\newblock URL \url{https://proceedings.neurips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html}.
+
+\bibitem[Wu and He(2018)]{wu2018groupnorm}
+Yuxin Wu and Kaiming He.
+\newblock Group normalization.
+\newblock In \emph{Proceedings of the European Conference on Computer Vision (ECCV)}, pages 3--19. Springer, 2018.
+\newblock \doi{10.1007/978-3-030-01261-8_1}.
+\newblock URL \url{https://doi.org/10.1007/978-3-030-01261-8_1}.
 
 \bibitem[Zhou(2017)]{zhou2017rti1}
 Ye~Zhou.
